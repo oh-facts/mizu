@@ -1,0 +1,26 @@
+// output
+bin/
+.out/
+out/
+release/
+releases/
+build/
+builds/
+
+// editor
+project.4coder
+.vs
+.vscode
+
+// misc
+temp/
+*.zip
+art.txt
+.clocignore
+
+// scripts
+*.bat
+!build.bat
+
+*.sh
+!build.sh
