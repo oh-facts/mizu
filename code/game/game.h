@@ -38,11 +38,12 @@
 #include <os/os.h>
 #include <file/file_handler.h>
 #include <render/render.h>
-#include <render/render_cache.h>
+#include <asset/asset_cache.h>
 #include <draw/draw.h>
 #include <ui/ui.h>
 #include <draw/draw_ui.h>
 #include <editor/editor.h>
+#include <entity/entity.h>
 
 #include <base/base_core.cpp>
 #include <base/base_string.cpp>
@@ -50,6 +51,7 @@
 #include <base/base_math.cpp>
 #include <os/os.cpp>
 #include <render/render.cpp>
+#include <asset/asset_cache.cpp>
 
 #if defined(OS_WIN32)
 #include <os/os_win32.cpp>
@@ -75,9 +77,14 @@
 #define GAME_DLL_CLONED "libyk_clone.dylib"
 #endif
 
+#define max_entities 24
+
+
 struct State
 {
 	b32 initialized;
+	Arena *arena;
+	Arena *trans;
 	
 	// platform
 	int argc;
@@ -93,12 +100,11 @@ struct State
 	TCXT *tcxt;
 	D_State *d_state;
 	R_Opengl_state *r_opengl_state;
+	A_AssetCache *a_asset_cache;
 	
 	// engine
 	OS_Window win;
 	OS_Event_list events;
-	Arena *arena;
-	Arena *trans;
 	D_Bucket draw;
 	Atlas atlas;
 	R_Handle atlas_tex[256];
@@ -108,7 +114,8 @@ struct State
 	ED_State ed_state;
 	
 	// game
-	u64 temp;
+	Entity *entities;
+	u32 num_entities;
 };
 
 #include <editor/editor.cpp>

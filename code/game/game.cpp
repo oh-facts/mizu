@@ -19,6 +19,7 @@ void update_and_render(void *memory, f32 delta)
 		
 		r_alloc_texture = r_opengl_alloc_texture;
 		r_submit = r_opengl_submit;
+		a_asset_cache = state->a_asset_cache;
 		
 		state->hr.state = HotReloadState_Null;
 		
@@ -29,12 +30,6 @@ void update_and_render(void *memory, f32 delta)
 		state->initialized = 1;
 		os_api_init(&state->os_api);
 		
-		state->arena = arena_create();
-		state->trans = arena_create();
-		
-		arena = state->arena;
-		trans = state->trans;
-		
 		r_alloc_texture = r_opengl_alloc_texture;
 		r_submit = r_opengl_submit;
 		
@@ -44,10 +39,12 @@ void update_and_render(void *memory, f32 delta)
 		glEnable(GL_FRAMEBUFFER_SRGB);
 		r_opengl_init();
 		d_init();
+		a_init();
 		
 		state->tcxt = tcxt;
 		state->d_state = d_state;
 		state->r_opengl_state = r_opengl_state;
+		state->a_asset_cache = a_asset_cache;
 		
 		char codepoints[] =
 		{
@@ -64,7 +61,7 @@ void update_and_render(void *memory, f32 delta)
 		};
 		
 		Arena_temp temp = arena_temp_begin(state->trans);
-		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/delius.ttf"));
+		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/assets/fonts/delius.ttf"));
 		Glyph *temp_font = make_bmp_font(font_path.c, codepoints, ARRAY_LEN(codepoints), state->trans);
 		
 		for(u32 i = 0; i < ARRAY_LEN(codepoints); i ++)
@@ -89,6 +86,16 @@ void update_and_render(void *memory, f32 delta)
 		Bitmap face_bmp = bitmap(face_path);
 		state->face = r_alloc_texture(face_bmp.data, face_bmp.w, face_bmp.h, face_bmp.n, &pixel_params);
 		
+		
+		state->entities = push_array(state->arena, Entity, max_entities);
+		for(u32 i = 0; i < max_entities; i++)
+		{
+			Entity *e = state->entities + i;
+			
+			e->tex = a_tex_from_hash(push_str8f(state->arena, "fox/fox_dance%u.png", i+1));
+			e->name = str8_lit("player");
+		}
+		
 		arena_temp_end(&temp);
 	}
 	
@@ -106,6 +113,13 @@ void update_and_render(void *memory, f32 delta)
 	f32 scale = 4;
 	
 	d_draw_rect(&state->draw, v2f{{-scale * 0.5f, scale * 0.5f}}, v2f{{scale, scale}}, D_COLOR_BLACK);
+	
+	local_persist f32 i = 0;
+	i += delta;
+	for(u32 j = 0; j < 6; j++)
+	{
+		d_draw_img(&state->draw, v2f{{-1.4f + ((u32)(i + j) % max_entities) * 0.12f, 0.1f}}, v2f{{0.3, 0.3}}, D_COLOR_WHITE, state->entities[(u32)(i+j) % max_entities].tex->v);
+	}
 	
 	ed_update(state, &state->events, delta);
 	

@@ -23,15 +23,15 @@ if exist out (
 if exist out\SDL3.dll (
     REM file exists
 ) else (
-    xcopy /s /y data\SDL3.dll out
+    xcopy /s /y data\bin\SDL3.dll out
 )
 
-if "%platform%" == "1" echo [platform] && clang "%common_flags%" "%build_type%" -I./code/ -o out/platform.exe code/game/main.cpp -luser32 -lkernel32 -lgdi32 -lcomdlg32 -lopengl32 -ldata\SDL3
+if "%platform%" == "1" echo [platform] && clang "%common_flags%" "%build_type%" -I./code/ -o out/platform.exe code/game/main.cpp -luser32 -lkernel32 -lgdi32 -lcomdlg32 -lopengl32 -ldata\bin\SDL3
 
 if %errorlevel% neq 0 echo platform compilation failed && exit /b
 
-if "%app%" == "1" echo [app] && del "out\yk.dll" && clang "%common_flags%" "%build_type%" -I./code/ code/game/game.cpp -shared -o out/yk.dll -lopengl32 -ldata\SDL3
+if "%app%" == "1" echo [app] && del "out\yk.dll" && clang "%common_flags%" "%build_type%" -I./code/ code/game/game.cpp -shared -o out/yk.dll -lopengl32 -ldata\bin\SDL3
 
 if %errorlevel% neq 0 echo app compilation failed && exit /b
-
+   
 if "%run%" == "1" start cmd /c ".\out\platform.exe && echo [run]"

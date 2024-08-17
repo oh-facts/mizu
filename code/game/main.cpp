@@ -10,7 +10,8 @@ int main(int argc, char **argv)
 	State *state = (State*)memory;
 	state->argc = argc;
 	state->argv = argv;
-	
+	state->arena = arena;
+	state->trans = arena_create();
 	state->os_api = os_api;
 	
 	Str8 app_dir = os_get_app_dir(arena);
@@ -39,7 +40,6 @@ int main(int argc, char **argv)
 			state->hr.state = HotReloadState_Completed;
 		}
 		
-		Arena_temp temp = arena_temp_begin(arena);
 		f64 time_since_last = time_elapsed;
 		
 		state->res = total_res;
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 		time_elapsed = (double)(end - start) / freq;
 		
 		delta = time_elapsed - time_since_last;
-		arena_temp_end(&temp);
+		
 	}while(!os_window_is_closed(state->win));
 	
 	return 0;

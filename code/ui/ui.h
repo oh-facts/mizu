@@ -55,7 +55,6 @@ struct UI_Widget
 	UI_Widget *hash_next;
 	UI_Widget *hash_prev;
 	
-	u64 hash;
 	u64 last_frame_touched_index;
 	
 	u32 id;
@@ -359,7 +358,7 @@ function UI_Context *ui_alloc_cxt()
 
 // djb2
 unsigned long
-hash(Str8 str)
+ui_hash(Str8 str)
 {
 	unsigned long hash = 5381;
 	int c;
@@ -373,16 +372,16 @@ hash(Str8 str)
 	return hash;
 }
 
-function UI_Widget *ui_widget_from_hash(UI_Context *cxt, u64 hash)
+function UI_Widget *ui_widget_from_key(UI_Context *cxt, Str8 key)
 {
 	UI_Widget *widget = 0;
 	
-	u64 slot = hash % cxt->hash_table_size;
+	u64 slot = ui_hash(key) % cxt->hash_table_size;
 	
 	UI_Widget *cur = cxt->hash_slots[slot].first;
 	while(cur)
 	{
-		if(cur->hash == hash)
+		if(str8_equals(key, cur->text))
 		{
 			widget = cur;
 			break;
@@ -396,15 +395,12 @@ function UI_Widget *ui_widget_from_hash(UI_Context *cxt, u64 hash)
 
 function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 {
-	u64 text_hash = hash(text);
-	
-	UI_Widget *widget = ui_widget_from_hash(cxt, text_hash);
+	UI_Widget *widget = ui_widget_from_key(cxt, text);
 	
 	if(!widget)
 	{
 		widget = ui_alloc_widget(cxt);
-		widget->hash = text_hash;
-		u64 slot = text_hash % cxt->hash_table_size;
+		u64 slot = ui_hash(text) % cxt->hash_table_size;
 		
 		if(cxt->hash_slots[slot].last)
 		{
