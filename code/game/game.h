@@ -77,8 +77,7 @@
 #define GAME_DLL_CLONED "libyk_clone.dylib"
 #endif
 
-#define max_entities 24
-
+#define max_entities 10
 
 struct State
 {

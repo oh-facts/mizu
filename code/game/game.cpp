@@ -16,13 +16,13 @@ void update_and_render(void *memory, f32 delta)
 		tcxt = state->tcxt;
 		d_state = state->d_state;
 		r_opengl_state = state->r_opengl_state;
-		
-		r_alloc_texture = r_opengl_alloc_texture;
-		r_submit = r_opengl_submit;
 		a_asset_cache = state->a_asset_cache;
 		
-		state->hr.state = HotReloadState_Null;
+		r_alloc_texture = r_opengl_alloc_texture;
+		r_free_texture = r_opengl_free_texture;
+		r_submit = r_opengl_submit;
 		
+		state->hr.state = HotReloadState_Null;
 	}
 	
 	if(!state->initialized)
@@ -31,6 +31,7 @@ void update_and_render(void *memory, f32 delta)
 		os_api_init(&state->os_api);
 		
 		r_alloc_texture = r_opengl_alloc_texture;
+		r_free_texture = r_opengl_free_texture;
 		r_submit = r_opengl_submit;
 		
 		tcxt_init();
@@ -82,17 +83,12 @@ void update_and_render(void *memory, f32 delta)
 			
 		}
 		
-		Str8 face_path = str8_join(state->trans, state->app_dir, str8_lit("../data/face.png"));
-		Bitmap face_bmp = bitmap(face_path);
-		state->face = r_alloc_texture(face_bmp.data, face_bmp.w, face_bmp.h, face_bmp.n, &pixel_params);
-		
-		
 		state->entities = push_array(state->arena, Entity, max_entities);
 		for(u32 i = 0; i < max_entities; i++)
 		{
 			Entity *e = state->entities + i;
 			
-			e->tex = a_tex_from_hash(push_str8f(state->arena, "fox/fox_dance%u.png", i+1));
+			e->tex = push_str8f(state->arena, "debug/numbers%u.png", i+1);
 			e->name = str8_lit("player");
 		}
 		
@@ -116,14 +112,15 @@ void update_and_render(void *memory, f32 delta)
 	
 	local_persist f32 i = 0;
 	i += delta;
-	for(u32 j = 0; j < 6; j++)
+	for(u32 j = 0; j < 1; j++)
 	{
-		d_draw_img(&state->draw, v2f{{-1.4f + ((u32)(i + j) % max_entities) * 0.12f, 0.1f}}, v2f{{0.3, 0.3}}, D_COLOR_WHITE, state->entities[(u32)(i+j) % max_entities].tex->v);
+		d_draw_img(&state->draw, v2f{{-1.4f + ((u32)(i + j) % max_entities) * 0.12f, 0.1f}}, v2f{{0.3, 0.3}}, D_COLOR_WHITE, a_handle_from_key(state->entities[(u32)(i+j) % max_entities].tex));
 	}
 	
 	ed_update(state, &state->events, delta);
 	
-	d_draw_img(&state->draw, v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}, D_COLOR_WHITE, state->face);
+	R_Handle face = a_handle_from_key(str8_lit("face.png"));
+	d_draw_img(&state->draw, v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}, D_COLOR_WHITE, face);
 	d_pop_proj_view(&state->draw);
 	
 	r_submit(&state->draw.list, win_size);
@@ -144,6 +141,8 @@ void update_and_render(void *memory, f32 delta)
 	{
 		os_window_close(state->win);
 	}
+	
+	//a_evict(); 
 	
 	state->events.first = state->events.last = 0;
 	state->events.count = 0; 

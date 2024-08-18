@@ -3,9 +3,10 @@
 #ifndef RENDER_H
 #define RENDER_H
 
-struct R_Handle
+union R_Handle
 {
-  u64 u64_m[1];
+  u64 u64_m[2];
+	u32 u32_m[4];
 };
 
 enum R_TEXTURE_FILTER
@@ -63,7 +64,6 @@ struct R_Rect
 	
 	v4f color;
 	R_Handle tex;
-	R_Handle pad;
 };
 
 struct R_Batch
@@ -128,10 +128,12 @@ function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list);
 function void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size);
 
 typedef R_Handle (*r_alloc_texture_fn)(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
+typedef void (*r_free_texture_fn)(R_Handle handle);
 
 typedef void (*r_submit_fn)(R_Pass_list *list, v2s win_size);
 
 global r_alloc_texture_fn r_alloc_texture;
 global r_submit_fn r_submit;
+global r_free_texture_fn r_free_texture;
 
 #endif //RENDER_H

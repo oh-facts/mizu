@@ -5,7 +5,7 @@
 
 struct Entity
 {
-	A_TextureCache *tex;
+	Str8 tex;
 	Str8 name;
 };
 

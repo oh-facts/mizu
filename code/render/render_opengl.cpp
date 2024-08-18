@@ -244,8 +244,16 @@ R_Handle r_opengl_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_param
 	glMakeTextureHandleResidentARB(gpu_handle);
 	
 	out.u64_m[0] = gpu_handle;
-	
+	out.u32_m[2] = texture;
 	return out;
+}
+
+void r_opengl_free_texture(R_Handle handle)
+{
+	glMakeTextureHandleNonResidentARB(handle.u64_m[0]);
+	
+	GLuint tex = handle.u32_m[2];
+	glDeleteTextures(1, &tex);
 }
 
 void r_opengl_submit(R_Pass_list *list, v2s win_size)

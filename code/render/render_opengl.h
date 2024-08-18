@@ -42,6 +42,7 @@ function GLuint r_opengl_make_buffer(size_t size);
 
 function void r_opengl_init();
 function R_Handle r_opengl_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
+function void r_opengl_free_texture(R_Handle handle);
 function void r_opengl_submit(R_Pass_list *list, v2s win_size);
 
 global u32 sprite_draw_indices[] = {
