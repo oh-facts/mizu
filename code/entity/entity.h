@@ -5,8 +5,9 @@
 
 struct Entity
 {
-	Str8 tex;
 	Str8 name;
+	
+	Str8 tex;
 };
 
 #endif //ENTITY_H

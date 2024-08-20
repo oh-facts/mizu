@@ -3,10 +3,16 @@
 #ifndef RENDER_H
 #define RENDER_H
 
+// for opengl4.5, textures, 
+// u64_m[0] is gpu resident handle
+// u32_m[2] is gpu handle.
+// u16_m[2] is gpu handle.
+// u8_m RRRR RRRR GGGG WWWW HHHH
 union R_Handle
 {
-  u64 u64_m[2];
-	u32 u32_m[4];
+  u64 u64_m[4];
+	u32 u32_m[8];
+	u16 u16_m[16];
 };
 
 enum R_TEXTURE_FILTER
@@ -59,8 +65,8 @@ global R_Texture_params pixel_params = {
 
 struct R_Rect
 {
-	v2f tl;
-	v2f br;
+	Rect src;
+	Rect dst;
 	
 	v4f color;
 	R_Handle tex;

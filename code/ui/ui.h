@@ -17,6 +17,7 @@ enum UI_SizeKind
 	UI_SizeKind_Null,
 	UI_SizeKind_Pixels,
 	UI_SizeKind_TextContent,
+	UI_SizeKind_ImageContent,
 	UI_SizeKind_PercentOfParent,
 	UI_SizeKind_ChildrenSum,
 };
@@ -40,7 +41,8 @@ enum UI_Flags
 	UI_Flags_has_text = 1 << 0,
 	UI_Flags_has_bg = 1 << 1,
 	UI_Flags_clickable = 1 << 2,
-	UI_Flags_has_scroll = 1 << 3,
+	UI_Flags_has_img = 1 << 3,
+	UI_Flags_has_scroll = 1 << 4,
 };
 
 struct UI_Widget
@@ -60,6 +62,7 @@ struct UI_Widget
 	u32 id;
 	
 	UI_Flags flags;
+	R_Handle img;
 	Str8 text;
 	UI_Size pref_size[Axis2_COUNT];
 	v4f color;
@@ -461,6 +464,9 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	widget->color = cxt->text_color_stack.top->v;
 	widget->bg_color = cxt->bg_color_stack.top->v;
 	
+	
+	text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, 0.00007);
+	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
 	
 	switch(widget->pref_size[Axis2_X].kind)
@@ -478,12 +484,12 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		}break;
 		case UI_SizeKind_TextContent:
 		{
-			text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, 0.00007);
-			
 			widget->pref_size[Axis2_X].value = extent.br.x;
+		}break;
+		case UI_SizeKind_ImageContent:
+		{
 			
 		}break;
-		
 	}
 	
 	widget->pref_size[Axis2_Y].kind = cxt->size_kind_y_stack.top->v;
@@ -504,8 +510,6 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		}break;
 		case UI_SizeKind_TextContent:
 		{
-			text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, 0.00007);
-			
 			widget->pref_size[Axis2_Y].value = extent.tl.y - extent.br.y;
 		}break;
 		
@@ -609,6 +613,22 @@ function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 	return out;
 }
 
+function UI_Signal ui_img(UI_Context *cxt, R_Handle img, Str8 text)
+{
+	UI_Widget *widget = ui_make_widget(cxt, text);
+	widget->flags = UI_Flags_has_img;
+	
+	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
+	widget->hot = hot;
+	
+	UI_Signal out = {};
+	out.hot = hot;
+	out.active = widget->active;
+	out.toggle = widget->toggle;
+	
+	return out;
+}
+
 function UI_Signal ui_spacer(UI_Context *cxt, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
@@ -642,6 +662,7 @@ function UI_Signal ui_spacerf(UI_Context *cxt, char *fmt, ...)
 
 #define ui_fixed_pos(cxt, v) UI_DeferLoop(ui_push_fixed_pos(cxt, v), ui_pop_fixed_pos(cxt))
 #define ui_text_color(cxt, v) UI_DeferLoop(ui_push_text_color(cxt, v), ui_pop_text_color(cxt))
+#define ui_bg_color(cxt, v) UI_DeferLoop(ui_push_bg_color(cxt, v), ui_pop_bg_color(cxt))
 
 function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)
 {

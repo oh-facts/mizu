@@ -5,7 +5,9 @@
 
 struct ED_Panel
 {
-	v2f size;
+	v2f pos;
+	v2f scale;
+	b32 grabbed;
 };
 
 struct ED_State
@@ -13,6 +15,7 @@ struct ED_State
 	b32 initialized;
 	UI_Context *cxt;
 	ED_Panel panels[3];
+	v2f old_pos;
 };
 
 struct State;

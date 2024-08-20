@@ -106,21 +106,16 @@ void update_and_render(void *memory, f32 delta)
 	f32 aspect = (win_size.x * 1.f)/ win_size.y;
 	d_push_proj_view(&state->draw, m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
-	f32 scale = 4;
-	
-	d_draw_rect(&state->draw, v2f{{-scale * 0.5f, scale * 0.5f}}, v2f{{scale, scale}}, D_COLOR_BLACK);
-	
 	local_persist f32 i = 0;
 	i += delta;
-	for(u32 j = 0; j < 1; j++)
-	{
-		d_draw_img(&state->draw, v2f{{-1.4f + ((u32)(i + j) % max_entities) * 0.12f, 0.1f}}, v2f{{0.3, 0.3}}, D_COLOR_WHITE, a_handle_from_key(state->entities[(u32)(i+j) % max_entities].tex));
-	}
+	
+	f32 index = ((u32)(i) % max_entities) * 0.1f;
+	d_draw_img(&state->draw, rect(v2f{{-1.4f + index, 0.1f}}, v2f{{0.3, 0.3}}), rect(index, 0, 0.1 + index, 1), D_COLOR_WHITE, a_handle_from_key(str8_lit("debug/numbers.png")));
 	
 	ed_update(state, &state->events, delta);
 	
 	R_Handle face = a_handle_from_key(str8_lit("face.png"));
-	d_draw_img(&state->draw, v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}, D_COLOR_WHITE, face);
+	d_draw_img(&state->draw, rect(v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}), rect(0, 0, 1, 1), D_COLOR_WHITE, face);
 	d_pop_proj_view(&state->draw);
 	
 	r_submit(&state->draw.list, win_size);
@@ -141,8 +136,6 @@ void update_and_render(void *memory, f32 delta)
 	{
 		os_window_close(state->win);
 	}
-	
-	//a_evict(); 
 	
 	state->events.first = state->events.last = 0;
 	state->events.count = 0; 

@@ -45,4 +45,5 @@ function void a_add_to_hash(A_TextureCache *tex);
 function R_Handle a_handle_from_key(Str8 path);
 function void a_evict();
 
+
 #endif //ASSET_CACHE_H

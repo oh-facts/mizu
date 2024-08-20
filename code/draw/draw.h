@@ -103,25 +103,28 @@ function R_Pass *d_pass_from_bucket(D_Bucket *bucket, R_PASS_KIND kind)
 	return pass;
 }
 
-function void d_draw_img(D_Bucket *bucket, v2f pos, v2f scale, v4f color, R_Handle tex)
+function void d_draw_img(D_Bucket *bucket, Rect dst, Rect src, v4f color, R_Handle tex)
 {
 	R_Pass *pass = d_pass_from_bucket(bucket, R_PASS_KIND_UI);
 	R_Rect *rect = r_push_batch(bucket->arena, &pass->rect_pass.rects, R_Rect);
 	
-	rect->tl.x = pos.x;
-	rect->tl.y = pos.y;
-	
-	rect->br.x = rect->tl.x + scale.x;
-	rect->br.y = rect->tl.y - scale.y;
+	rect->dst = dst;
+	rect->src = src;
 	
 	rect->tex = tex;
 	rect->color = color;
 	pass->rect_pass.proj_view = bucket->proj_view_top->v;
 }
 
-function void d_draw_rect(D_Bucket *bucket, v2f pos, v2f scale, v4f color)
+function void d_draw_rect(D_Bucket *bucket, Rect dst, v4f color)
 {
-	d_draw_img(bucket, pos, scale, color, d_state->white_square);
+	Rect src = {};
+	src.tl.x = 0;
+	src.tl.y = 0;
+	src.br.x = 1;
+	src.br.y = 1;
+	
+	d_draw_img(bucket, dst, src, color, d_state->white_square);
 }
 
 function void d_draw_text(D_Bucket *bucket, Str8 text, v2f pos, D_Text_params *p)
@@ -160,11 +163,16 @@ function void d_draw_text(D_Bucket *bucket, Str8 text, v2f pos, D_Text_params *p
 		R_Pass *pass = d_pass_from_bucket(bucket, R_PASS_KIND_UI);
 		R_Rect *rect = r_push_batch(bucket->arena, &pass->rect_pass.rects, R_Rect);
 		
-		rect->tl.x = xpos;
-		rect->tl.y = ypos - (0.0504f - h);
+		rect->dst.tl.x = xpos;
+		rect->dst.tl.y = ypos - (0.0504f - h);
 		
-		rect->br.x = rect->tl.x + w;
-		rect->br.y = rect->tl.y - h;
+		rect->dst.br.x = rect->dst.tl.x + w;
+		rect->dst.br.y = rect->dst.tl.y - h;
+		
+		rect->src.tl.x = 0;
+		rect->src.tl.y = 0;
+		rect->src.br.x = 1;
+		rect->src.br.y = 1;
 		
 		rect->tex = p->atlas_tex[(u32)c];
 		rect->color = p->color;

@@ -19,7 +19,7 @@ function void d_draw_ui(D_Bucket *draw, UI_Widget *root)
 		v2f pos = {};
 		pos.x = root->first->pos.x;
 		pos.y = root->first->pos.y;
-		d_draw_rect(draw, pos, size, D_COLOR_BLUE);
+		d_draw_rect(draw, rect(pos, size), root->first->bg_color);
 		//root->pos.x += root->parent->computed_rel_position[0];
 		//root->pos.y += root->parent->computed_rel_position[1];
 	}

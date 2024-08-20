@@ -53,6 +53,12 @@ global u32 sprite_draw_indices[] = {
 global char* r_vs_ui_src =
 R"(
 #version 450 core
+	
+	struct Rect
+	{
+vec2 tl;
+vec2 br;
+};
 
 struct Vertex 
 {
@@ -62,8 +68,8 @@ struct Vertex
 
 struct TextObject
 {
-	vec2 tl;
-	vec2 br;
+	Rect src;
+Rect dst;
 vec4 color;
 uvec2 sprite_id;
 uvec2 padd;
@@ -84,11 +90,12 @@ void main()
 	TextObject obj = objects[gl_InstanceID];
 
 	Vertex vertices[] = {
-		{{ obj.tl.x,  obj.tl.y}, {0,1}},
-		{{ obj.br.x,  obj.tl.y}, {1,1}},
-		{{ obj.br.x, obj.br.y}, {1,0}},
-		{{ obj.tl.x,  obj.br.y}, {0,0}},
+		{{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}},
+		{{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}},
+		{{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}},
+		{{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}},
 };
+
 	Vertex vertex = vertices[gl_VertexID];
 	
 texId = obj.sprite_id;
@@ -145,7 +152,7 @@ return linearCol;
 		}
 #endif
 
-		FragColor = srgb_to_linear(col * tex_col);
+		FragColor = col * tex_col;
 	}
 )"
 ;

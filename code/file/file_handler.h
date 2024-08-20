@@ -9,6 +9,31 @@ struct Rect
 	v2f br;
 };
 
+function Rect rect(f32 tl_x, f32 tl_y, f32 br_x, f32 br_y)
+{
+	Rect out = {};
+	
+	out.tl.x = tl_x;
+	out.tl.y = tl_y;
+	
+	out.br.x = br_x;
+	out.br.y = br_y;
+	
+	return out;
+}
+
+function Rect rect(v2f pos, v2f scale)
+{
+	Rect out = {};
+	out.tl.x = pos.x;
+	out.tl.y = pos.y;
+	
+	out.br.x = out.tl.x + scale.x;
+	out.br.y = out.tl.y - scale.y;
+	
+	return out;
+}
+
 struct Bitmap
 {
 	void *data;
