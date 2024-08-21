@@ -201,7 +201,7 @@ void r_opengl_init()
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_make_buffer(Megabytes(8));
 }
 
-R_Handle r_opengl_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
+R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
 {
 	R_Handle out = {};
 	
@@ -245,10 +245,12 @@ R_Handle r_opengl_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_param
 	
 	out.u64_m[0] = gpu_handle;
 	out.u32_m[2] = texture;
+	//out.u32_m[3] = w;
+	//out.u32_m[4] = h;
 	return out;
 }
 
-void r_opengl_free_texture(R_Handle handle)
+void r_free_texture(R_Handle handle)
 {
 	glMakeTextureHandleNonResidentARB(handle.u64_m[0]);
 	
@@ -256,7 +258,7 @@ void r_opengl_free_texture(R_Handle handle)
 	glDeleteTextures(1, &tex);
 }
 
-void r_opengl_submit(R_Pass_list *list, v2s win_size)
+void r_submit(R_Pass_list *list, v2s win_size)
 {
 	f32 color[3] = {1,0,1};
 	glClearBufferfv(GL_COLOR, 0, color);
@@ -299,4 +301,12 @@ void r_opengl_submit(R_Pass_list *list, v2s win_size)
 		
 		node = node->next;
 	}
+}
+
+v2s r_tex_size_from_handle(R_Handle handle)
+{
+	v2s out = {};
+	out.x = handle.u32_m[3];
+	out.y = handle.u32_m[4];
+	return out;
 }

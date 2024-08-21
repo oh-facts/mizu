@@ -18,10 +18,6 @@ void update_and_render(void *memory, f32 delta)
 		r_opengl_state = state->r_opengl_state;
 		a_asset_cache = state->a_asset_cache;
 		
-		r_alloc_texture = r_opengl_alloc_texture;
-		r_free_texture = r_opengl_free_texture;
-		r_submit = r_opengl_submit;
-		
 		state->hr.state = HotReloadState_Null;
 	}
 	
@@ -29,10 +25,6 @@ void update_and_render(void *memory, f32 delta)
 	{
 		state->initialized = 1;
 		os_api_init(&state->os_api);
-		
-		r_alloc_texture = r_opengl_alloc_texture;
-		r_free_texture = r_opengl_free_texture;
-		r_submit = r_opengl_submit;
 		
 		tcxt_init();
 		state->win = os_window_open(arena, "window", 960, 540, 1);
@@ -80,7 +72,6 @@ void update_and_render(void *memory, f32 delta)
 			state->atlas.glyphs[c].x1 = temp_font[i].x1;
 			state->atlas.glyphs[c].y0 = temp_font[i].y0;
 			state->atlas.glyphs[c].y1 = temp_font[i].y1;
-			
 		}
 		
 		state->entities = push_array(state->arena, Entity, max_entities);

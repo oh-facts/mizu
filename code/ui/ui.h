@@ -17,7 +17,6 @@ enum UI_SizeKind
 	UI_SizeKind_Null,
 	UI_SizeKind_Pixels,
 	UI_SizeKind_TextContent,
-	UI_SizeKind_ImageContent,
 	UI_SizeKind_PercentOfParent,
 	UI_SizeKind_ChildrenSum,
 };
@@ -45,6 +44,10 @@ enum UI_Flags
 	UI_Flags_has_scroll = 1 << 4,
 };
 
+struct UI_Widget;
+#define UI_CUSTOM_DRAW(name) void name(struct UI_Widget *widget, void *user_data)
+typedef UI_CUSTOM_DRAW(UI_WidgetCustomDrawFunctionType);
+
 struct UI_Widget
 {
 	UI_Widget *first;
@@ -69,6 +72,8 @@ struct UI_Widget
 	v4f bg_color;
 	Axis2 child_layout_axis;
 	v2f fixed_position;
+	UI_WidgetCustomDrawFunctionType *custom_draw;
+	void *custom_draw_data;
 	
 	// calculated after hierearchy pass
 	f32 computed_rel_position[Axis2_COUNT];
@@ -269,7 +274,6 @@ ui_make_free_node(SizeKind_x, size_kind_x)
 ui_make_alloc_node(SizeKind_y, size_kind_y)
 ui_make_free_node(SizeKind_y, size_kind_y)
 
-
 #define ui_make_push_style(Name, name, Type) \
 function void ui_push_##name(UI_Context *cxt, Type val) { \
 UI_##Name##_node *node = ui_alloc_##name##_node(cxt);\
@@ -464,7 +468,6 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	widget->color = cxt->text_color_stack.top->v;
 	widget->bg_color = cxt->bg_color_stack.top->v;
 	
-	
 	text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, 0.00007);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
@@ -485,10 +488,6 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		case UI_SizeKind_TextContent:
 		{
 			widget->pref_size[Axis2_X].value = extent.br.x;
-		}break;
-		case UI_SizeKind_ImageContent:
-		{
-			
 		}break;
 	}
 	
@@ -512,7 +511,6 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		{
 			widget->pref_size[Axis2_Y].value = extent.tl.y - extent.br.y;
 		}break;
-		
 	}
 	
 	widget->fixed_position = cxt->fixed_pos_stack.top->v;
@@ -613,7 +611,13 @@ function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 	return out;
 }
 
-function UI_Signal ui_img(UI_Context *cxt, R_Handle img, Str8 text)
+function UI_CUSTOM_DRAW(ui_image_draw)
+{
+	//UI_ImageDrawData *draw_data = (UI_ImageDrawData *)user_data;
+	
+}
+
+function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_img;
@@ -679,7 +683,7 @@ function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)
 		case UI_SizeKind_TextContent:
 		case UI_SizeKind_Pixels:
 		{
-			root->computed_size[axis] += root->pref_size[axis].value;
+			root->computed_size[axis] = root->pref_size[axis].value;
 		}break;
 	}
 }

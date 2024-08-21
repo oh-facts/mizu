@@ -4,15 +4,18 @@
 #define RENDER_H
 
 // for opengl4.5, textures, 
-// u64_m[0] is gpu resident handle
-// u32_m[2] is gpu handle.
-// u16_m[2] is gpu handle.
-// u8_m RRRR RRRR GGGG WWWW HHHH
+// R: Resident handle
+// G: gpu handle
+// W: Width
+// H: height
+// 0: empty
+// RRRRRRRR GGGGWWWW HHHH0000 00000000
+
 union R_Handle
 {
-  u64 u64_m[4];
-	u32 u32_m[8];
-	u16 u16_m[16];
+  u64 u64_m[2];
+	u32 u32_m[4];
+	u16 u16_m[8];
 };
 
 enum R_TEXTURE_FILTER
@@ -133,13 +136,11 @@ function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list);
 
 function void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size);
 
-typedef R_Handle (*r_alloc_texture_fn)(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
-typedef void (*r_free_texture_fn)(R_Handle handle);
+// per backend hooks
 
-typedef void (*r_submit_fn)(R_Pass_list *list, v2s win_size);
-
-global r_alloc_texture_fn r_alloc_texture;
-global r_submit_fn r_submit;
-global r_free_texture_fn r_free_texture;
+function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
+function void r_free_texture(R_Handle handle);
+function void r_submit(R_Pass_list *list, v2s win_size);
+function v2s r_tex_size_from_handle(R_Handle handle);
 
 #endif //RENDER_H
