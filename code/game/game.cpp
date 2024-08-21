@@ -101,11 +101,11 @@ void update_and_render(void *memory, f32 delta)
 	i += delta;
 	
 	f32 index = ((u32)(i) % max_entities) * 0.1f;
-	d_draw_img(&state->draw, rect(v2f{{-1.4f + index, 0.1f}}, v2f{{0.3, 0.3}}), rect(index, 0, 0.1 + index, 1), D_COLOR_WHITE, a_handle_from_key(str8_lit("debug/numbers.png")));
+	d_draw_img(&state->draw, rect(v2f{{-1.4f + index, 0.1f}}, v2f{{0.3, 0.3}}), rect(index, 0, 0.1 + index, 1), D_COLOR_WHITE, a_handle_from_path(str8_lit("debug/numbers.png")));
 	
 	ed_update(state, &state->events, delta);
 	
-	R_Handle face = a_handle_from_key(str8_lit("face.png"));
+	R_Handle face = a_handle_from_path(str8_lit("face.png"));
 	d_draw_img(&state->draw, rect(v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}), rect(0, 0, 1, 1), D_COLOR_WHITE, face);
 	d_pop_proj_view(&state->draw);
 	

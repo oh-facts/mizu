@@ -53,7 +53,7 @@ void a_free_texture_cache(A_TextureCache *tex)
 
 void a_add_to_hash(A_TextureCache *tex)
 {
-	u64 hash = a_hash(tex->key);
+	u64 hash = tex->key;
 	u64 slot = hash % a_asset_cache->num_slots;
 	
 	if(a_asset_cache->slots[slot].last)
@@ -66,7 +66,7 @@ void a_add_to_hash(A_TextureCache *tex)
 	}
 }
 
-R_Handle a_handle_from_key(Str8 path)
+R_Handle a_handle_from_path(Str8 path)
 {
 	u64 hash = a_hash(path);
 	u64 slot = hash % a_asset_cache->num_slots;
@@ -75,7 +75,7 @@ R_Handle a_handle_from_key(Str8 path)
 	
 	while(tex_cache)
 	{
-		if(str8_equals(tex_cache->key, path))
+		if(hash == tex_cache->key)
 		{
 			break;
 		}
@@ -97,7 +97,7 @@ R_Handle a_handle_from_key(Str8 path)
 		Str8 abs_path = str8_join(temp.arena, a_asset_cache->asset_dir, path);
 		Bitmap bmp = bitmap(abs_path);
 		tex_cache->v = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
-		tex_cache->key = path;
+		tex_cache->key = hash;
 		tex_cache->loaded = 1;
 		
 		a_add_to_hash(tex_cache);
@@ -108,7 +108,7 @@ R_Handle a_handle_from_key(Str8 path)
 	
 	a_asset_cache->frame_count++;
 	tex_cache->last_touched = a_asset_cache->frame_count;
-	
+	tex_cache->path = path;
 	R_Handle out = tex_cache->v;
 	return out;
 }
@@ -130,7 +130,7 @@ void a_evict()
 			{
 				if(cur->last_touched != a_asset_cache->frame_count)
 				{
-					printf("pruned %.*s\n", str8_varg(cur->key));
+					printf("pruned %.*s\n", str8_varg(cur->path));
 					r_free_texture(cur->v);
 					--a_asset_cache->num_tex;
 					cur->loaded = 0;

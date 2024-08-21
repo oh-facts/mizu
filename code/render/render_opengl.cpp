@@ -291,7 +291,6 @@ void r_submit(R_Pass_list *list, v2s win_size)
 					
 					memcpy((u8*)ssbo_data + sizeof(m4f), batch->base, batch->count * sizeof(R_Rect));
 					
-					
 					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
 					glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, sprite_draw_indices, batch->count);
 					batch = batch->next;

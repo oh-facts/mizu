@@ -611,10 +611,17 @@ function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 	return out;
 }
 
+struct UI_ImageDrawData
+{
+	R_Handle handle;
+	Rect src;
+	v4f color;
+};
+
 function UI_CUSTOM_DRAW(ui_image_draw)
 {
-	//UI_ImageDrawData *draw_data = (UI_ImageDrawData *)user_data;
-	
+	UI_ImageDrawData *draw_data = (UI_ImageDrawData *)user_data;
+	//d_draw_img()
 }
 
 function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Str8 text)
