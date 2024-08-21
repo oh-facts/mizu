@@ -3,7 +3,7 @@
 #ifndef DRAW_UI_H
 #define DRAW_UI_H
 
-function void d_draw_ui(D_Bucket *draw, UI_Widget *root)
+function void d_draw_ui(UI_Widget *root)
 {
 	root->pos.x = root->computed_rel_position[0] + root->fixed_position.x;
 	root->pos.y = root->computed_rel_position[1] + root->fixed_position.y;
@@ -19,7 +19,7 @@ function void d_draw_ui(D_Bucket *draw, UI_Widget *root)
 		v2f pos = {};
 		pos.x = root->first->pos.x;
 		pos.y = root->first->pos.y;
-		d_draw_rect(draw, rect(pos, size), root->first->bg_color);
+		d_draw_rect(rect(pos, size), root->first->bg_color);
 		//root->pos.x += root->parent->computed_rel_position[0];
 		//root->pos.y += root->parent->computed_rel_position[1];
 	}
@@ -39,17 +39,17 @@ function void d_draw_ui(D_Bucket *draw, UI_Widget *root)
 		D_Text_params params = 
 		{
 			color,
-			draw->default_text_params.scale,
-			draw->default_text_params.atlas,
-			draw->default_text_params.atlas_tex,
+			d_state->default_text_params.scale,
+			d_state->default_text_params.atlas,
+			d_state->default_text_params.atlas_tex,
 		};
 		
-		d_draw_text(draw, root->text, root->pos, &params);
+		d_draw_text(root->text, root->pos, &params);
 	}
 	
 	for(UI_Widget *child = root->first; child; child = child->next)
 	{
-		d_draw_ui(draw, child);
+		d_draw_ui(child);
 	}
 }
 

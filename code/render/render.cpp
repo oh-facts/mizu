@@ -1,36 +1,3 @@
-R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind)
-{
-	R_Pass_node *node = push_struct(arena, R_Pass_node);
-	list->num ++;
-	if(list->last)
-	{
-		list->last = list->last->next = node;
-	}
-	else
-	{
-		list->last = list->first = node;
-	}
-	node->pass.kind = kind;
-	R_Pass *pass = &node->pass;
-	return pass;
-}
-
-R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list)
-{
-	R_Batch *node = push_struct(arena, R_Batch);
-	list->num ++;
-	if(list->last)
-	{
-		list->last = list->last->next = node;
-	}
-	else
-	{
-		list->last = list->first = node;
-	}
-	
-	return node;
-}
-
 void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size)
 {
 	R_Batch *batch = list->last;
@@ -51,4 +18,53 @@ void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size)
 	batch->count++;
 	
 	return out;
+}
+
+R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list)
+{
+	R_Batch *node = push_struct(arena, R_Batch);
+	list->num ++;
+	if(list->last)
+	{
+		list->last = list->last->next = node;
+	}
+	else
+	{
+		list->last = list->first = node;
+	}
+	
+	return node;
+}
+
+R_Pass *r_push_pass(Arena *arena, R_Pass_list *list, R_PASS_KIND kind)
+{
+	R_Pass_node *node = list->last;
+	R_Pass *pass = 0;
+	if(!node || node->pass.kind != kind)
+	{
+		pass = r_push_pass_list(arena, list, kind);
+	}
+	else
+	{
+		pass = &node->pass;
+	}
+	
+	return pass;
+}
+
+R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind)
+{
+	R_Pass_node *node = push_struct(arena, R_Pass_node);
+	list->num ++;
+	if(list->last)
+	{
+		list->last = list->last->next = node;
+	}
+	else
+	{
+		list->last = list->first = node;
+	}
+	node->pass.kind = kind;
+	R_Pass *pass = &node->pass;
+	return pass;
 }

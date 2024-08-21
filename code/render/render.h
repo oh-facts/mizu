@@ -129,14 +129,18 @@ struct R_Pass_list
 	u32 num;
 };
 
-function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
-function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list);
-
 #define r_push_batch(arena,batch, type) (type*)r_push_batch_(arena, batch, sizeof(type))
 
 function void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size);
 
-// per backend hooks
+function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list);
+
+function R_Pass *r_push_pass(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
+
+function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
+
+
+// backend hooks
 
 function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
 function void r_free_texture(R_Handle handle);

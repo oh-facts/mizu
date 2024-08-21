@@ -72,8 +72,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 	
 	ui_layout(ed_state->cxt->root);
 	
-	d_draw_ui(&state->draw, ed_state->cxt->root);
+	d_draw_ui(ed_state->cxt->root);
 	
 	ed_state->old_pos = ed_state->cxt->mpos;
-	
 }

@@ -90,27 +90,32 @@ void update_and_render(void *memory, f32 delta)
 	
 	os_poll_events(temp.arena, state->win, &state->events);
 	
-	d_begin(&state->draw, temp.arena, &state->atlas, state->atlas_tex);
+	d_begin(&state->atlas, state->atlas_tex);
 	
 	f32 zoom = 1;
 	v2s win_size = os_get_window_size(state->win);
 	f32 aspect = (win_size.x * 1.f)/ win_size.y;
-	d_push_proj_view(&state->draw, m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
+	
+	D_Bucket *draw = d_bucket();
+	d_push_bucket(draw);
+	d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
 	local_persist f32 i = 0;
 	i += delta;
 	
 	f32 index = ((u32)(i) % max_entities) * 0.1f;
-	d_draw_img(&state->draw, rect(v2f{{-1.4f + index, 0.1f}}, v2f{{0.3, 0.3}}), rect(index, 0, 0.1 + index, 1), D_COLOR_WHITE, a_handle_from_path(str8_lit("debug/numbers.png")));
+	d_draw_img(rect(v2f{{-1.4f + index, 0.1f}}, v2f{{0.3, 0.3}}), rect(index, 0, 0.1 + index, 1), D_COLOR_WHITE, a_handle_from_path(str8_lit("debug/numbers.png")));
 	
 	ed_update(state, &state->events, delta);
 	
 	R_Handle face = a_handle_from_path(str8_lit("face.png"));
-	d_draw_img(&state->draw, rect(v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}), rect(0, 0, 1, 1), D_COLOR_WHITE, face);
-	d_pop_proj_view(&state->draw);
+	d_draw_img(rect(v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}), rect(0, 0, 1, 1), D_COLOR_WHITE, face);
+	d_pop_proj_view();
 	
-	r_submit(&state->draw.list, win_size);
+	r_submit(&draw->list, win_size);
 	
+	d_pop_bucket();
+	d_end();
 	os_swap_buffers(state->win);
 	
 	if(os_key_press(&state->events, OS_Key_F))

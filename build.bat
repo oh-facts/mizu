@@ -9,22 +9,13 @@ for %%a in (%*) do set "%%a=1"
 
 set common_flags="-std=c++17 -msse4.1 -fno-rtti -fno-exceptions -Wall -Wno-unused-function -Wno-writable-strings -Wno-comment -g"
 
+if not exist out mkdir out
+if not exist out\SDL3.dll xcopy /s /y data\bin\SDL3.dll out
+
+if "%clean%" == "1" rmdir /s /q "out"
 if "%cloc%" == "1" cloc --exclude-list-file=.clocignore .\code\
-if "%clean%" == "1" rmdir /s /q "out" && del "code\meta.h"
 if "%debug%" == "1" echo [debug] && set build_type=%debug_build%
 if "%release%" == "1" echo [release] && set build_type=%release_build%
-
-:: literally doesnt work if I use "if not"
-if exist out (
-    REM folder exists
-) else (
-    mkdir out && echo [created build dir]
-)
-if exist out\SDL3.dll (
-    REM file exists
-) else (
-    xcopy /s /y data\bin\SDL3.dll out
-)
 
 if "%platform%" == "1" echo [platform] && clang "%common_flags%" "%build_type%" -I./code/ -o out/platform.exe code/game/main.cpp -luser32 -lkernel32 -lgdi32 -lcomdlg32 -lopengl32 -ldata\bin\SDL3
 

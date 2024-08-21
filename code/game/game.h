@@ -52,6 +52,7 @@
 #include <os/os.cpp>
 #include <render/render.cpp>
 #include <asset/asset_cache.cpp>
+#include <draw/draw.cpp>
 
 #if defined(OS_WIN32)
 #include <os/os_win32.cpp>
@@ -104,11 +105,8 @@ struct State
 	// engine
 	OS_Window win;
 	OS_Event_list events;
-	D_Bucket draw;
 	Atlas atlas;
 	R_Handle atlas_tex[256];
-	
-	R_Handle face;
 	
 	ED_State ed_state;
 	
