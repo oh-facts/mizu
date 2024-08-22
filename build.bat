@@ -2,10 +2,11 @@
 setlocal
 cd /D "%~dp0"
 
+for %%a in (%*) do set "%%a=1"
+
 set debug_build="-O0 -g"
 set release_build="-O3"
 set build_type=""
-for %%a in (%*) do set "%%a=1"
 
 set common_flags="-std=c++17 -msse4.1 -fno-rtti -fno-exceptions -Wall -Wno-unused-function -Wno-writable-strings -Wno-comment -g"
 

@@ -72,8 +72,10 @@ struct File_data
 
 #if defined(OS_WIN32)
 #define _file_open(file, filepath, mode) fopen_s(file, filepath, mode)
+#define _sleep(len) Sleep(len)
 #elif defined (OS_LINUX) || defined (OS_APPLE)
 #define _file_open(file, filepath, mode) *file = fopen(filepath, mode)
+#define _sleep(len) sleep(len)
 #endif
 
 function File_data read_file(Arena *arena, const char *filepath, FILE_TYPE type)
@@ -130,11 +132,11 @@ function b32 clone_file(const char* sourcePath, const char* destinationPath)
 	char buffer[4096];
 	size_t bytesRead;
 	
-	fopen_s(&sourceFile, sourcePath, "rb");
+	_file_open(&sourceFile, sourcePath, "rb");
 	
 	if(sourceFile)
 	{
-		fopen_s(&destinationFile, destinationPath, "wb");
+		_file_open(&destinationFile, destinationPath, "wb");
 		
 		if(destinationFile)
 		{
@@ -291,7 +293,7 @@ function void load_game_dll(HotReload *reload)
 {
 	while(!clone_file((char*)reload->path.c, (char*)reload->cloned_path.c))
 	{
-		Sleep(10);
+		_sleep(10);
 	}
 	
 	reload->game_dll = SDL_LoadObject((char*)reload->cloned_path.c);

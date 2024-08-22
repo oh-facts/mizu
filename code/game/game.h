@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <sys/stat.h>
 #include <sys/mman.h>
 #endif
 
@@ -59,11 +60,20 @@
 #else
 #include <os/os_linux.cpp>
 #endif
-#include <os/os_sdl.cpp>
 
 #include <GL/gl.h>
+
+#if defined(OS_WIN32)
 #include <opengl/opengl_khr_platform.h>
 #include <opengl/opengl_win32_platform.h>
+#else
+#include <GL/glx.h>
+#include <opengl/opengl_glxext.h>
+#include <opengl/opengl_win32_platform.h>
+
+#endif
+
+#include <os/os_sdl.cpp>
 #include <render/render_opengl.h>
 #include <render/render_opengl.cpp>
 
