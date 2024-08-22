@@ -18,6 +18,11 @@
 ## About
 Hi, this is my game engine. Nice to meet you. Goodnight.
 
+<p>
+<img width="400"src="https://github.com/oh-facts/mizu/blob/main/data/misc/screenshot.png">
+</p>
+8/22/24
+
 ## Build
 
 Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`
@@ -27,7 +32,8 @@ Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`
 ```
 
 ### Linux / Mac
-`clang` and `gcc` are also valid. **SDL3** needs to be installed. Also, this won't compile on linux. I am fixing it one by one. I get bored sometimes. Give it a crack if you want.
+`clang` and `gcc` are also valid. **SDL3** needs to be installed. Also, this doesn't compile on linux/mac yet. I am fixing the compiler errors one by one. I get bored sometimes. Give it a crack if you want. Its all platform related.
+
 ```
 ./build.bat release clang platform app
 ```
@@ -37,7 +43,7 @@ Make pr.
 
 ## Project Structure
 - `asset/` : texture cache and asset system
-- `base/` : common utli libaries
+- `base/` : common util libraries
 - `draw/` : high level renderer layer
 - `editor/` : engine editor layer
 - `entity/` : entity system
