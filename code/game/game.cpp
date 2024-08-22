@@ -108,7 +108,7 @@ void update_and_render(void *memory, f32 delta)
 	
 	ed_update(state, &state->events, delta);
 	
-	R_Handle face = a_handle_from_path(str8_lit("face.png"));
+	R_Handle face = a_handle_from_path(str8_lit("debug/toppema.png"));
 	d_draw_img(rect(v2f{{1.3,-0.6}}, v2f{{0.4f, 0.4f}}), rect(0, 0, 1, 1), D_COLOR_WHITE, face);
 	d_pop_proj_view();
 	

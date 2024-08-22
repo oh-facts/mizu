@@ -31,8 +31,6 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		
 		ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
 		
-		ui_push_size_kind_x(ed_state->cxt, UI_SizeKind_Pixels);
-		ui_push_pref_width(ed_state->cxt, 0.3f);
 		
 		UI_Signal res = ui_labelf(ed_state->cxt, "Tilemap Editor");
 		
@@ -52,13 +50,20 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			ed_state->panels[0].grabbed = 0;
 		}
 		
-		ui_pop_pref_width(ed_state->cxt);
-		ui_pop_size_kind_x(ed_state->cxt);
-		
 		if(ui_labelf(ed_state->cxt, "cc : %.f K", cc).active)
 		{
 			printf("pressed\n");
 		}
+		
+		R_Handle img = a_handle_from_path(str8_lit("face.png"));
+		
+		ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
+		ui_push_pref_width(ed_state->cxt, 1);
+		ui_push_pref_height(ed_state->cxt, 1);
+		ui_image(ed_state->cxt, img, rect(0, 0, 1, 1), D_COLOR_WHITE, str8_lit("facial"));
+		ui_pop_size_kind(ed_state->cxt);
+		ui_pop_pref_width(ed_state->cxt);
+		ui_pop_pref_height(ed_state->cxt);
 		
 		ui_labelf(ed_state->cxt, "this work?");
 		ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);

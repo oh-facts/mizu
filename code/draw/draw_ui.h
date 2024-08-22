@@ -47,6 +47,12 @@ function void d_draw_ui(UI_Widget *root)
 		d_draw_text(root->text, root->pos, &params);
 	}
 	
+	if(root->flags & UI_Flags_has_img)
+	{
+		root->custom_draw(root, root->custom_draw_data);
+		//d_draw_text(root->text, root->pos, &params);
+	}
+	
 	for(UI_Widget *child = root->first; child; child = child->next)
 	{
 		d_draw_ui(child);

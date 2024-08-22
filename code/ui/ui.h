@@ -613,7 +613,7 @@ function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 
 struct UI_ImageDrawData
 {
-	R_Handle handle;
+	R_Handle img;
 	Rect src;
 	v4f color;
 };
@@ -621,13 +621,21 @@ struct UI_ImageDrawData
 function UI_CUSTOM_DRAW(ui_image_draw)
 {
 	UI_ImageDrawData *draw_data = (UI_ImageDrawData *)user_data;
-	//d_draw_img()
+	d_draw_img(rect(widget->pos, widget->size), draw_data->src, draw_data->color, draw_data->img);
 }
 
-function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Str8 text)
+function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_img;
+	
+	UI_ImageDrawData *draw_data = push_struct(cxt->arena, UI_ImageDrawData);
+	draw_data->img = img;
+	draw_data->src = src;
+	draw_data->color = color;
+	
+	widget->custom_draw = ui_image_draw;
+	widget->custom_draw_data = draw_data;
 	
 	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
 	widget->hot = hot;
