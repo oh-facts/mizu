@@ -2,7 +2,7 @@
 
 #ifndef GAME_H
 #define GAME_H
-
+#define FONT_SIZE 0.03
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb/stb_sprintf.h"
 

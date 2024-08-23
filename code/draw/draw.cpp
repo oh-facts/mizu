@@ -13,7 +13,7 @@ void d_begin(Atlas *atlas, R_Handle *atlas_tex)
 	d_state->default_text_params =
 	(D_Text_params){
 		(v4f){{1,1,1,1}},
-		0.00007,
+		FONT_SIZE,
 		atlas,
 		atlas_tex
 	};
@@ -47,7 +47,6 @@ void d_pop_bucket()
 {
 	d_state->top = d_state->top->next;
 }
-
 void d_push_proj_view(m4f proj_view)
 {
 	D_Bucket *bucket = d_state->top;
@@ -82,7 +81,7 @@ void d_draw_img(Rect dst, Rect src, v4f color, R_Handle tex)
 	
 	rect->tex = tex;
 	rect->color = color;
-	pass->rect_pass.proj_view = bucket->proj_view_top->v;
+	//pass->rect_pass.proj_view = bucket->proj_view_top->v;
 }
 
 void d_draw_rect(Rect dst, v4f color)
@@ -98,7 +97,12 @@ void d_draw_rect(Rect dst, v4f color)
 
 void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 {
+	text_extent ex = 
+		ui_text_spacing_stats(p->atlas->glyphs, text, p->scale);
+	
 	v2f text_pos = pos;
+	text_pos.y += ex.tl.y;
+	
 	f32 width = 0;
 	for(u32 i = 0; i < text.len; i ++)
 	{
@@ -106,7 +110,9 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		
 		Glyph *ch = glyph_from_codepoint(p->atlas, c);
 		f32 xpos = text_pos.x + ch->bearing.x * p->scale;
-		f32 ypos = text_pos.y + ch->bearing.y * p->scale;
+		
+		f32 ypos = text_pos.y + (ch->bearing.y - (ch->y1 + ch->y0)) * p->scale;
+		
 		f32 w = (ch->x1 - ch->x0) * p->scale;
 		f32 h = (ch->y1 - ch->y0) * p->scale;
 		
@@ -117,27 +123,18 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 			text_pos.x += ch->advance * p->scale;
 			continue;
 		}
-		s32 max_w = 10000;
-		if(width + w > max_w)
-		{
-			width = 0;
-			text_pos.x = pos.x;
-			text_pos.y -= 0.08;
-		}
-		else
-		{
-			text_pos.x += ch->advance * p->scale;
-		}
+		
+		text_pos.x += ch->advance * p->scale;
 		
 		D_Bucket *bucket = d_state->top;
 		R_Pass *pass = r_push_pass(d_state->arena, &bucket->list, R_PASS_KIND_UI);
 		R_Rect *rect = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 		
 		rect->dst.tl.x = xpos;
-		rect->dst.tl.y = ypos - (0.0504f - h);
+		rect->dst.tl.y = ypos;
 		
 		rect->dst.br.x = rect->dst.tl.x + w;
-		rect->dst.br.y = rect->dst.tl.y - h;
+		rect->dst.br.y = rect->dst.tl.y + h;
 		
 		rect->src.tl.x = 0;
 		rect->src.tl.y = 0;
@@ -146,7 +143,7 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		
 		rect->tex = p->atlas_tex[(u32)c];
 		rect->color = p->color;
-		pass->rect_pass.proj_view = bucket->proj_view_top->v;
+		//pass->rect_pass.proj_view = bucket->proj_view_top->v;
 	}
 	
 }

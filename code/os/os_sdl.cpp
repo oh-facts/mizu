@@ -171,7 +171,7 @@ OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, b32 init
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-		win->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL);
+		win->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 		
 		if(!SDL_GL_CreateContext(win->raw))
 		{

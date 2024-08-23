@@ -45,34 +45,35 @@ global u32 sprite_draw_indices[] = {
   1,2,3
 };
 
+
 global char* r_vs_ui_src =
 R"(
 #version 450 core
-	
-	struct Rect
-	{
-vec2 tl;
-vec2 br;
+
+struct Rect
+{
+    vec2 tl;
+    vec2 br;
 };
 
 struct Vertex 
 {
-	vec2 pos;
-	vec2 uv;
+    vec2 pos;
+    vec2 uv;
 };
 
 struct TextObject
 {
-	Rect src;
-Rect dst;
-vec4 color;
-uvec2 sprite_id;
-uvec2 padd;
+    Rect src;
+    Rect dst;
+    vec4 color;
+    uvec2 sprite_id;
+    uvec2 pad;
 };
 
 layout (std430, binding = 0) buffer ssbo {
-	 mat4 proj;
-TextObject objects[];
+    vec4 screen_size;
+    TextObject objects[];
 };
 
 out vec4 col;
@@ -81,27 +82,30 @@ flat out uvec2 texId;
 
 void main()
 {
-	
-	TextObject obj = objects[gl_InstanceID];
+    TextObject obj = objects[gl_InstanceID];
 
-	Vertex vertices[] = {
-		{{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}},
-		{{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}},
-		{{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}},
-		{{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}},
-};
+    Vertex vertices[] = {
+        {{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}},
+        {{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}},
+        {{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}},
+        {{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}},
+    };
 
-	Vertex vertex = vertices[gl_VertexID];
-	
-texId = obj.sprite_id;
-col = obj.color;
-tex = vertex.uv;
-	gl_Position =  vec4(vertex.pos, 0.5, 1.0) * proj;// * obj.model;
+    Vertex vertex = vertices[gl_VertexID];
+
+    texId = obj.sprite_id;
+    col = obj.color;
+    tex = vertex.uv;
+
+    vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
+    norm_pos.y =  - norm_pos.y;
+
+    gl_Position = vec4(norm_pos, 0.5, 1.0);
 }
-
 
 )"
 ;
+
 
 global char* r_fs_ui_src = 
 R"(

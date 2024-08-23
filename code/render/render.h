@@ -95,7 +95,6 @@ struct R_Batch_list
 struct R_Rect_pass
 {
 	R_Batch_list rects;
-	m4f proj_view;
 };
 
 enum R_PASS_KIND

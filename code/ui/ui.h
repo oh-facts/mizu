@@ -196,9 +196,9 @@ function b32 ui_signal(v2f pos, v2f size, v2f mpos)
 	
 	v2f br = {};
 	br.x = tl.x + size.x;
-	br.y = tl.y - size.y;
+	br.y = tl.y + size.y;
 	
-	if(mpos.x > tl.x && mpos.x < br.x && mpos.y < tl.y && mpos.y > br.y)
+	if(mpos.x > tl.x && mpos.x < br.x && mpos.y > tl.y && mpos.y < br.y)
 	{
 		hot = true;
 	}
@@ -486,7 +486,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	widget->color = cxt->text_color_stack.top->v;
 	widget->bg_color = cxt->bg_color_stack.top->v;
 	
-	text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, 0.00007);
+	text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, FONT_SIZE);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
 	
@@ -823,7 +823,7 @@ function void ui_layout_pos(UI_Widget *root)
 		}
 		else if(root->parent->child_layout_axis == Axis2_Y)
 		{
-			root->computed_rel_position[Axis2_Y] = root->prev->computed_rel_position[Axis2_Y] - root->prev->computed_size[Axis2_Y];
+			root->computed_rel_position[Axis2_Y] = root->prev->computed_rel_position[Axis2_Y] + root->prev->computed_size[Axis2_Y];
 		}
 	}
 	
@@ -883,9 +883,10 @@ function void ui_begin(UI_Context *cxt, v2s win_size, Atlas *atlas, OS_Event_lis
 {
 	cxt->atlas = atlas;
 	
+	v2s mpos = os_mouse_pos(events);
+	/*
 	f32 aspect_ratio = win_size.x * 1.f / win_size.y;
 	v2f screen_norm;
-	v2s mpos = os_mouse_pos(events);
 	//printf("%d %d\n", mpos.x, mpos.y);
 	
 	screen_norm.x = mpos.x * 1.f / win_size.y * 2.f - aspect_ratio;
@@ -894,8 +895,12 @@ function void ui_begin(UI_Context *cxt, v2s win_size, Atlas *atlas, OS_Event_lis
 	
 	screen_norm.x *= 2;
 	screen_norm.y *= 2;
-	
 	cxt->mpos = screen_norm;
+	*/
+	
+	cxt->mpos.x = mpos.x;
+	cxt->mpos.y = mpos.y;
+	
 	cxt->mclick = os_mouse_pressed(events, OS_MouseButton_Left);
 	
 	cxt->frame_arena->used = ARENA_HEADER_SIZE;

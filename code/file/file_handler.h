@@ -29,7 +29,7 @@ function Rect rect(v2f pos, v2f scale)
 	out.tl.y = pos.y;
 	
 	out.br.x = out.tl.x + scale.x;
-	out.br.y = out.tl.y - scale.y;
+	out.br.y = out.tl.y + scale.y;
 	
 	return out;
 }

@@ -6,15 +6,15 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 	{
 		ed_state->arena = arena_create();
 		ed_state->cxt = ui_alloc_cxt();
-		ed_state->panels[0].pos = v2f{{-16/9.f, 1}};
+		ed_state->panels[0].pos = {{11, 145}};
 		ed_state->panels[0].scale = v2f{{1.6,0.3}};
 		ed_state->panels[0].name = push_str8f(ed_state->arena, "tile set viewer");
 		
-		ed_state->panels[1].pos = v2f{};
+		ed_state->panels[1].pos = {{-285, 744}};
 		ed_state->panels[1].scale = v2f{{1.6,0.3}};
 		ed_state->panels[1].name = push_str8f(ed_state->arena, "tile map");
 		
-		ed_state->panels[2].pos = v2f{{-0.57, 1}};
+		ed_state->panels[2].pos = {{-488, 447}};
 		ed_state->panels[2].scale = v2f{{1.6,0.3}};
 		ed_state->panels[2].hide = 1;
 		ed_state->panels[2].name = push_str8f(ed_state->arena, "debug");
@@ -42,7 +42,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 				UI_Signal res = ui_label(ed_state->cxt, panel->name);
 				
 				ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-				ui_pref_width(ed_state->cxt, 0.32)
+				ui_pref_width(ed_state->cxt, 30)
 				{
 					ui_spacer(ed_state->cxt);
 				}
@@ -88,8 +88,8 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 							ui_row(ed_state->cxt)
 							{
 								ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-								ui_pref_width(ed_state->cxt, 0.3)
-									ui_pref_height(ed_state->cxt, 0.3)
+								ui_pref_width(ed_state->cxt, 30)
+									ui_pref_height(ed_state->cxt, 30)
 								{
 									for(u32 j = 0; j < 3; j++)
 									{
@@ -135,9 +135,10 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 					ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
 					ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
 					
-					ui_labelf(ed_state->cxt, "1. %.2f", ed_state->panels[1].pos.x);
-					ui_labelf(ed_state->cxt, "2. %.2f", ed_state->panels[2].pos.x);
-					
+					for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
+					{
+						ui_labelf(ed_state->cxt, "%d. %.f %.f", i, ed_state->panels[i].pos.x, ed_state->panels[i].pos.y);
+					}
 					ui_pop_size_kind(ed_state->cxt);
 					
 				}

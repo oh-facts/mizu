@@ -262,6 +262,9 @@ void r_submit(R_Pass_list *list, v2s win_size)
 {
 	f32 color[3] = {1,0,1};
 	glClearBufferfv(GL_COLOR, 0, color);
+	v4f win_size_float = {};
+	win_size_float.x = win_size.x;
+	win_size_float.y = win_size.y;
 	
 	glViewport(0, 0, win_size.x, win_size.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -277,19 +280,18 @@ void r_submit(R_Pass_list *list, v2s win_size)
 			default:{}break;
 			case R_PASS_KIND_UI:
 			{
-				R_Rect_pass rect_pass = pass->rect_pass;
 				R_Batch_list *batches = &pass->rect_pass.rects;
 				R_Batch *batch = batches->first;
 				
 				for(u32 j = 0; j < batches->num; j++)
 				{
-					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
+					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
 																									GL_MAP_INVALIDATE_BUFFER_BIT);
 					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI]);
 					
-					memcpy(ssbo_data, &rect_pass.proj_view, sizeof(m4f));
+					memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
 					
-					memcpy((u8*)ssbo_data + sizeof(m4f), batch->base, batch->count * sizeof(R_Rect));
+					memcpy((u8*)ssbo_data + sizeof(win_size_float), batch->base, batch->count * sizeof(R_Rect));
 					
 					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
 					glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, sprite_draw_indices, batch->count);
