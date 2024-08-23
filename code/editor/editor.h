@@ -5,6 +5,7 @@
 
 struct ED_Panel
 {
+	b32 hide;
 	v2f pos;
 	v2f scale;
 	b32 grabbed;

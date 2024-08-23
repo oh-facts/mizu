@@ -693,7 +693,7 @@ function UI_Signal ui_imagef(UI_Context *cxt, R_Handle img, Rect src, v4f color,
 	return out;
 }
 
-function UI_Signal ui_spacer(UI_Context *cxt, Str8 text)
+function UI_Signal ui_named_spacer(UI_Context *cxt, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	
@@ -708,7 +708,7 @@ function UI_Signal ui_spacer(UI_Context *cxt, Str8 text)
 	return out;
 }
 
-function UI_Signal ui_spacerf(UI_Context *cxt, char *fmt, ...)
+function UI_Signal ui_named_spacerf(UI_Context *cxt, char *fmt, ...)
 {
 	Arena_temp temp = scratch_begin(0,0);
 	va_list args;
@@ -716,9 +716,14 @@ function UI_Signal ui_spacerf(UI_Context *cxt, char *fmt, ...)
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
-	UI_Signal out = ui_spacer(cxt, text); 
+	UI_Signal out = ui_named_spacer(cxt, text); 
 	arena_temp_end(&temp);
 	return out;
+}
+
+function UI_Signal ui_spacer(UI_Context *cxt)
+{
+	return ui_named_spacer(cxt, str8_lit(""));
 }
 
 #define ui_named_rowf(v,...) UI_DeferLoop(ui_begin_named_rowf(v,__VA_ARGS__), ui_end_row(v))

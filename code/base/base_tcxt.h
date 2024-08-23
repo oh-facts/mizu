@@ -31,8 +31,8 @@ struct TCXT
 global TCXT *tcxt;
 
 #if defined (OS_WIN32) || defined(OS_LINUX)
-#define BEGIN_TIMED_BLOCK(ID) u64 start_cycle_count_##ID = __rdtsc(); ++tcxt.counters[DEBUG_CYCLE_COUNTER_##ID].hit_count
-#define END_TIMED_BLOCK(ID)  tcxt.counters[DEBUG_CYCLE_COUNTER_##ID].cycle_count += __rdtsc() - start_cycle_count_##ID
+#define BEGIN_TIMED_BLOCK(ID) u64 start_cycle_count_##ID = __rdtsc(); ++tcxt->counters[DEBUG_CYCLE_COUNTER_##ID].hit_count
+#define END_TIMED_BLOCK(ID)  tcxt->counters[DEBUG_CYCLE_COUNTER_##ID].cycle_count += __rdtsc() - start_cycle_count_##ID
 
 #else
 #define BEGIN_TIMED_BLOCK(ID)

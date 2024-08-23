@@ -86,6 +86,8 @@ void update_and_render(void *memory, f32 delta)
 		arena_temp_end(&temp);
 	}
 	
+	BEGIN_TIMED_BLOCK(UPDATE_AND_RENDER);
+	
 	Arena_temp temp = arena_temp_begin(trans);
 	
 	os_poll_events(temp.arena, state->win, &state->events);
@@ -130,4 +132,8 @@ void update_and_render(void *memory, f32 delta)
 	state->events.first = state->events.last = 0;
 	state->events.count = 0; 
 	arena_temp_end(&temp);
+	
+	END_TIMED_BLOCK(UPDATE_AND_RENDER);
+	
+	tcxt_process_debug_counters();
 }

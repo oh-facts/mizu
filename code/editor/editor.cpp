@@ -20,77 +20,105 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		ui_fixed_pos(ed_state->cxt, (ed_state->panels[0].pos))
 		ui_col(ed_state->cxt)
 	{
-		local_persist f32 update_timer = 0;
-		local_persist f32 cc = 0;
-		update_timer += delta;
-		if(update_timer > 0.3f)
+		
+		ui_row(ed_state->cxt)
 		{
-			cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
-			update_timer = 0;
-		}
-		
-		ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
-		
-		UI_Signal res = ui_labelf(ed_state->cxt, "Tilemap Editor");
-		
-		if(res.active)
-		{
-			ed_state->panels[0].grabbed = 1;
-		}
-		
-		os_mouse_released(&state->events, OS_MouseButton_Left);
-		
-		if(os_mouse_held(OS_MouseButton_Left) && ed_state->panels[0].grabbed)
-		{
-			ed_state->panels[0].pos += (ed_state->cxt->mpos - ed_state->old_pos);
-		}
-		else
-		{
-			ed_state->panels[0].grabbed = 0;
-		}
-		
-		if(ui_labelf(ed_state->cxt, "cc : %.f K", cc).active)
-		{
-			printf("pressed\n");
-		}
-		
-		R_Handle img = a_handle_from_path(str8_lit("debug/numbers.png"));
-		
-		ui_push_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum);
-		ui_col(ed_state->cxt)
-		{
-			for(u32 i = 0; i < 3; i ++)
+			ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
+			UI_Signal res = ui_labelf(ed_state->cxt, "Tilemap Editor");
+			
+			ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
+			ui_pref_width(ed_state->cxt, 0.32)
 			{
-				ui_row(ed_state->cxt)
+				ui_spacer(ed_state->cxt);
+			}
+			ui_pop_size_kind(ed_state->cxt);
+			
+			UI_Signal hide = ui_labelf(ed_state->cxt, "hide");
+			if(res.active)
+			{
+				ed_state->panels[0].grabbed = 1;
+			}
+			
+			if(hide.active)
+			{
+				ed_state->panels[0].hide = !ed_state->panels[0].hide;
+			}
+			
+			os_mouse_released(&state->events, OS_MouseButton_Left);
+			
+			if(os_mouse_held(OS_MouseButton_Left) && ed_state->panels[0].grabbed)
+			{
+				ed_state->panels[0].pos += (ed_state->cxt->mpos - ed_state->old_pos);
+			}
+			else
+			{
+				ed_state->panels[0].grabbed = 0;
+			}
+			ui_pop_size_kind(ed_state->cxt);
+		}
+		
+		if(!ed_state->panels[0].hide)
+		{
+			ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
+			
+			/*
+			local_persist f32 update_timer = 0;
+			local_persist f32 cc = 0;
+			local_persist f32 ft = 0;
+			update_timer += delta;
+			if(update_timer > 0.3f)
+			{
+				cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
+				ft = delta;
+				update_timer = 0;
+			}
+			
+	if(ui_labelf(ed_state->cxt, "cc : %.f K", cc).active)
+			{
+				printf("pressed\n");
+			}
+			
+			ui_labelf(ed_state->cxt, "ft : %.4f", ft);
+			*/
+			
+			R_Handle img = a_handle_from_path(str8_lit("debug/numbers.png"));
+			
+			ui_push_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum);
+			ui_col(ed_state->cxt)
+			{
+				for(u32 i = 0; i < 3; i ++)
 				{
-					ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-					ui_pref_width(ed_state->cxt, 0.3)
-						ui_pref_height(ed_state->cxt, 0.3)
+					ui_row(ed_state->cxt)
 					{
-						for(u32 j = 0; j < 3; j++)
+						ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
+						ui_pref_width(ed_state->cxt, 0.3)
+							ui_pref_height(ed_state->cxt, 0.3)
 						{
-							f32 advance = 1/9.f;
-							f32 index = (i*3 + j) * advance;
-							
-							Rect recty = rect(index, 0, advance + index, 1);
-							
-							ui_imagef(ed_state->cxt, img, recty, D_COLOR_WHITE, "facial%d%d", i, j);
+							for(u32 j = 0; j < 3; j++)
+							{
+								f32 advance = 1/9.f;
+								f32 index = (i*3 + j) * advance;
+								
+								Rect recty = rect(index, 0, advance + index, 1);
+								
+								ui_imagef(ed_state->cxt, img, recty, D_COLOR_WHITE, "facial%d%d", i, j);
+							}
 						}
+						ui_pop_size_kind(ed_state->cxt);
+						
 					}
-					ui_pop_size_kind(ed_state->cxt);
 					
 				}
-				
 			}
+			
+			ui_pop_size_kind(ed_state->cxt);
+			
+			ui_labelf(ed_state->cxt, "this work?");
+			ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
+			ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
+			
+			ui_pop_size_kind(ed_state->cxt);
 		}
-		
-		ui_pop_size_kind(ed_state->cxt);
-		
-		ui_labelf(ed_state->cxt, "this work?");
-		ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
-		ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
-		
-		ui_pop_size_kind(ed_state->cxt);
 	}
 	
 	ui_pop_size_kind(ed_state->cxt);

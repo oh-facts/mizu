@@ -29,7 +29,7 @@ void tcxt_print_debug_counters()
 {
 	for(u32 i = 0; i < ARRAY_LEN(tcxt->counters); i ++)
 	{
-		debug_cycle_counter *counter = tcxt->counters + i;
+		debug_cycle_counter *counter = tcxt->counters_last + i;
 		
 		printf("%s: %llu\n", debug_cycle_to_str[i], counter->cycle_count);
 	}
