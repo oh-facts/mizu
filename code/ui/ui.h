@@ -63,6 +63,7 @@ struct UI_Widget
 	u64 last_frame_touched_index;
 	
 	u32 id;
+	u64 hash;
 	
 	UI_Flags flags;
 	R_Handle img;
@@ -121,7 +122,10 @@ struct UI_Hash_slot
 
 struct UI_Context
 {
+	// perm arena
 	Arena *arena;
+	
+	// frame arena. is reset completely. Non zeroed.
 	Arena *str_arena;
 	
 	v2f mpos;
@@ -348,6 +352,7 @@ function UI_Context *ui_alloc_cxt()
 	UI_Context *cxt = push_struct(arena, UI_Context);
 	
 	cxt->arena = arena;
+	
 	cxt->hash_table_size = 1024;
 	cxt->hash_slots = push_array(arena, UI_Hash_slot, cxt->hash_table_size);
 	cxt->str_arena = arena_create();
@@ -379,16 +384,16 @@ ui_hash(Str8 str)
 	return hash;
 }
 
-function UI_Widget *ui_widget_from_key(UI_Context *cxt, Str8 key)
+function UI_Widget *ui_widget_from_hash(UI_Context *cxt, u64 hash)
 {
 	UI_Widget *widget = 0;
 	
-	u64 slot = ui_hash(key) % cxt->hash_table_size;
+	u64 slot =  hash % cxt->hash_table_size;
 	
 	UI_Widget *cur = cxt->hash_slots[slot].first;
 	while(cur)
 	{
-		if(str8_equals(key, cur->text))
+		if(hash == cur->hash)
 		{
 			widget = cur;
 			break;
@@ -402,48 +407,61 @@ function UI_Widget *ui_widget_from_key(UI_Context *cxt, Str8 key)
 
 function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 {
-	UI_Widget *widget = ui_widget_from_key(cxt, text);
+	u64 hash = ui_hash(text);
+	UI_Widget *widget = 0;
 	
-	if(!widget)
+	if(hash == ui_hash(str8_lit("")))
 	{
-		widget = ui_alloc_widget(cxt);
-		u64 slot = ui_hash(text) % cxt->hash_table_size;
-		
-		if(cxt->hash_slots[slot].last)
-		{
-			cxt->hash_slots[slot].last = cxt->hash_slots[slot].last->hash_next = widget;
-		}
-		else
-		{
-			cxt->hash_slots[slot].last = cxt->hash_slots[slot].first = widget;
-		}
-		//		cxt->hash_slots[slot].first = widget;
-		widget->last_frame_touched_index = cxt->frames;
-		widget->id = cxt->num++;
+		widget = push_struct(cxt->str_arena, UI_Widget);
+		*widget = {};
 	}
 	else
 	{
-		if(widget->hot && cxt->mclick)
+		widget = ui_widget_from_hash(cxt, hash);
+		
+		if(widget)
 		{
-			widget->toggle = !widget->toggle;
-			widget->active = 1;
+			if(widget->hot && cxt->mclick)
+			{
+				widget->toggle = !widget->toggle;
+				widget->active = 1;
+			}
+			else
+			{
+				widget->active = 0;
+			}
+			
+			widget->prev = 0;
+			widget->last = 0;
+			widget->next = 0;
+			widget->last_frame_touched_index = cxt->frames;
+			widget->computed_size[0] = 0;
+			widget->computed_size[1] = 0;
+			
+			widget->computed_rel_position[0] = 0;
+			widget->computed_rel_position[1] = 0;
 		}
 		else
 		{
-			widget->active = 0;
+			widget = ui_alloc_widget(cxt);
+			
+			u64 slot = hash % cxt->hash_table_size;
+			
+			if(cxt->hash_slots[slot].last)
+			{
+				cxt->hash_slots[slot].last = cxt->hash_slots[slot].last->hash_next = widget;
+			}
+			else
+			{
+				cxt->hash_slots[slot].last = cxt->hash_slots[slot].first = widget;
+			}
+			//		cxt->hash_slots[slot].first = widget;
+			widget->last_frame_touched_index = cxt->frames;
+			widget->id = cxt->num++;
 		}
-		
-		widget->prev = 0;
-		widget->last = 0;
-		widget->next = 0;
-		widget->last_frame_touched_index = cxt->frames;
-		widget->computed_size[0] = 0;
-		widget->computed_size[1] = 0;
-		
-		widget->computed_rel_position[0] = 0;
-		widget->computed_rel_position[1] = 0;
 	}
 	
+	widget->hash = hash;
 	widget->text.c = push_array(cxt->str_arena, u8, text.len);
 	widget->text.len = text.len;
 	str8_cpy(&widget->text, &text);
@@ -524,7 +542,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	return widget;
 }
 
-function UI_Signal ui_begin_rowf(UI_Context *cxt, char *fmt, ...)
+function UI_Signal ui_begin_named_rowf(UI_Context *cxt, char *fmt, ...)
 {
 	Arena_temp temp = scratch_begin(0,0);
 	va_list args;
@@ -553,7 +571,14 @@ function void ui_end_row(UI_Context *cxt)
 	ui_pop_parent(cxt);
 }
 
-function UI_Signal ui_begin_colf(UI_Context *cxt, char *fmt, ...)
+// TODO(mizu): make it so that transient nodes are allocated from the frame arena and aren't added to the free list when popped
+
+function UI_Signal ui_begin_row(UI_Context *cxt)
+{
+	return ui_begin_named_rowf(cxt, "");
+}
+
+function UI_Signal ui_begin_named_colf(UI_Context *cxt, char *fmt, ...)
 {
 	Arena_temp temp = scratch_begin(0,0);
 	va_list args;
@@ -575,6 +600,11 @@ function UI_Signal ui_begin_colf(UI_Context *cxt, char *fmt, ...)
 	out.toggle = widget->toggle;
 	
 	return out;
+}
+
+function UI_Signal ui_begin_col(UI_Context *cxt)
+{
+	return ui_begin_named_colf(cxt, "");
 }
 
 function void ui_end_col(UI_Context *cxt)
@@ -629,7 +659,7 @@ function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, 
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_img;
 	
-	UI_ImageDrawData *draw_data = push_struct(cxt->arena, UI_ImageDrawData);
+	UI_ImageDrawData *draw_data = push_struct(cxt->str_arena, UI_ImageDrawData);
 	draw_data->img = img;
 	draw_data->src = src;
 	draw_data->color = color;
@@ -644,6 +674,21 @@ function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, 
 	out.hot = hot;
 	out.active = widget->active;
 	out.toggle = widget->toggle;
+	
+	return out;
+}
+
+function UI_Signal ui_imagef(UI_Context *cxt, R_Handle img, Rect src, v4f color, char *fmt, ...)
+{
+	Arena_temp temp = scratch_begin(0,0);
+	va_list args;
+	va_start(args, fmt);
+	Str8 text = push_str8fv(temp.arena, fmt, args);
+	va_end(args);
+	
+	UI_Signal out = ui_image(cxt, img, src, color, text);
+	
+	arena_temp_end(&temp);
 	
 	return out;
 }
@@ -676,12 +721,20 @@ function UI_Signal ui_spacerf(UI_Context *cxt, char *fmt, ...)
 	return out;
 }
 
-#define ui_rowf(v,...) UI_DeferLoop(ui_begin_rowf(v,__VA_ARGS__), ui_end_row(v))
-#define ui_colf(v,...) UI_DeferLoop(ui_begin_colf(v,__VA_ARGS__), ui_end_col(v))
+#define ui_named_rowf(v,...) UI_DeferLoop(ui_begin_named_rowf(v,__VA_ARGS__), ui_end_row(v))
+#define ui_named_colf(v,...) UI_DeferLoop(ui_begin_named_colf(v,__VA_ARGS__), ui_end_col(v))
+
+#define ui_row(v) UI_DeferLoop(ui_begin_row(v), ui_end_row(v))
+#define ui_col(v) UI_DeferLoop(ui_begin_col(v), ui_end_col(v))
 
 #define ui_fixed_pos(cxt, v) UI_DeferLoop(ui_push_fixed_pos(cxt, v), ui_pop_fixed_pos(cxt))
 #define ui_text_color(cxt, v) UI_DeferLoop(ui_push_text_color(cxt, v), ui_pop_text_color(cxt))
 #define ui_bg_color(cxt, v) UI_DeferLoop(ui_push_bg_color(cxt, v), ui_pop_bg_color(cxt))
+
+#define ui_pref_width(cxt, v) UI_DeferLoop(ui_push_pref_width(cxt, v), ui_pop_pref_width(cxt))
+#define ui_pref_height(cxt, v) UI_DeferLoop(ui_push_pref_height(cxt, v), ui_pop_pref_height(cxt))
+
+
 
 function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)
 {
@@ -835,10 +888,11 @@ function void ui_begin(UI_Context *cxt, v2s win_size, Atlas *atlas, OS_Event_lis
 	cxt->mpos = screen_norm;
 	cxt->mclick = os_mouse_pressed(events, OS_MouseButton_Left);
 	
+	cxt->str_arena->used = ARENA_HEADER_SIZE;
+	
 	UI_Widget *root = ui_make_widget(cxt, str8_lit("rootere"));
 	ui_push_parent(cxt, root);
 	cxt->root = root;
-	cxt->str_arena->used = ARENA_HEADER_SIZE;
 	cxt->frames++;
 }
 

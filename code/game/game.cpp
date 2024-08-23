@@ -100,12 +100,6 @@ void update_and_render(void *memory, f32 delta)
 	d_push_bucket(draw);
 	d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
-	local_persist f32 i = 0;
-	i += delta;
-	
-	f32 index = ((u32)(i) % max_entities) * 0.1f;
-	d_draw_img(rect(v2f{{-1.4f + index, 0.1f}}, v2f{{0.3, 0.3}}), rect(index, 0, 0.1 + index, 1), D_COLOR_WHITE, a_handle_from_path(str8_lit("debug/numbers.png")));
-	
 	ed_update(state, &state->events, delta);
 	
 	R_Handle face = a_handle_from_path(str8_lit("debug/toppema.png"));

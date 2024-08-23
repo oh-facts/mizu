@@ -42,7 +42,6 @@
 #include <asset/asset_cache.h>
 #include <draw/draw.h>
 #include <ui/ui.h>
-#include <draw/draw_ui.h>
 #include <editor/editor.h>
 #include <entity/entity.h>
 

@@ -21,4 +21,7 @@ struct ED_State
 struct State;
 
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
+function void ed_draw_panel(UI_Widget *root);
+function void ed_draw_children(UI_Widget *root);
+
 #endif //EDITOR_H
