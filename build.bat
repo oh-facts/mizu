@@ -27,3 +27,5 @@ if "%app%" == "1" echo [app] && del "out\yk.dll" && clang "%common_flags%" "%bui
 if %errorlevel% neq 0 echo app compilation failed && exit /b
    
 if "%run%" == "1" start cmd /c ".\out\platform.exe && echo [run]"
+
+if "%meta%" == "1" clang code/ui/ui_gen.cpp -o out/meta.exe && .\out\meta.exe > code\ui\ui_styling.h && echo [generating styling.h]
