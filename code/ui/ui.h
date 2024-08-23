@@ -125,8 +125,8 @@ struct UI_Context
 	// perm arena
 	Arena *arena;
 	
-	// frame arena. is reset completely. Non zeroed.
-	Arena *str_arena;
+	// reset completely every frame. Non zeroed.
+	Arena *frame_arena;
 	
 	v2f mpos;
 	b32 mclick;
@@ -355,7 +355,7 @@ function UI_Context *ui_alloc_cxt()
 	
 	cxt->hash_table_size = 1024;
 	cxt->hash_slots = push_array(arena, UI_Hash_slot, cxt->hash_table_size);
-	cxt->str_arena = arena_create();
+	cxt->frame_arena = arena_create();
 	
 	ui_push_text_color(cxt, D_COLOR_WHITE);
 	ui_push_bg_color(cxt, D_COLOR_WHITE);
@@ -412,7 +412,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	
 	if(hash == ui_hash(str8_lit("")))
 	{
-		widget = push_struct(cxt->str_arena, UI_Widget);
+		widget = push_struct(cxt->frame_arena, UI_Widget);
 		*widget = {};
 	}
 	else
@@ -462,7 +462,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	}
 	
 	widget->hash = hash;
-	widget->text.c = push_array(cxt->str_arena, u8, text.len);
+	widget->text.c = push_array(cxt->frame_arena, u8, text.len);
 	widget->text.len = text.len;
 	str8_cpy(&widget->text, &text);
 	
@@ -659,7 +659,7 @@ function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, 
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_img;
 	
-	UI_ImageDrawData *draw_data = push_struct(cxt->str_arena, UI_ImageDrawData);
+	UI_ImageDrawData *draw_data = push_struct(cxt->frame_arena, UI_ImageDrawData);
 	draw_data->img = img;
 	draw_data->src = src;
 	draw_data->color = color;
@@ -886,14 +886,19 @@ function void ui_begin(UI_Context *cxt, v2s win_size, Atlas *atlas, OS_Event_lis
 	f32 aspect_ratio = win_size.x * 1.f / win_size.y;
 	v2f screen_norm;
 	v2s mpos = os_mouse_pos(events);
+	//printf("%d %d\n", mpos.x, mpos.y);
 	
 	screen_norm.x = mpos.x * 1.f / win_size.y * 2.f - aspect_ratio;
 	screen_norm.y = 1 - mpos.y * 1.f / win_size.y * 2.f;
+	//printf("%f %f\n", screen_norm.x, screen_norm.y);
+	
+	screen_norm.x *= 2;
+	screen_norm.y *= 2;
 	
 	cxt->mpos = screen_norm;
 	cxt->mclick = os_mouse_pressed(events, OS_MouseButton_Left);
 	
-	cxt->str_arena->used = ARENA_HEADER_SIZE;
+	cxt->frame_arena->used = ARENA_HEADER_SIZE;
 	
 	UI_Widget *root = ui_make_widget(cxt, str8_lit("rootere"));
 	ui_push_parent(cxt, root);

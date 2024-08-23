@@ -94,7 +94,7 @@ void update_and_render(void *memory, f32 delta)
 	
 	d_begin(&state->atlas, state->atlas_tex);
 	
-	f32 zoom = 1;
+	f32 zoom = 2;
 	v2s win_size = os_get_window_size(state->win);
 	f32 aspect = (win_size.x * 1.f)/ win_size.y;
 	

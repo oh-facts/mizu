@@ -3,8 +3,17 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+enum ED_PanelKind
+{
+	ED_PanelKind_TileSetViewer,
+	ED_PanelKind_TileMap,
+	ED_PanelKind_Debug,
+	ED_PanelKind_COUNT
+};
+
 struct ED_Panel
 {
+	Str8 name;
 	b32 hide;
 	v2f pos;
 	v2f scale;
@@ -13,9 +22,10 @@ struct ED_Panel
 
 struct ED_State
 {
+	Arena *arena;
 	b32 initialized;
 	UI_Context *cxt;
-	ED_Panel panels[3];
+	ED_Panel panels[ED_PanelKind_COUNT];
 	v2f old_pos;
 };
 

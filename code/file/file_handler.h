@@ -172,7 +172,6 @@ function Bitmap bitmap(Str8 path)
 	return out;
 }
 
-
 function Glyph *glyph_from_codepoint(Atlas *atlas, char c)
 {
 	Glyph *out = atlas->glyphs + (u32)c;
@@ -232,7 +231,6 @@ function Glyph *make_bmp_font(u8* path, char *codepoints, u32 num_cp, Arena* are
 		}
 		
 		stbtt_FreeBitmap(bmp, 0);
-		
 	}
 	
 	return out;
