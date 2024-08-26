@@ -104,6 +104,8 @@ void update_and_render(void *memory, f32 delta)
 	D_Bucket *draw = d_bucket();
 	d_push_bucket(draw);
 	//d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
+	R_Handle bg = a_handle_from_path(str8_lit("debug/clouds.jpg"));
+	d_draw_img(rect(0,0,1920,1080), rect(0,0,1,1), D_COLOR_WHITE, bg);
 	
 	ed_update(state, &state->events, delta);
 	
