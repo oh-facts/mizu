@@ -22,9 +22,9 @@ Hi, this is my game engine. Nice to meet you. Goodnight.
 I am making a demo with it. As the demo requires more features, I will add them to the engine. Until then, standalone engine builds / user documentation isn't reasonable to maintain because the api will be very unstable until demo release.
 
 <p>
-<img width="400"src="https://github.com/oh-facts/mizu/blob/main/data/misc/screenshot.png">
+<img width="800"src="https://github.com/oh-facts/mizu/blob/main/data/misc/screenshot.png">
 </p>
-8/22/24
+8/26/24
 
 ## Build
 
