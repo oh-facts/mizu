@@ -23,3 +23,6 @@ art.txt
 
 *.sh
 !build.sh
+
+//art
+data/assets/*

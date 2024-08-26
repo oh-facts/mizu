@@ -1,3 +1,46 @@
+void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path)
+{
+	R_Handle img = a_handle_from_path(path);
+	
+	f32 width = 1.f/x;
+	f32 height = 1.f/y;
+	
+	f32 advance_y = 1 - height;
+	
+	ui_push_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum);
+	ui_col(ed_state->cxt)
+	{
+		
+		for(u32 i = 0; i < y; i ++)
+		{
+			f32 advance_x = 0;
+			ui_row(ed_state->cxt)
+			{
+				ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
+				ui_pref_width(ed_state->cxt, 60)
+					ui_pref_height(ed_state->cxt, 60)
+				{
+					for(u32 j = 0; j < x; j++)
+					{
+						Rect recty = rect(advance_x, advance_y, advance_x + width, advance_y + height);
+						
+						if(ui_imagef(ed_state->cxt, img, recty, D_COLOR_WHITE, "%.*s%d%d", str8_varg(path), i, j).active)
+						{
+							ed_state->selected_tile = path;
+							ed_state->selected_tile_rect = recty;
+						}
+						advance_x += width;
+					}
+				}
+				ui_pop_size_kind(ed_state->cxt);
+				
+			}
+			advance_y -= height;
+		}
+	}
+	ui_pop_size_kind(ed_state->cxt);
+}
+
 void ed_update(State *state, OS_Event_list *events, f32 delta)
 {
 	ED_State *ed_state = &state->ed_state;
@@ -5,19 +48,25 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 	if(!ed_state->initialized)
 	{
 		ed_state->arena = arena_create();
+		
 		ed_state->cxt = ui_alloc_cxt();
-		ed_state->panels[0].pos = {{11, 145}};
+		ed_state->panels[0].pos = {{9, 120}};
 		ed_state->panels[0].scale = v2f{{1.6,0.3}};
 		ed_state->panels[0].name = push_str8f(ed_state->arena, "tile set viewer");
 		
-		ed_state->panels[1].pos = {{-285, 744}};
+		ed_state->panels[1].pos = {{391, 192}};
 		ed_state->panels[1].scale = v2f{{1.6,0.3}};
 		ed_state->panels[1].name = push_str8f(ed_state->arena, "tile map");
 		
-		ed_state->panels[2].pos = {{-488, 447}};
+		ed_state->panels[2].pos = {{1218, 877}};
 		ed_state->panels[2].scale = v2f{{1.6,0.3}};
 		ed_state->panels[2].hide = 1;
 		ed_state->panels[2].name = push_str8f(ed_state->arena, "debug");
+		
+		ed_state->panels[3].pos = {{948, 120}};
+		ed_state->panels[3].scale = v2f{{1.6,0.3}};
+		ed_state->panels[3].hide = 0;
+		ed_state->panels[3].name = push_str8f(ed_state->arena, "Inspector");
 		
 		ed_state->initialized = 1;
 	}
@@ -36,6 +85,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			ui_fixed_pos(ed_state->cxt, (panel->pos))
 			ui_col(ed_state->cxt)
 		{
+			// NOTE(mizu):  title bar, dragging and hiding
 			ui_row(ed_state->cxt)
 			{
 				ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
@@ -76,62 +126,29 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			{
 				if((ED_PanelKind)i == ED_PanelKind_TileSetViewer)
 				{
-					ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
-					
-					R_Handle img = a_handle_from_path(str8_lit("debug/numbers.png"));
-					
-					ui_push_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum);
-					ui_col(ed_state->cxt)
-					{
-						for(u32 i = 0; i < 3; i ++)
-						{
-							ui_row(ed_state->cxt)
-							{
-								ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-								ui_pref_width(ed_state->cxt, 30)
-									ui_pref_height(ed_state->cxt, 30)
-								{
-									for(u32 j = 0; j < 3; j++)
-									{
-										f32 advance = 1/9.f;
-										f32 index = (i*3 + j) * advance;
-										
-										Rect recty = rect(index, 0, advance + index, 1);
-										
-										ui_imagef(ed_state->cxt, img, recty, D_COLOR_WHITE, "facial%d%d", i, j);
-									}
-								}
-								ui_pop_size_kind(ed_state->cxt);
-								
-							}
-							
-						}
-					}
-					
-					ui_pop_size_kind(ed_state->cxt);
-					
-					ui_pop_size_kind(ed_state->cxt);
+					ed_draw_spritesheet(ed_state, 3, 3, str8_lit("debug/numbers.png"));
+					ed_draw_spritesheet(ed_state, 3, 2, str8_lit("fox/fox.png"));
+					ed_draw_spritesheet(ed_state, 3, 3, str8_lit("impolo/impolo-east.png"));
+					ed_draw_spritesheet(ed_state, 3, 1, str8_lit("tree/trees.png"));
+					ed_draw_spritesheet(ed_state, 3, 3, str8_lit("grass/grass_tile.png"));
 				}
 				else if((ED_PanelKind)i == ED_PanelKind_Debug)
 				{
-					local_persist f32 update_timer = 0;
-					local_persist f32 cc = 0;
-					local_persist f32 ft = 0;
-					update_timer += delta;
-					if(update_timer > 1.f)
+					panel->update_timer += delta;
+					if(panel->update_timer > 1.f)
 					{
-						cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
-						ft = delta;
-						update_timer = 0;
+						panel->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
+						panel->ft = delta;
+						panel->update_timer = 0;
 					}
 					
 					ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
-					if(ui_labelf(ed_state->cxt, "cc : %.f K", cc).active)
+					if(ui_labelf(ed_state->cxt, "cc : %.f K", panel->cc).active)
 					{
 						printf("pressed\n");
 					}
 					
-					ui_labelf(ed_state->cxt, "ft : %.fms", ft * 1000);
+					ui_labelf(ed_state->cxt, "ft : %.fms", panel->ft * 1000);
 					ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
 					ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
 					
@@ -142,6 +159,28 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 					ui_pop_size_kind(ed_state->cxt);
 					
 				}
+				else if((ED_PanelKind)i == ED_PanelKind_Inspector)
+				{
+					if(ed_state->selected_tile.len > 0)
+					{
+						ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
+						ui_labelf(ed_state->cxt, "%.*s", str8_varg(ed_state->selected_tile));
+						ui_pop_size_kind(ed_state->cxt);
+						
+						
+						ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
+						ui_pref_width(ed_state->cxt, 100)
+							ui_pref_height(ed_state->cxt, 100)
+						{
+							R_Handle img = a_handle_from_path(ed_state->selected_tile);
+							
+							ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, D_COLOR_WHITE, str8_lit("inspector panel image"));
+						}
+						ui_pop_size_kind(ed_state->cxt);
+						
+					}
+				}
+				
 			}
 		}
 	}

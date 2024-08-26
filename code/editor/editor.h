@@ -8,6 +8,7 @@ enum ED_PanelKind
 	ED_PanelKind_TileSetViewer,
 	ED_PanelKind_TileMap,
 	ED_PanelKind_Debug,
+	ED_PanelKind_Inspector,
 	ED_PanelKind_COUNT
 };
 
@@ -18,6 +19,10 @@ struct ED_Panel
 	v2f pos;
 	v2f scale;
 	b32 grabbed;
+	f32 update_timer;
+	f32 cc;
+	f32 ft;
+	
 };
 
 struct ED_State
@@ -27,11 +32,15 @@ struct ED_State
 	UI_Context *cxt;
 	ED_Panel panels[ED_PanelKind_COUNT];
 	v2f old_pos;
+	
+	Str8 selected_tile;
+	Rect selected_tile_rect;
 };
 
 struct State;
 
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
+function void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path);
 function void ed_draw_panel(UI_Widget *root);
 function void ed_draw_children(UI_Widget *root);
 

@@ -165,8 +165,8 @@ function Bitmap bitmap(Str8 path)
 	
 	if(!out.data)
 	{
-		printf("\nError loading%s :%s\n", path.c, stbi_failure_reason());
-		INVALID_CODE_PATH();
+		//printf("\nError loading%s :%s\n", path.c, stbi_failure_reason());
+		//INVALID_CODE_PATH();
 	}
 	
 	return out;
@@ -280,7 +280,8 @@ function time_t get_file_last_modified_time(char* pathname)
 	struct stat stat_buf;
 	if(stat(pathname,&stat_buf) == -1 )
 	{
-		perror("stat failed");
+		printf("stat failed for %s", pathname);
+		perror("error: ");
 		return 0;
 	}
 	

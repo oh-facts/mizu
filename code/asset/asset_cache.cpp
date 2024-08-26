@@ -96,11 +96,31 @@ R_Handle a_handle_from_path(Str8 path)
 		Arena_temp temp = scratch_begin(0, 0);
 		Str8 abs_path = str8_join(temp.arena, a_asset_cache->asset_dir, path);
 		Bitmap bmp = bitmap(abs_path);
+		
+		// if bmp not found, use checkerboard art
+		
+		if(!bmp.data)
+		{
+			local_persist u32 checker[16] = {
+				0xFF000000, 0xFFFF00FF, 0xFF000000, 0xFFFF00FF,
+				0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
+				0xFF000000, 0xFFFF00FF, 0xFF000000, 0xFFFF00FF,
+				0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
+			}; 
+			
+			bmp.data = checker;
+			bmp.w = 4;
+			bmp.h = 4;
+			bmp.n = 4;
+		}
+		
+		
 		tex_cache->v = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
 		tex_cache->key = hash;
 		tex_cache->loaded = 1;
 		
 		a_add_to_hash(tex_cache);
+		
 		scratch_end(&temp);
 		
 		++a_asset_cache->num_tex;

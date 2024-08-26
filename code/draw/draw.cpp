@@ -103,7 +103,7 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 	v2f text_pos = pos;
 	text_pos.y += ex.tl.y;
 	
-	f32 width = 0;
+	//f32 width = 0;
 	for(u32 i = 0; i < text.len; i ++)
 	{
 		char c = text.c[i];
@@ -116,7 +116,7 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		f32 w = (ch->x1 - ch->x0) * p->scale;
 		f32 h = (ch->y1 - ch->y0) * p->scale;
 		
-		width += ch->advance * p->scale;
+		//width += ch->advance * p->scale;
 		
 		if(c == ' ')
 		{

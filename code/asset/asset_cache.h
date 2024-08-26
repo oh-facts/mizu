@@ -3,7 +3,7 @@
 #ifndef ASSET_CACHE_H
 #define ASSET_CACHE_H
 
-#define A_MAX_TEXTURES 6
+#define A_MAX_TEXTURES 10
 
 const Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
 
