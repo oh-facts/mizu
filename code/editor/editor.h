@@ -6,23 +6,25 @@
 enum ED_PanelKind
 {
 	ED_PanelKind_TileSetViewer,
-	ED_PanelKind_TileMap,
-	ED_PanelKind_Debug,
 	ED_PanelKind_Inspector,
+	ED_PanelKind_Debug,
+	ED_PanelKind_TileMap,
 	ED_PanelKind_COUNT
 };
 
 struct ED_Panel
 {
+	UI_Widget *root;
 	Str8 name;
 	b32 hide;
+	b32 floating;
 	v2f pos;
 	v2f scale;
 	b32 grabbed;
 	f32 update_timer;
 	f32 cc;
 	f32 ft;
-	
+	v4f color;
 };
 
 struct ED_State
@@ -41,7 +43,7 @@ struct State;
 
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
 function void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path);
-function void ed_draw_panel(UI_Widget *root);
-function void ed_draw_children(UI_Widget *root);
+function void ed_draw_panel(ED_Panel *panel, UI_Widget *root);
+function void ed_draw_children(ED_Panel *panel, UI_Widget *root);
 
 #endif //EDITOR_H

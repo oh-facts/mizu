@@ -22,6 +22,10 @@ function Rect rect(f32 tl_x, f32 tl_y, f32 br_x, f32 br_y)
 	return out;
 }
 
+#define rect_tl_varg(v) (v).tl.x, (v).tl.y
+#define rect_br_varg(v) (v).br.x, (v).br.y
+#define rect_varg(v) rect_tl_varg(v), rect_br_varg(v)
+
 function Rect rect(v2f pos, v2f scale)
 {
 	Rect out = {};

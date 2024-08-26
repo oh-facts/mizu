@@ -50,10 +50,13 @@ void update_and_render(void *memory, f32 delta)
 			
 			'&', '.', '?', ',', '-', ':', '!', '\\', '/',
 			
+			'(', ')', '[', ']', '{', '}',
+			
 			' ', '\n'
 		};
 		
 		Arena_temp temp = arena_temp_begin(state->trans);
+		
 		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/assets/fonts/delius.ttf"));
 		Glyph *temp_font = make_bmp_font(font_path.c, codepoints, ARRAY_LEN(codepoints), state->trans);
 		
@@ -101,8 +104,6 @@ void update_and_render(void *memory, f32 delta)
 	D_Bucket *draw = d_bucket();
 	d_push_bucket(draw);
 	//d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
-	R_Handle face = a_handle_from_path(str8_lit("debug/toppema.png"));
-	d_draw_img(rect(10, 10, 100, 100), rect(0, 0, 1, 1), D_COLOR_WHITE, face);
 	
 	ed_update(state, &state->events, delta);
 	

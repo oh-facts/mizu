@@ -7,7 +7,8 @@
 
 enum Axis2
 {
-	Axis2_X,
+	Axis2_0 = -1,
+	Axis2_X = 0,
 	Axis2_Y,
 	Axis2_COUNT
 };
@@ -42,6 +43,8 @@ enum UI_Flags
 	UI_Flags_clickable = 1 << 2,
 	UI_Flags_has_img = 1 << 3,
 	UI_Flags_has_scroll = 1 << 4,
+	UI_Flags_is_floating_x = 1 << 5,
+	UI_Flags_is_floating_y = 1 << 6,
 };
 
 struct UI_Widget;
@@ -134,7 +137,6 @@ struct UI_Context
 	u64 hash_table_size;
 	UI_Hash_slot *hash_slots;
 	
-	UI_Widget *root;
 	u64 frames;
 	Atlas *atlas;
 	
@@ -363,6 +365,7 @@ function UI_Context *ui_alloc_cxt()
 	ui_push_pref_height(cxt, 0);
 	ui_push_fixed_pos(cxt, v2f{{0,0}});
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
+	
 	cxt->frames = 0;
 	
 	return cxt;
@@ -736,6 +739,11 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 #define ui_text_color(cxt, v) UI_DeferLoop(ui_push_text_color(cxt, v), ui_pop_text_color(cxt))
 #define ui_bg_color(cxt, v) UI_DeferLoop(ui_push_bg_color(cxt, v), ui_pop_bg_color(cxt))
 
+#define ui_size_kind_x(cxt, v) UI_DeferLoop(ui_push_size_kind_x(cxt, v), ui_pop_size_kind_x(cxt))
+
+#define ui_size_kind_y(cxt, v) UI_DeferLoop(ui_push_size_kind_y(cxt, v), ui_pop_size_kind_y(cxt))
+
+
 #define ui_pref_width(cxt, v) UI_DeferLoop(ui_push_pref_width(cxt, v), ui_pop_pref_width(cxt))
 #define ui_pref_height(cxt, v) UI_DeferLoop(ui_push_pref_height(cxt, v), ui_pop_pref_height(cxt))
 
@@ -819,11 +827,17 @@ function void ui_layout_pos(UI_Widget *root)
 	{
 		if(root->parent->child_layout_axis == Axis2_X)
 		{
-			root->computed_rel_position[Axis2_X] = root->prev->computed_rel_position[Axis2_X] + root->prev->computed_size[Axis2_X];
+			if(!(root->flags & UI_Flags_is_floating_x))
+			{
+				root->computed_rel_position[Axis2_X] = root->prev->computed_rel_position[Axis2_X] + root->prev->computed_size[Axis2_X];
+			}
 		}
 		else if(root->parent->child_layout_axis == Axis2_Y)
 		{
-			root->computed_rel_position[Axis2_Y] = root->prev->computed_rel_position[Axis2_Y] + root->prev->computed_size[Axis2_Y];
+			if(!(root->flags & UI_Flags_is_floating_y))
+			{
+				root->computed_rel_position[Axis2_Y] = root->prev->computed_rel_position[Axis2_Y] + root->prev->computed_size[Axis2_Y];
+			}
 		}
 	}
 	
@@ -905,15 +919,12 @@ function void ui_begin(UI_Context *cxt, v2s win_size, Atlas *atlas, OS_Event_lis
 	
 	cxt->frame_arena->used = ARENA_HEADER_SIZE;
 	
-	UI_Widget *root = ui_make_widget(cxt, str8_lit("rootere"));
-	ui_push_parent(cxt, root);
-	cxt->root = root;
 	cxt->frames++;
 }
 
 function void ui_end(UI_Context *cxt)
 {
-	ui_pop_parent(cxt);
+	//ui_pop_parent(cxt);
 	
 	for(u32 i = 0; i < cxt->hash_table_size; i++)
 	{
