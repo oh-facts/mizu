@@ -13,9 +13,9 @@
 
 union R_Handle
 {
-  u64 u64_m[2];
-	u32 u32_m[4];
-	u16 u16_m[8];
+  u64 u64_m[4];
+	u32 u32_m[8];
+	u16 u16_m[16];
 };
 
 enum R_TEXTURE_FILTER
@@ -66,12 +66,23 @@ global R_Texture_params pixel_params = {
 	R_TEXTURE_WRAP_CLAMP_TO_BORDER
 };
 
+
+enum Corner
+{
+	Corner_00,
+	Corner_01,
+	Corner_10,
+	Corner_11,
+	Corner_COUNT
+};
+
 struct R_Rect
 {
 	Rect src;
 	Rect dst;
 	
 	v4f color;
+	v4f fade[Corner_COUNT];
 	R_Handle tex;
 };
 

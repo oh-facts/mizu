@@ -78,6 +78,10 @@ void d_draw_img(Rect dst, Rect src, v4f color, R_Handle tex)
 	
 	rect->dst = dst;
 	rect->src = src;
+	rect->fade[Corner_00] = D_COLOR_WHITE;
+	rect->fade[Corner_01] = D_COLOR_WHITE;
+	rect->fade[Corner_10] = D_COLOR_RED;
+	rect->fade[Corner_11] = D_COLOR_WHITE;
 	
 	rect->tex = tex;
 	rect->color = color;

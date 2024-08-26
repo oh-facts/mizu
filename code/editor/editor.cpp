@@ -54,7 +54,6 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		// panel construction
 		{
 			ED_Panel *p = ed_state->panels + ED_PanelKind_TileSetViewer;
-			p->pos = {{9, 120}};
 			p->scale = v2f{{1.6,0.3}};
 			p->name = push_str8f(ed_state->arena, "tile set viewer");
 		}
@@ -69,7 +68,6 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		
 		{
 			ED_Panel *p = ed_state->panels + ED_PanelKind_Debug;
-			p->pos = {{1218, 877}};
 			p->scale = v2f{{1.6,0.3}};
 			p->hide = 1;
 			p->name = push_str8f(ed_state->arena, "debug");
@@ -77,7 +75,6 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		
 		{
 			ED_Panel *p = ed_state->panels + ED_PanelKind_Inspector;
-			p->pos = {{948, 120}};
 			p->scale = v2f{{1.6,0.3}};
 			p->hide = 0;
 			p->name = push_str8f(ed_state->arena, "Inspector");
@@ -98,7 +95,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		
 		ui_push_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum);
 		panel->root = ui_make_widget(ed_state->cxt, str8_lit(""));
-		panel->color = D_COLOR_BLACK;
+		panel->color = ED_THEME_BG;
 		
 		if(panel->floating)
 		{
@@ -107,7 +104,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		
 		ui_push_parent(ed_state->cxt, panel->root);
 		
-		ui_text_color(ed_state->cxt, D_COLOR_GREEN)
+		ui_text_color(ed_state->cxt, ED_THEME_TEXT)
 			ui_fixed_pos(ed_state->cxt, (panel->pos))
 			ui_col(ed_state->cxt)
 		{
@@ -197,7 +194,10 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 					
 					for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
 					{
-						ui_labelf(ed_state->cxt, "%d. %.f %.f", i, ed_state->panels[i].pos.x, ed_state->panels[i].pos.y);
+						if(ui_labelf(ed_state->cxt, "%d. [%.f, %.f]", i, ed_state->panels[i].pos.x, ed_state->panels[i].pos.y).active)
+						{
+							ed_state->panels[i].floating = !ed_state->panels[i].floating; 
+						}
 					}
 					ui_pop_size_kind(ed_state->cxt);
 					
@@ -242,17 +242,19 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 	ui_layout(dad);
 	
 	for(u32 i = 0; i < 4; i ++)
-		ed_draw_panel(&ed_state->panels[i], ed_state->panels[i].root);
-	
+	{
+		ED_Panel *p = ed_state->panels + i;
+		ed_draw_panel(p);
+	}
 	ui_pop_parent(ed_state->cxt);
 	ui_end(ed_state->cxt);
 	
 	ed_state->old_pos = ed_state->cxt->mpos;
 }
 
-void ed_draw_panel(ED_Panel *panel, UI_Widget *root)
+void ed_draw_panel(ED_Panel *panel)
 {
-	UI_Widget *parent = root;
+	UI_Widget *parent = panel->root;
 	
 	parent->pos.x = parent->computed_rel_position[0];
 	parent->pos.y = parent->computed_rel_position[1];
@@ -261,6 +263,10 @@ void ed_draw_panel(ED_Panel *panel, UI_Widget *root)
 	{
 		parent->pos.x +=  panel->pos.x;
 		parent->pos.y +=  panel->pos.y;
+	}
+	else
+	{
+		panel->pos = panel->root->pos;
 	}
 	
 	parent->size.x = parent->computed_size[0];

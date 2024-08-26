@@ -3,6 +3,11 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
+#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 1}}
+
+#define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
+
+
 enum ED_PanelKind
 {
 	ED_PanelKind_TileSetViewer,
@@ -43,7 +48,7 @@ struct State;
 
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
 function void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path);
-function void ed_draw_panel(ED_Panel *panel, UI_Widget *root);
+function void ed_draw_panel(ED_Panel *panel);
 function void ed_draw_children(ED_Panel *panel, UI_Widget *root);
 
 #endif //EDITOR_H

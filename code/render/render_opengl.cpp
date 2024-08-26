@@ -245,8 +245,8 @@ R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
 	
 	out.u64_m[0] = gpu_handle;
 	out.u32_m[2] = texture;
-	//out.u32_m[3] = w;
-	//out.u32_m[4] = h;
+	out.u32_m[3] = w;
+	out.u32_m[4] = h;
 	return out;
 }
 
