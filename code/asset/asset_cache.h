@@ -3,7 +3,7 @@
 #ifndef ASSET_CACHE_H
 #define ASSET_CACHE_H
 
-#define A_MAX_TEXTURES 10
+#define A_MAX_TEXTURE_MEM Megabytes(64)
 
 const Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
 
@@ -32,6 +32,7 @@ struct A_AssetCache
 	u32 num_slots;
 	Str8 asset_dir;
 	u32 num_tex;
+	u64 tex_mem;
 	u64 frame_count;
 };
 

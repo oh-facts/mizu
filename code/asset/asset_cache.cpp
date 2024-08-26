@@ -87,7 +87,7 @@ R_Handle a_handle_from_path(Str8 path)
 	{
 		printf("Added %.*s\n", str8_varg(path));
 		
-		if(a_asset_cache->num_tex == A_MAX_TEXTURES)
+		if(a_asset_cache->tex_mem > A_MAX_TEXTURE_MEM)
 		{
 			a_evict();
 		}
@@ -114,7 +114,6 @@ R_Handle a_handle_from_path(Str8 path)
 			bmp.n = 4;
 		}
 		
-		
 		tex_cache->v = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
 		tex_cache->key = hash;
 		tex_cache->loaded = 1;
@@ -122,7 +121,7 @@ R_Handle a_handle_from_path(Str8 path)
 		a_add_to_hash(tex_cache);
 		
 		scratch_end(&temp);
-		
+		a_asset_cache->tex_mem += bmp.w * bmp.h * 4; 
 		++a_asset_cache->num_tex;
 	}
 	
@@ -151,8 +150,10 @@ void a_evict()
 				if(cur->last_touched != a_asset_cache->frame_count)
 				{
 					printf("pruned %.*s\n", str8_varg(cur->path));
-					r_free_texture(cur->v);
 					--a_asset_cache->num_tex;
+					v2s tex_size = r_tex_size_from_handle(cur->v);
+					a_asset_cache->tex_mem -= tex_size.x * tex_size.y * 4; 
+					r_free_texture(cur->v);
 					cur->loaded = 0;
 					
 					if(prev)

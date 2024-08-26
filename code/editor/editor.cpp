@@ -151,6 +151,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 					ui_labelf(ed_state->cxt, "ft : %.fms", panel->ft * 1000);
 					ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
 					ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
+					ui_labelf(ed_state->cxt, "textures: %.1f MB", a_asset_cache->tex_mem * 0.000001);
 					
 					for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
 					{
@@ -166,7 +167,6 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 						ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
 						ui_labelf(ed_state->cxt, "%.*s", str8_varg(ed_state->selected_tile));
 						ui_pop_size_kind(ed_state->cxt);
-						
 						
 						ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
 						ui_pref_width(ed_state->cxt, 100)
