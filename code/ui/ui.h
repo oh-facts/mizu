@@ -41,7 +41,7 @@ enum UI_Flags
 	UI_Flags_has_text = 1 << 0,
 	UI_Flags_has_bg = 1 << 1,
 	UI_Flags_clickable = 1 << 2,
-	UI_Flags_has_img = 1 << 3,
+	UI_Flags_has_custom_draw = 1 << 3,
 	UI_Flags_has_scroll = 1 << 4,
 	UI_Flags_is_floating_x = 1 << 5,
 	UI_Flags_is_floating_y = 1 << 6,
@@ -644,6 +644,111 @@ function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 	return out;
 }
 
+v3f hsv_to_rgb(v3f hsv) 
+{
+	float h = hsv.x;
+	float s = hsv.y;
+	float v = hsv.z;
+	
+	float c = v * s;
+	float x = c * (1 - fabsf(fmodf(h / 60.0f, 2) - 1));
+	float m = v - c;
+	
+	float r, g, b;
+	if (h >= 0 && h < 60) {
+		r = c; g = x; b = 0;
+	} else if (h >= 60 && h < 120) {
+		r = x; g = c; b = 0;
+	} else if (h >= 120 && h < 180) {
+		r = 0; g = c; b = x;
+	} else if (h >= 180 && h < 240) {
+		r = 0; g = x; b = c;
+	} else if (h >= 240 && h < 300) {
+		r = x; g = 0; b = c;
+	} else {
+		r = c; g = 0; b = x;
+	}
+	
+	v3f rgb = {{ (r + m), (g + m), (b + m) }};
+	return rgb;
+}
+
+struct UI_HuePickerDrawData
+{
+	s32 hue;
+};
+
+function UI_CUSTOM_DRAW(ui_hue_picker_draw)
+{
+	
+	UI_HuePickerDrawData *draw_data = (UI_HuePickerDrawData *)user_data;
+	
+	{
+		//static f32 red = 0;
+		//red += delta * 100;
+		v3f rgb = hsv_to_rgb({{draw_data->hue * 1.f, 1, 1}});;
+		
+		v4f col = {{}};
+		col.x = rgb.x;
+		col.y = rgb.y;
+		col.z = rgb.z;
+		col.w = 1;
+		
+		R_Rect *recty = d_draw_rect(rect(widget->pos, widget->size), {{0,0,0,0.1}});
+		
+		recty->fade[Corner_00] = v4f{{1, 1, 1, 1}};
+		recty->fade[Corner_01] = v4f{{1, 1, 1, 1}};
+		recty->fade[Corner_10] = col;
+		recty->fade[Corner_11] = col;
+	}
+	
+	{
+		R_Rect *recty = d_draw_rect(rect(widget->pos, widget->size), {{0,0,0,0}});
+		
+		recty->fade[Corner_00] = v4f{{0,0,0,0}};
+		recty->fade[Corner_01] = v4f{{0, 0, 0, 1}};
+		recty->fade[Corner_10] = v4f{{0,0,0,0}};
+		recty->fade[Corner_11] = v4f{{0, 0, 0, 1}};
+	}
+}
+
+function UI_Signal ui_hue_picker(UI_Context *cxt, s32 hue, Str8 text)
+{
+	UI_Widget *widget = ui_make_widget(cxt, text);
+	widget->flags = UI_Flags_has_custom_draw;
+	
+	UI_HuePickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_HuePickerDrawData);
+	draw_data->hue = hue;
+	
+	widget->custom_draw = ui_hue_picker_draw;
+	widget->custom_draw_data = draw_data;
+	
+	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
+	widget->hot = hot;
+	
+	UI_Signal out = {};
+	out.hot = hot;
+	out.active = widget->active;
+	out.toggle = widget->toggle;
+	
+	return out;
+}
+
+function UI_Signal ui_hue_pickerf(UI_Context *cxt, s32 hue, char *fmt, ...)
+{
+	Arena_temp temp = scratch_begin(0,0);
+	va_list args;
+	va_start(args, fmt);
+	Str8 text = push_str8fv(temp.arena, fmt, args);
+	va_end(args);
+	
+	UI_Signal out = ui_hue_picker(cxt, hue, text);
+	
+	arena_temp_end(&temp);
+	
+	return out;
+}
+
 struct UI_ImageDrawData
 {
 	R_Handle img;
@@ -654,13 +759,20 @@ struct UI_ImageDrawData
 function UI_CUSTOM_DRAW(ui_image_draw)
 {
 	UI_ImageDrawData *draw_data = (UI_ImageDrawData *)user_data;
-	d_draw_img(rect(widget->pos, widget->size), draw_data->src, draw_data->color, draw_data->img);
+	
+	v4f color = draw_data->color;
+	if(widget->hot)
+	{
+		color = v4f{{0, 0, 1, 0.3f}};
+	}
+	
+	d_draw_img(rect(widget->pos, widget->size), draw_data->src, color, draw_data->img);
 }
 
 function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
-	widget->flags = UI_Flags_has_img;
+	widget->flags = UI_Flags_has_custom_draw;
 	
 	UI_ImageDrawData *draw_data = push_struct(cxt->frame_arena, UI_ImageDrawData);
 	draw_data->img = img;

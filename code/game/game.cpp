@@ -29,7 +29,7 @@ void update_and_render(void *memory, f32 delta)
 		tcxt_init();
 		state->win = os_window_open(arena, "window", 960, 540, 1);
 		opengl_load_functions();
-		glEnable(GL_FRAMEBUFFER_SRGB);
+		//glEnable(GL_FRAMEBUFFER_SRGB);
 		r_opengl_init();
 		d_init();
 		a_init();
@@ -41,7 +41,8 @@ void update_and_render(void *memory, f32 delta)
 		
 		char codepoints[] =
 		{
-			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y','z',
+			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 
+			's', 't', 'u', 'v', 'w', 'x', 'y','z',
 			
 			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
 			'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',

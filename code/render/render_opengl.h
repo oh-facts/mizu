@@ -88,28 +88,6 @@ vec4 fade[Corner_COUNT];
     R_Handle handle;
 };
 
-vec3 rgb2hsv(vec3 rgb) {
-    float maxComponent = max(rgb.r, max(rgb.g, rgb.b));
-    float minComponent = min(rgb.r, min(rgb.g, rgb.b));
-    float diff = maxComponent - minComponent;
-    float hue = 0.0;
-    
-    if (maxComponent == rgb.r) {
-        hue = (rgb.g - rgb.b) / diff;
-    } else if (maxComponent == rgb.g) {
-        hue = 2.0 + (rgb.b - rgb.r) / diff;
-    } else if (maxComponent == rgb.b) {
-        hue = 4.0 + (rgb.r - rgb.g) / diff;
-    }
-    
-    hue = fract(hue / 6.0);
-    float saturation = (maxComponent == 0.0) ? 0.0 : (diff / maxComponent);
-    float value = maxComponent;
-    
-    return vec3(hue, saturation, value);
-}
-
-
 layout (std430, binding = 0) buffer ssbo {
     vec4 screen_size;
     TextObject objects[];
@@ -128,8 +106,8 @@ void main()
     Vertex vertices[] = {
         {{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}, obj.fade[Corner_00]},
         {{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}, obj.fade[Corner_10]},
-        {{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}, obj.fade[Corner_01]},
-        {{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_11]},
+        {{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}, obj.fade[Corner_11]},
+        {{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_01]},
     };
 
     Vertex vertex = vertices[gl_VertexID];
@@ -138,7 +116,8 @@ void main()
 tex_size.x = obj.handle.w;
     tex_size.y = obj.handle.h;
  tint = obj.tint;
-    fade = vec4(rgb2hsv(vertex.fade.xyz), 1);
+    fade = vertex.fade;
+
 tex = vertex.uv;
     vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
     norm_pos.y =  - norm_pos.y;
@@ -155,45 +134,28 @@ R"(
 	#extension GL_ARB_bindless_texture: require
 
 vec4 linear_to_srgb(vec4 linearCol) {
-    vec4 srgbCol;
-    for (int i = 0; i < 3; ++i) {
-        if (linearCol[i] <= 0.0031308) {
-            srgbCol[i] = 12.92 * linearCol[i];
-        } else {
-            srgbCol[i] = 1.055 * pow(linearCol[i], 1.0 / 2.4) - 0.055;
-        }
-    }
+		vec4 srgbCol;
+		for (int i = 0; i < 3; ++i) {
+				if (linearCol[i] <= 0.0031308) {
+						srgbCol[i] = 12.92 * linearCol[i];
+				} else {
+						srgbCol[i] = 1.055 * pow(linearCol[i], 1.0 / 2.4) - 0.055;
+				}
+		}
 srgbCol[3] = linearCol[3];
-    return srgbCol;
+		return srgbCol;
 }
 vec4 srgb_to_linear(vec4 srgbCol) {
-    vec4 linearCol;
-    for (int i = 0; i < 3; ++i) {
-        if (srgbCol[i] <= 0.04045) {
-            linearCol[i] = srgbCol[i] / 12.92;
-        } else {
-            linearCol[i] = pow((srgbCol[i] + 0.055) / 1.055, 2.4);
-        }
-    }
-    linearCol[3] = srgbCol[3];
+		vec4 linearCol;
+		for (int i = 0; i < 3; ++i) {
+				if (srgbCol[i] <= 0.04045) {
+						linearCol[i] = srgbCol[i] / 12.92;
+				} else {
+						linearCol[i] = pow((srgbCol[i] + 0.055) / 1.055, 2.4);
+				}
+		}
+		linearCol[3] = srgbCol[3];
 return linearCol;
-}
-
-vec3 hue2rgb(float hue) {
-    hue = fract(hue);
-    float r = abs(hue * 6.0 - 3.0) - 1.0;
-    float g = 2.0 - abs(hue * 6.0 - 2.0);
-    float b = 2.0 - abs(hue * 6.0 - 4.0);
-    vec3 rgb = vec3(r, g, b);
-    rgb = clamp(rgb, 0.0, 1.0);
-    return rgb;
-}
-
-vec3 hsv2rgb(vec3 hsv) {
-    vec3 rgb = hue2rgb(hsv.x); 
-    rgb = mix(vec3(1.0), rgb, hsv.y); 
-    rgb = rgb * hsv.z; 
-    return rgb;
 }
 
 in vec4 tint;
@@ -206,20 +168,19 @@ out vec4 FragColor;
 
 void main()
 {
-    vec4 tex_col = texture(sampler2D(texId), tex);
+		vec4 tex_col = texture(sampler2D(texId), tex);
 
-#if 1
-    if (tex_col.a < 0.01f)
-    {
-        discard;
-    }
+#if 0
+		if (tex_col.a < 0.01f && fade.a < 0.01f)
+		{
+				discard;
+		}
 #endif
 
-float diagonal = tex.x - tex.y;
-	 vec3 col = hsv2rgb(vec3(diagonal, tex.x, tex.y));
-
-FragColor =  srgb_to_linear(tint * tex_col);
-//FragColor = vec4(hsv2rgb(fade.xyz), 1);
+//FragColor =  tint * tex_col * fade;
+//FragColor =  srgb_to_linear(tint * tex_col);
+//FragColor = vec4(hsvToRgb(fade.xyz), 1);
+FragColor = fade * tex_col;
 }
 )"
 ;

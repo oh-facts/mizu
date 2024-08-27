@@ -225,6 +225,14 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 									
 									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_tl_varg(ed_state->selected_tile_rect));
 									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_br_varg(ed_state->selected_tile_rect));
+									
+									ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
+										ui_pref_size(ed_state->cxt, 300)
+									{
+										local_persist f32 hue = 0;
+										hue += delta * 100;
+										ui_hue_picker(ed_state->cxt, ((s32)hue) % 360, str8_lit("hue picker thing"));
+									}
 								}
 							}
 						}
@@ -307,7 +315,7 @@ void ed_draw_children(ED_Panel *panel, UI_Widget *root)
 		d_draw_text(root->text, root->pos, &params);
 	}
 	
-	if(root->flags & UI_Flags_has_img)
+	if(root->flags & UI_Flags_has_custom_draw)
 	{
 		root->custom_draw(root, root->custom_draw_data);
 	}

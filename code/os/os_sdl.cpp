@@ -103,11 +103,15 @@ void os_poll_events(Arena *arena, OS_Window handle, OS_Event_list *events)
 			
 			case SDL_EVENT_MOUSE_MOTION:
 			{
-				OS_Event *event = os_push_event(arena, events);
-				event->kind = OS_EventKind_MouseMove;
-				
-				event->mpos.x = sdl_event.motion.x;
-				event->mpos.y = sdl_event.motion.y;
+				if(sdl_event.motion.x < win->w && sdl_event.motion.x >= 0 && sdl_event.motion.y >= 0 && sdl_event.motion.y < win->h)
+				{
+					OS_Event *event = os_push_event(arena, events);
+					event->kind = OS_EventKind_MouseMove;
+					
+					event->mpos.x = sdl_event.motion.x;
+					event->mpos.y = sdl_event.motion.y;
+					
+				}
 			}break;
 			
 			case SDL_EVENT_MOUSE_BUTTON_UP:

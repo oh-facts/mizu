@@ -56,8 +56,8 @@ function void d_pop_bucket();
 function void d_push_proj_view(m4f proj_view);
 function void d_pop_proj_view();
 
-function void d_draw_img(Rect dst, Rect src, v4f color, R_Handle tex);
-function void d_draw_rect(Rect dst, v4f color);
+function R_Rect *d_draw_img(Rect dst, Rect src, v4f color, R_Handle tex);
+function R_Rect *d_draw_rect(Rect dst, v4f color);
 function void d_draw_text(Str8 text, v2f pos, D_Text_params *p);
 
 #endif //DRAW_H

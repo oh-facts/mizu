@@ -70,25 +70,26 @@ void d_pop_proj_view()
 	bucket->proj_view_top = bucket->proj_view_top->next;
 }
 
-void d_draw_img(Rect dst, Rect src, v4f color, R_Handle tex)
+R_Rect *d_draw_img(Rect dst, Rect src, v4f color, R_Handle tex)
 {
 	D_Bucket *bucket = d_state->top;
 	R_Pass *pass = r_push_pass(d_state->arena, &bucket->list, R_PASS_KIND_UI);
-	R_Rect *rect = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
+	R_Rect *out = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 	
-	rect->dst = dst;
-	rect->src = src;
-	rect->fade[Corner_00] = D_COLOR_WHITE;
-	rect->fade[Corner_01] = D_COLOR_WHITE;
-	rect->fade[Corner_10] = D_COLOR_RED;
-	rect->fade[Corner_11] = D_COLOR_WHITE;
+	out->dst = dst;
+	out->src = src;
+	out->fade[Corner_00] = color;
+	out->fade[Corner_01] = color;
+	out->fade[Corner_10] = color;
+	out->fade[Corner_11] = color;
+	out->tex = tex;
+	out->color = color;
 	
-	rect->tex = tex;
-	rect->color = color;
-	//pass->rect_pass.proj_view = bucket->proj_view_top->v;
+	return out;
+	//pass->out_pass.proj_view = bucket->proj_view_top->v;
 }
 
-void d_draw_rect(Rect dst, v4f color)
+R_Rect *d_draw_rect(Rect dst, v4f color)
 {
 	Rect src = {};
 	src.tl.x = 0;
@@ -96,7 +97,7 @@ void d_draw_rect(Rect dst, v4f color)
 	src.br.x = 1;
 	src.br.y = 1;
 	
-	d_draw_img(dst, src, color, d_state->white_square);
+	return d_draw_img(dst, src, color, d_state->white_square);
 }
 
 void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
@@ -144,6 +145,11 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		rect->src.tl.y = 0;
 		rect->src.br.x = 1;
 		rect->src.br.y = 1;
+		
+		rect->fade[Corner_00] = p->color;;
+		rect->fade[Corner_01] = p->color;;
+		rect->fade[Corner_10] = p->color;;
+		rect->fade[Corner_11] = p->color;;
 		
 		rect->tex = p->atlas_tex[(u32)c];
 		rect->color = p->color;
