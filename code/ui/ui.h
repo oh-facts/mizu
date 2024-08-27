@@ -735,6 +735,8 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 #define ui_row(v) UI_DeferLoop(ui_begin_row(v), ui_end_row(v))
 #define ui_col(v) UI_DeferLoop(ui_begin_col(v), ui_end_col(v))
 
+#define ui_parent(cxt, v) UI_DeferLoop(ui_push_parent(cxt, v), ui_pop_parent(cxt))
+
 #define ui_fixed_pos(cxt, v) UI_DeferLoop(ui_push_fixed_pos(cxt, v), ui_pop_fixed_pos(cxt))
 #define ui_text_color(cxt, v) UI_DeferLoop(ui_push_text_color(cxt, v), ui_pop_text_color(cxt))
 #define ui_bg_color(cxt, v) UI_DeferLoop(ui_push_bg_color(cxt, v), ui_pop_bg_color(cxt))
@@ -744,9 +746,12 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 #define ui_size_kind_y(cxt, v) UI_DeferLoop(ui_push_size_kind_y(cxt, v), ui_pop_size_kind_y(cxt))
 
 
+#define ui_size_kind(cxt, v) ui_size_kind_x(cxt, v) ui_size_kind_y(cxt, v)
+
 #define ui_pref_width(cxt, v) UI_DeferLoop(ui_push_pref_width(cxt, v), ui_pop_pref_width(cxt))
 #define ui_pref_height(cxt, v) UI_DeferLoop(ui_push_pref_height(cxt, v), ui_pop_pref_height(cxt))
 
+#define ui_pref_size(cxt, v) ui_pref_width(cxt, v) ui_pref_height(cxt, v)
 
 
 function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)

@@ -7,18 +7,16 @@ void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path)
 	
 	f32 advance_y = 1 - height;
 	
-	ui_push_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum);
-	ui_col(ed_state->cxt)
+	ui_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum)
+		ui_col(ed_state->cxt)
 	{
-		
 		for(u32 i = 0; i < y; i ++)
 		{
 			f32 advance_x = 0;
 			ui_row(ed_state->cxt)
 			{
-				ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-				ui_pref_width(ed_state->cxt, 60)
-					ui_pref_height(ed_state->cxt, 60)
+				ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
+					ui_pref_size(ed_state->cxt, 60)
 				{
 					for(u32 j = 0; j < x; j++)
 					{
@@ -32,13 +30,11 @@ void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path)
 						advance_x += width;
 					}
 				}
-				ui_pop_size_kind(ed_state->cxt);
 				
 			}
 			advance_y -= height;
 		}
 	}
-	ui_pop_size_kind(ed_state->cxt);
 }
 
 void ed_update(State *state, OS_Event_list *events, f32 delta)
@@ -87,166 +83,164 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 	
 	ui_set_next_child_layout_axis(ed_state->cxt, Axis2_X);
 	UI_Widget *dad = ui_make_widget(ed_state->cxt, str8_lit(""));
-	ui_push_parent(ed_state->cxt, dad);
-	
-	for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
+	ui_parent(ed_state->cxt, dad)
 	{
-		ED_Panel *panel = ed_state->panels + i;
-		
-		ui_push_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum);
-		panel->root = ui_make_widget(ed_state->cxt, str8_lit(""));
-		panel->color = ED_THEME_BG;
-		
-		if(panel->floating)
+		for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
 		{
-			panel->root->flags = (UI_Flags)(UI_Flags_is_floating_x | UI_Flags_is_floating_y);
-		}
-		
-		ui_push_parent(ed_state->cxt, panel->root);
-		
-		ui_text_color(ed_state->cxt, ED_THEME_TEXT)
-			ui_fixed_pos(ed_state->cxt, (panel->pos))
-			ui_col(ed_state->cxt)
-		{
-			// NOTE(mizu):  title bar, dragging and hiding
-			ui_row(ed_state->cxt)
+			ED_Panel *panel = ed_state->panels + i;
+			
+			ui_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum)
 			{
-				UI_Signal hide = {};
-				
-				ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
-				
-				UI_Signal res = {};
-				
-				ui_pref_height(ed_state->cxt, 30)
-					ui_size_kind_y(ed_state->cxt, UI_SizeKind_Pixels)
-				{
-					res = ui_label(ed_state->cxt, panel->name);
-				}
+				panel->root = ui_make_widget(ed_state->cxt, str8_lit(""));
+				panel->color = ED_THEME_BG;
 				
 				if(panel->floating)
 				{
-					ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-					ui_pref_width(ed_state->cxt, 30)
-					{
-						ui_spacer(ed_state->cxt);
-					}
-					ui_pop_size_kind(ed_state->cxt);
-					hide = ui_labelf(ed_state->cxt, "hide%d",i);
-				}
-				else
-				{
-					hide = res;
+					panel->root->flags = (UI_Flags)(UI_Flags_is_floating_x | UI_Flags_is_floating_y);
 				}
 				
-				if(res.active)
+				ui_parent(ed_state->cxt, panel->root)
+					ui_text_color(ed_state->cxt, ED_THEME_TEXT)
+					ui_fixed_pos(ed_state->cxt, (panel->pos))
+					ui_col(ed_state->cxt)
 				{
-					panel->grabbed = 1;
-				}
-				
-				if(hide.active)
-				{
-					panel->hide = !panel->hide;
-				}
-				
-				os_mouse_released(&state->events, OS_MouseButton_Left);
-				
-				if(os_mouse_held(OS_MouseButton_Left) && panel->grabbed)
-				{
-					panel->pos += (ed_state->cxt->mpos - ed_state->old_pos);
-				}
-				else
-				{
-					panel->grabbed = 0;
-				}
-				ui_pop_size_kind(ed_state->cxt);
-			}
-			
-			if(!panel->hide)
-			{
-				if((ED_PanelKind)i == ED_PanelKind_TileSetViewer)
-				{
-					ed_draw_spritesheet(ed_state, 3, 3, str8_lit("debug/numbers.png"));
-					ed_draw_spritesheet(ed_state, 3, 2, str8_lit("fox/fox.png"));
-					ed_draw_spritesheet(ed_state, 3, 3, str8_lit("impolo/impolo-east.png"));
-					ed_draw_spritesheet(ed_state, 3, 1, str8_lit("tree/trees.png"));
-					ed_draw_spritesheet(ed_state, 3, 3, str8_lit("grass/grass_tile.png"));
-				}
-				else if((ED_PanelKind)i == ED_PanelKind_Debug)
-				{
-					panel->update_timer += delta;
-					if(panel->update_timer > 1.f)
+					// NOTE(mizu):  title bar, dragging and hiding
+					ui_row(ed_state->cxt)
 					{
-						panel->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
-						panel->ft = delta;
-						panel->update_timer = 0;
-					}
-					
-					ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
-					if(ui_labelf(ed_state->cxt, "cc : %.f K", panel->cc).active)
-					{
-						printf("pressed\n");
-					}
-					
-					ui_labelf(ed_state->cxt, "ft : %.fms", panel->ft * 1000);
-					ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
-					ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
-					ui_labelf(ed_state->cxt, "textures: %.1f MB", a_asset_cache->tex_mem * 0.000001);
-					
-					for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
-					{
-						if(ui_labelf(ed_state->cxt, "%d. [%.f, %.f]", i, ed_state->panels[i].pos.x, ed_state->panels[i].pos.y).active)
-						{
-							ed_state->panels[i].floating = !ed_state->panels[i].floating; 
-						}
-					}
-					ui_pop_size_kind(ed_state->cxt);
-					
-					R_Handle face = a_handle_from_path(str8_lit("debug/toppema.png"));
-					
-					ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-					ui_pref_width(ed_state->cxt, 100)
-						ui_pref_height(ed_state->cxt, 100)
-					{
-						ui_image(ed_state->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
-					}
-					ui_pop_size_kind(ed_state->cxt);
-				}
-				else if((ED_PanelKind)i == ED_PanelKind_Inspector)
-				{
-					if(ed_state->selected_tile.len > 0)
-					{
-						ui_push_size_kind(ed_state->cxt, UI_SizeKind_TextContent);
-						ui_labelf(ed_state->cxt, "%.*s", str8_varg(ed_state->selected_tile));
+						UI_Signal hide = {};
 						
-						ui_push_size_kind(ed_state->cxt, UI_SizeKind_Pixels);
-						ui_pref_width(ed_state->cxt, 100)
-							ui_pref_height(ed_state->cxt, 100)
+						ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
 						{
-							R_Handle img = a_handle_from_path(ed_state->selected_tile);
+							UI_Signal res = {};
 							
-							ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, D_COLOR_WHITE, str8_lit("inspector panel image"));
+							ui_pref_height(ed_state->cxt, 30)
+								ui_size_kind_y(ed_state->cxt, UI_SizeKind_Pixels)
+							{
+								res = ui_label(ed_state->cxt, panel->name);
+							}
+							
+							if(panel->floating)
+							{
+								ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
+									ui_pref_width(ed_state->cxt, 30)
+								{
+									ui_spacer(ed_state->cxt);
+								}
+								hide = ui_labelf(ed_state->cxt, "hide%d",i);
+							}
+							else
+							{
+								hide = res;
+							}
+							
+							if(res.active)
+							{
+								panel->grabbed = 1;
+							}
+							
+							if(hide.active)
+							{
+								panel->hide = !panel->hide;
+							}
+							
+							os_mouse_released(&state->events, OS_MouseButton_Left);
+							
+							if(os_mouse_held(OS_MouseButton_Left) && panel->grabbed)
+							{
+								panel->pos += (ed_state->cxt->mpos - ed_state->old_pos);
+							}
+							else
+							{
+								panel->grabbed = 0;
+							}
 						}
-						ui_pop_size_kind(ed_state->cxt);
-						
-						ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_tl_varg(ed_state->selected_tile_rect));
-						ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_br_varg(ed_state->selected_tile_rect));
-						ui_pop_size_kind(ed_state->cxt);
-						
+					}
+					
+					if(!panel->hide)
+					{
+						if((ED_PanelKind)i == ED_PanelKind_TileSetViewer)
+						{
+							ed_draw_spritesheet(ed_state, 3, 3, str8_lit("debug/numbers.png"));
+							ed_draw_spritesheet(ed_state, 3, 2, str8_lit("fox/fox.png"));
+							ed_draw_spritesheet(ed_state, 3, 3, str8_lit("impolo/impolo-east.png"));
+							ed_draw_spritesheet(ed_state, 3, 1, str8_lit("tree/trees.png"));
+							ed_draw_spritesheet(ed_state, 3, 3, str8_lit("grass/grass_tile.png"));
+						}
+						else if((ED_PanelKind)i == ED_PanelKind_Debug)
+						{
+							panel->update_timer += delta;
+							if(panel->update_timer > 1.f)
+							{
+								panel->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
+								panel->ft = delta;
+								panel->update_timer = 0;
+							}
+							
+							ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
+							{
+								if(ui_labelf(ed_state->cxt, "cc : %.f K", panel->cc).active)
+								{
+									printf("pressed\n");
+								}
+								
+								ui_labelf(ed_state->cxt, "ft : %.fms", panel->ft * 1000);
+								ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
+								ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
+								ui_labelf(ed_state->cxt, "textures: %.1f MB", a_asset_cache->tex_mem * 0.000001);
+								
+								for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
+								{
+									if(ui_labelf(ed_state->cxt, "%d. [%.f, %.f]", i, ed_state->panels[i].pos.x, ed_state->panels[i].pos.y).active)
+									{
+										ed_state->panels[i].floating = !ed_state->panels[i].floating; 
+									}
+								}
+							}
+							
+							R_Handle face = a_handle_from_path(str8_lit("debug/toppema.png"));
+							
+							ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
+								ui_pref_size(ed_state->cxt, 100)
+							{
+								ui_image(ed_state->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
+							}
+							
+						}
+						else if((ED_PanelKind)i == ED_PanelKind_Inspector)
+						{
+							if(ed_state->selected_tile.len > 0)
+							{
+								ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
+								{
+									ui_labelf(ed_state->cxt, "%.*s", str8_varg(ed_state->selected_tile));
+									
+									
+									ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
+										ui_pref_size(ed_state->cxt, 100)
+									{
+										R_Handle img = a_handle_from_path(ed_state->selected_tile);
+										
+										ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, D_COLOR_WHITE, str8_lit("inspector panel image"));
+									}
+									
+									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_tl_varg(ed_state->selected_tile_rect));
+									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_br_varg(ed_state->selected_tile_rect));
+								}
+							}
+						}
 					}
 				}
 			}
 		}
-		ui_pop_size_kind(ed_state->cxt);
-		ui_pop_parent(ed_state->cxt);
+		ui_layout(dad);
+		
+		for(u32 i = 0; i < 4; i ++)
+		{
+			ED_Panel *p = ed_state->panels + i;
+			ed_draw_panel(p);
+		}
+		
 	}
-	ui_layout(dad);
-	
-	for(u32 i = 0; i < 4; i ++)
-	{
-		ED_Panel *p = ed_state->panels + i;
-		ed_draw_panel(p);
-	}
-	ui_pop_parent(ed_state->cxt);
 	ui_end(ed_state->cxt);
 	
 	ed_state->old_pos = ed_state->cxt->mpos;

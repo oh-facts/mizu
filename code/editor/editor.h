@@ -7,7 +7,6 @@
 
 #define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
 
-
 enum ED_PanelKind
 {
 	ED_PanelKind_TileSetViewer,
