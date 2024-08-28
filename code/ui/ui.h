@@ -792,6 +792,98 @@ function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, 
 	return out;
 }
 
+
+
+
+///
+
+struct UI_AlphaPickerDrawData
+{
+	v3f hsv;
+	f32 alpha;
+};
+
+function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
+{
+	UI_AlphaPickerDrawData *draw_data = (UI_AlphaPickerDrawData *)user_data;
+	
+	//Rect w_rect = rect(widget->pos, widget->size);
+	
+	{
+		//R_Rect *recty = d_draw_rect(w_rect, D_COLOR_BLACK);
+		
+		//recty->fade[Corner_00] = v4f{{0,0,0,0}};
+		//recty->fade[Corner_01] = v4f{{0, 0, 0, 1}};
+		//recty->fade[Corner_10] = v4f{{0,0,0,0}};
+		//recty->fade[Corner_11] = v4f{{0, 0, 0, 1}};
+	}
+	
+	// indicator
+	{
+		v2f size = {.x = 4, .y = 4};
+		v2f pos = widget->pos;
+		pos.x += draw_data->alpha * widget->size.x;
+		pos.y += widget->size.y / 2;
+		
+		pos -= size/2;
+		
+		Rect recty = rect(pos, size);
+		
+		v4f color = D_COLOR_WHITE;
+		
+		d_draw_rect(recty, color);
+	}
+	
+}
+
+function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 text)
+{
+	UI_Widget *widget = ui_make_widget(cxt, text);
+	widget->flags = UI_Flags_has_custom_draw;
+	
+	UI_AlphaPickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_AlphaPickerDrawData);
+	draw_data->hsv = hsv;
+	draw_data->alpha = *alpha;
+	
+	widget->custom_draw = ui_alpha_picker_draw;
+	widget->custom_draw_data = draw_data;
+	
+	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
+	{
+		s32 _alpha;
+		_alpha = (cxt->mpos.x - widget->pos.x) / widget->size.x;
+		_alpha = ClampTop(_alpha, 1);
+		_alpha = ClampBot(_alpha, 0);
+		
+		*alpha = _alpha;
+	}
+	
+	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
+	widget->hot = hot;
+	
+	UI_Signal out = {};
+	out.hot = hot;
+	out.active = widget->active;
+	out.toggle = widget->toggle;
+	
+	return out;
+}
+
+function UI_Signal ui_alpha_pickerf(UI_Context *cxt, v3f hsv, f32 *alpha, char *fmt, ...)
+{
+	Arena_temp temp = scratch_begin(0,0);
+	va_list args;
+	va_start(args, fmt);
+	Str8 text = push_str8fv(temp.arena, fmt, args);
+	va_end(args);
+	
+	UI_Signal out = ui_alpha_picker(cxt, hsv, alpha,text);
+	
+	arena_temp_end(&temp);
+	
+	return out;
+}
+
 struct UI_HuePickerDrawData
 {
 	s32 hue;

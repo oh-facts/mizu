@@ -247,6 +247,9 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 										ui_pref_height(ed_state->cxt, 40)
 										{
 											ui_hue_picker(ed_state->cxt, &ed_state->hue, str8_lit("hue picker thing"));
+											
+											v3f hsv = {{ed_state->hue * 1.f, ed_state->sat, ed_state->val}};
+											ui_alpha_picker(ed_state->cxt, hsv, &ed_state->alpha, str8_lit("alpha picker thing"));
 										}
 									}
 									ui_labelf(ed_state->cxt, "hsv: %d, %d%, %d%", ed_state->hue, (s32)(ed_state->sat * 100), (s32)(ed_state->val * 100));

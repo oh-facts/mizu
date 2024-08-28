@@ -45,6 +45,7 @@ struct ED_State
 	s32 hue;
 	f32 sat;
 	f32 val;
+	f32 alpha;
 };
 
 struct State;
