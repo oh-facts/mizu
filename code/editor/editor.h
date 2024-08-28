@@ -41,6 +41,10 @@ struct ED_State
 	
 	Str8 selected_tile;
 	Rect selected_tile_rect;
+	
+	s32 hue;
+	f32 sat;
+	f32 val;
 };
 
 struct State;

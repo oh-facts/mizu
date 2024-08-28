@@ -676,12 +676,15 @@ v3f hsv_to_rgb(v3f hsv)
 struct UI_SatPickerDrawData
 {
 	s32 hue;
+	f32 sat;
+	f32 val;
 };
 
 function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 {
-	
 	UI_SatPickerDrawData *draw_data = (UI_SatPickerDrawData *)user_data;
+	
+	Rect w_rect = rect(widget->pos, widget->size);
 	
 	{
 		//static f32 red = 0;
@@ -694,7 +697,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		col.z = rgb.z;
 		col.w = 1;
 		
-		R_Rect *recty = d_draw_rect(rect(widget->pos, widget->size), {{0,0,0,0.1}});
+		R_Rect *recty = d_draw_rect(w_rect, {{0,0,0,0.1}});
 		
 		recty->fade[Corner_00] = v4f{{1, 1, 1, 1}};
 		recty->fade[Corner_01] = v4f{{1, 1, 1, 1}};
@@ -703,25 +706,58 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 	}
 	
 	{
-		R_Rect *recty = d_draw_rect(rect(widget->pos, widget->size), {{0,0,0,0}});
+		R_Rect *recty = d_draw_rect(w_rect, {{0,0,0,0}});
 		
 		recty->fade[Corner_00] = v4f{{0,0,0,0}};
 		recty->fade[Corner_01] = v4f{{0, 0, 0, 1}};
 		recty->fade[Corner_10] = v4f{{0,0,0,0}};
 		recty->fade[Corner_11] = v4f{{0, 0, 0, 1}};
 	}
+	
+	// indicator
+	{
+		v2f size = {.x = 4, .y = 4};
+		v2f pos = widget->pos;
+		pos.x += draw_data->sat * widget->size.x;
+		pos.y += (1 - draw_data->val) * widget->size.y;
+		
+		pos -= size/2;
+		
+		Rect recty = rect(pos, size);
+		
+		d_draw_rect(recty, D_COLOR_WHITE);
+	}
+	
 }
 
-function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, Str8 text)
+function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
 	
 	UI_SatPickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_SatPickerDrawData);
 	draw_data->hue = hue;
+	draw_data->sat = *sat;
+	draw_data->val = *val;
 	
 	widget->custom_draw = ui_sat_picker_draw;
 	widget->custom_draw_data = draw_data;
+	
+	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
+	{
+		f32 _sat, _val;
+		_sat = (cxt->mpos.x - widget->pos.x) / widget->size.x;
+		_val = 1 - (cxt->mpos.y - widget->pos.y) / widget->size.y;
+		
+		_sat = ClampTop(_sat, 1);
+		_sat = ClampBot(_sat, 0);
+		
+		_val = ClampTop(_val, 1);
+		_val = ClampBot(_val, 0);
+		
+		*sat = _sat;
+		*val = _val;
+	}
 	
 	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
 	widget->hot = hot;
@@ -734,7 +770,7 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, Str8 text)
 	return out;
 }
 
-function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, char *fmt, ...)
+function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, char *fmt, ...)
 {
 	Arena_temp temp = scratch_begin(0,0);
 	va_list args;
@@ -742,12 +778,17 @@ function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, char *fmt, ...)
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
-	UI_Signal out = ui_sat_picker(cxt, hue, text);
+	UI_Signal out = ui_sat_picker(cxt, hue, sat, val, text);
 	
 	arena_temp_end(&temp);
 	
 	return out;
 }
+
+struct UI_HuePickerDrawData
+{
+	s32 hue;
+};
 
 function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 {
@@ -779,15 +820,43 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		segment_rect.br.x += segment;
 		
 	}
+	
+	UI_HuePickerDrawData *draw_data = (UI_HuePickerDrawData*)user_data;
+	
+	// indicator
+	{
+		f32 size = 4;
+		v2f pos = widget->pos;
+		pos.x += ((draw_data->hue * 1.f - size/2) * widget->size.x) / 360;
+		pos.y += widget->size.y / 2;
+		
+		Rect recty = rect(pos, {{size,size}});
+		
+		d_draw_rect(recty, D_COLOR_BLACK);
+	}
+	
 }
 
-function UI_Signal ui_hue_picker(UI_Context *cxt, Str8 text)
+function UI_Signal ui_hue_picker(UI_Context *cxt, s32 *hue, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
 	
+	UI_HuePickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_HuePickerDrawData);
+	draw_data->hue = *hue;
+	
 	widget->custom_draw = ui_hue_picker_draw;
-	widget->custom_draw_data = 0;
+	widget->custom_draw_data = draw_data;
+	
+	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
+	{
+		s32 _hue;
+		_hue = ((cxt->mpos.x - widget->pos.x) / widget->size.x) * 360;
+		_hue = ClampTop(_hue, 360);
+		_hue = ClampBot(_hue, 0);
+		
+		*hue = _hue;
+	}
 	
 	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
 	widget->hot = hot;
@@ -800,7 +869,7 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, Str8 text)
 	return out;
 }
 
-function UI_Signal ui_hue_pickerf(UI_Context *cxt, char *fmt, ...)
+function UI_Signal ui_hue_pickerf(UI_Context *cxt, s32 *hue, char *fmt, ...)
 {
 	Arena_temp temp = scratch_begin(0,0);
 	va_list args;
@@ -808,7 +877,7 @@ function UI_Signal ui_hue_pickerf(UI_Context *cxt, char *fmt, ...)
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
-	UI_Signal out = ui_hue_picker(cxt, text);
+	UI_Signal out = ui_hue_picker(cxt, hue, text);
 	
 	arena_temp_end(&temp);
 	

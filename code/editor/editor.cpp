@@ -56,7 +56,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		
 		{
 			ED_Panel *p = ed_state->panels + ED_PanelKind_TileMap;
-			p->pos = {{312, 353}};
+			p->pos = {{806, 417}};
 			p->scale = v2f{{1.6,0.3}};
 			p->name = push_str8f(ed_state->arena, "tile map");
 			p->floating = 1;
@@ -75,6 +75,11 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			p->hide = 0;
 			p->name = push_str8f(ed_state->arena, "Inspector");
 		}
+		
+		ed_state->hue = 0;
+		ed_state->sat = 0;
+		ed_state->val = 1;
+		
 		ed_state->initialized = 1;
 	}
 	
@@ -220,21 +225,29 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 									{
 										R_Handle img = a_handle_from_path(ed_state->selected_tile);
 										
-										ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, D_COLOR_WHITE, str8_lit("inspector panel image"));
+										v3f color =  hsv_to_rgb(v3f{{ed_state->hue * 1.f, ed_state->sat, ed_state->val}});
+										v4f colora = 
+										{
+											.x = color.x,
+											.y = color.y,
+											.z = color.z,
+											.w = 1
+										};
+										
+										ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, colora, str8_lit("inspector panel image"));
 									}
 									
 									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_tl_varg(ed_state->selected_tile_rect));
 									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_br_varg(ed_state->selected_tile_rect));
 									
 									ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
-										ui_pref_size(ed_state->cxt, 300)
+										ui_pref_size(ed_state->cxt, 360)
 									{
-										local_persist f32 hue = 0;
-										hue += delta * 100;
-										ui_sat_picker(ed_state->cxt, ((s32)hue) % 360, str8_lit("sat picker thing"));
-										ui_pref_height(ed_state->cxt, 20)
+										ui_sat_picker(ed_state->cxt, ed_state->hue, &ed_state->sat, &ed_state->val, str8_lit("sat picker thing"));
+										ui_pref_height(ed_state->cxt, 40)
 										{
-											ui_hue_picker(ed_state->cxt, str8_lit("hue picker thing"));
+											ui_hue_picker(ed_state->cxt, &ed_state->hue, str8_lit("hue picker thing"));
+											ui_labelf(ed_state->cxt, "hsv: %d, %.2f, %.2f", ed_state->hue, ed_state->sat, ed_state->val);
 										}
 									}
 								}
