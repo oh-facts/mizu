@@ -725,7 +725,14 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		
 		Rect recty = rect(pos, size);
 		
-		d_draw_rect(recty, D_COLOR_WHITE);
+		v4f color = D_COLOR_WHITE;
+		
+		if(draw_data->val > 0.5)
+		{
+			color = D_COLOR_BLACK;
+		}
+		
+		d_draw_rect(recty, color);
 	}
 	
 }
