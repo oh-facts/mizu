@@ -53,7 +53,14 @@ union v3f
 union v4f
 {
   f32 e[4];
-  struct
+  
+	struct
+	{
+		v3f xyz;
+		f32 aw;
+	};
+	
+	struct
   {
     f32 x;
     f32 y;
@@ -61,7 +68,6 @@ union v4f
     f32 w;
   };
 	
-  union v3f xyz;
 };
 
 union m4f

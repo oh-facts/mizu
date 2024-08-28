@@ -38,6 +38,25 @@ function Rect rect(v2f pos, v2f scale)
 	return out;
 }
 
+function v2f size_from_rect(Rect rect)
+{
+	v2f out = {};
+	out.x = rect.br.x - rect.tl.x;
+	out.y = rect.br.y - rect.tl.y;
+	
+	return out;
+}
+
+function v2f center_from_rect(Rect rect)
+{
+	v2f out = {};
+	
+	out.x = (rect.br.x + rect.tl.x) / 2.f;
+	out.y = (rect.br.y + rect.tl.y) / 2.f;
+	
+	return out;
+}
+
 struct Bitmap
 {
 	void *data;

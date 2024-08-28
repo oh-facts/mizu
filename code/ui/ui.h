@@ -673,15 +673,15 @@ v3f hsv_to_rgb(v3f hsv)
 	return rgb;
 }
 
-struct UI_HuePickerDrawData
+struct UI_SatPickerDrawData
 {
 	s32 hue;
 };
 
-function UI_CUSTOM_DRAW(ui_hue_picker_draw)
+function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 {
 	
-	UI_HuePickerDrawData *draw_data = (UI_HuePickerDrawData *)user_data;
+	UI_SatPickerDrawData *draw_data = (UI_SatPickerDrawData *)user_data;
 	
 	{
 		//static f32 red = 0;
@@ -712,15 +712,15 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 	}
 }
 
-function UI_Signal ui_hue_picker(UI_Context *cxt, s32 hue, Str8 text)
+function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
 	
-	UI_HuePickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_HuePickerDrawData);
+	UI_SatPickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_SatPickerDrawData);
 	draw_data->hue = hue;
 	
-	widget->custom_draw = ui_hue_picker_draw;
+	widget->custom_draw = ui_sat_picker_draw;
 	widget->custom_draw_data = draw_data;
 	
 	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
@@ -734,7 +734,7 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, s32 hue, Str8 text)
 	return out;
 }
 
-function UI_Signal ui_hue_pickerf(UI_Context *cxt, s32 hue, char *fmt, ...)
+function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, char *fmt, ...)
 {
 	Arena_temp temp = scratch_begin(0,0);
 	va_list args;
@@ -742,7 +742,7 @@ function UI_Signal ui_hue_pickerf(UI_Context *cxt, s32 hue, char *fmt, ...)
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
-	UI_Signal out = ui_hue_picker(cxt, hue, text);
+	UI_Signal out = ui_sat_picker(cxt, hue, text);
 	
 	arena_temp_end(&temp);
 	

@@ -100,6 +100,7 @@ void update_and_render(void *memory, f32 delta)
 	
 	//f32 zoom = 2;
 	v2s win_size = os_get_window_size(state->win);
+	
 	//f32 aspect = (win_size.x * 1.f)/ win_size.y;
 	
 	D_Bucket *draw = d_bucket();
@@ -109,6 +110,14 @@ void update_and_render(void *memory, f32 delta)
 	d_draw_img(rect(0,0,1920,1080), rect(0,0,1,1), D_COLOR_WHITE, bg);
 	
 	ed_update(state, &state->events, delta);
+	
+	// hue bar
+	
+	// white bg
+	{
+		//Rect box_rect = rect(400, 400, 600, 450);
+		//d_draw_rect(box_rect, D_COLOR_WHITE);
+	}
 	
 	//d_pop_proj_view();
 	

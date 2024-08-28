@@ -231,7 +231,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 									{
 										local_persist f32 hue = 0;
 										hue += delta * 100;
-										ui_hue_picker(ed_state->cxt, ((s32)hue) % 360, str8_lit("hue picker thing"));
+										ui_sat_picker(ed_state->cxt, ((s32)hue) % 360, str8_lit("sat picker thing"));
 									}
 								}
 							}
