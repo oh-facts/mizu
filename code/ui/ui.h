@@ -749,6 +749,72 @@ function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, char *fmt, ...)
 	return out;
 }
 
+function UI_CUSTOM_DRAW(ui_hue_picker_draw)
+{
+	Rect box_rect = rect(widget->pos, widget->size);
+	f32 samples = 360;
+	
+	f32 segment = size_from_rect(box_rect).x / samples;
+	Rect segment_rect = box_rect;
+	segment_rect.br.x = segment_rect.tl.x + segment;
+	
+	for(s32 i = 0; i < samples; i++)
+	{
+		f32 hue = i;
+		f32 hue2 = (i+1);
+		v3f rgb = hsv_to_rgb(v3f{{hue, 1, 1}});
+		v3f rgb2 = hsv_to_rgb(v3f{{hue2, 1, 1}});
+		
+		v4f rgba = {.xyz = rgb, .aw = 1}; 
+		v4f rgba2 = {.xyz = rgb2, .aw = 1};
+		
+		R_Rect *recty = d_draw_rect(segment_rect, {});
+		
+		recty->fade[Corner_00] = rgba;
+		recty->fade[Corner_01] = rgba;
+		recty->fade[Corner_10] = rgba2;
+		recty->fade[Corner_11] = rgba2;
+		
+		segment_rect.tl.x += segment;
+		segment_rect.br.x += segment;
+		
+	}
+}
+
+function UI_Signal ui_hue_picker(UI_Context *cxt, Str8 text)
+{
+	UI_Widget *widget = ui_make_widget(cxt, text);
+	widget->flags = UI_Flags_has_custom_draw;
+	
+	widget->custom_draw = ui_hue_picker_draw;
+	widget->custom_draw_data = 0;
+	
+	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
+	widget->hot = hot;
+	
+	UI_Signal out = {};
+	out.hot = hot;
+	out.active = widget->active;
+	out.toggle = widget->toggle;
+	
+	return out;
+}
+
+function UI_Signal ui_hue_pickerf(UI_Context *cxt, char *fmt, ...)
+{
+	Arena_temp temp = scratch_begin(0,0);
+	va_list args;
+	va_start(args, fmt);
+	Str8 text = push_str8fv(temp.arena, fmt, args);
+	va_end(args);
+	
+	UI_Signal out = ui_hue_picker(cxt, text);
+	
+	arena_temp_end(&temp);
+	
+	return out;
+}
+
 struct UI_ImageDrawData
 {
 	R_Handle img;
