@@ -3,7 +3,7 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 1}}
+#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 0.8}}
 
 #define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
 

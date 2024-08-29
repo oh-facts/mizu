@@ -243,6 +243,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 											ui_alpha_picker(ed_state->cxt, ed_state->hsva.xyz, &ed_state->hsva.w, str8_lit("alpha picker thing"));
 										}
 									}
+									
 									s32 hue = ed_state->hsva.x;
 									s32 sat = ed_state->hsva.y * 100;
 									s32 val = ed_state->hsva.z * 100;

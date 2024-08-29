@@ -111,14 +111,6 @@ void update_and_render(void *memory, f32 delta)
 	
 	ed_update(state, &state->events, delta);
 	
-	// hue bar
-	
-	// white bg
-	{
-		//Rect box_rect = rect(400, 400, 600, 450);
-		//d_draw_rect(box_rect, D_COLOR_WHITE);
-	}
-	
 	//d_pop_proj_view();
 	
 	r_submit(&draw->list, win_size);
