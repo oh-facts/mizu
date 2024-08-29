@@ -60,6 +60,12 @@ global R_Texture_params tiled_params = {
 	R_TEXTURE_WRAP_REPEAT
 };
 
+global R_Texture_params pixel_tiled_params = {
+	R_TEXTURE_FILTER_NEAREST,
+	R_TEXTURE_FILTER_NEAREST,
+	R_TEXTURE_WRAP_REPEAT
+};
+
 global R_Texture_params pixel_params = {
 	R_TEXTURE_FILTER_NEAREST,
 	R_TEXTURE_FILTER_NEAREST,

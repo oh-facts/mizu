@@ -142,6 +142,8 @@ struct UI_Context
 	
 	UI_Widget *widget_free_list;
 	
+	R_Handle alpha_picker_bg;
+	
 	ui_make_style_struct_stack(Parent, parent);
 	ui_make_style_struct_stack(Color, text_color);
 	ui_make_style_struct_stack(Color, bg_color);
@@ -367,6 +369,13 @@ function UI_Context *ui_alloc_cxt()
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
 	
 	cxt->frames = 0;
+	
+	u32 alpha_bg[] = {
+		0xFF808080, 0xFFc0c0c0,
+		0xFFc0c0c0, 0xFF808080,
+	};
+	
+	cxt->alpha_picker_bg = r_alloc_texture(alpha_bg, 2, 2, 4, &pixel_tiled_params);
 	
 	return cxt;
 }
@@ -792,30 +801,44 @@ function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, 
 	return out;
 }
 
-
-
-
-///
-
 struct UI_AlphaPickerDrawData
 {
 	v3f hsv;
 	f32 alpha;
 };
 
+v4f v4f_from_v3f(v3f a, f32 b)
+{
+	v4f out = {};
+	out.x = a.x;
+	out.y = a.y;
+	out.z = a.z;
+	out.w = b;
+	return out;
+}
+
 function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 {
 	UI_AlphaPickerDrawData *draw_data = (UI_AlphaPickerDrawData *)user_data;
 	
-	//Rect w_rect = rect(widget->pos, widget->size);
+	Rect w_rect = rect(widget->pos, widget->size);
 	
+	// checker pattern
 	{
-		//R_Rect *recty = d_draw_rect(w_rect, D_COLOR_BLACK);
+		v2f dim = size_from_rect(w_rect);
+		d_draw_img(w_rect, rect(0, 0, dim.x / 10, dim.y / 10), D_COLOR_WHITE, widget->img);
+	}
+	
+	// alpha fade
+	{
+		R_Rect *recty = d_draw_rect(w_rect, {{}});
 		
-		//recty->fade[Corner_00] = v4f{{0,0,0,0}};
-		//recty->fade[Corner_01] = v4f{{0, 0, 0, 1}};
-		//recty->fade[Corner_10] = v4f{{0,0,0,0}};
-		//recty->fade[Corner_11] = v4f{{0, 0, 0, 1}};
+		recty->fade[Corner_00] = v4f{{0,0,0,0}};
+		recty->fade[Corner_01] = v4f{{0, 0, 0, 0}};
+		
+		v4f col = v4f_from_v3f(hsv_to_rgb(draw_data->hsv), 1);
+		recty->fade[Corner_10] = col;
+		recty->fade[Corner_11] = col;
 	}
 	
 	// indicator
@@ -840,6 +863,7 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
+	widget->img = cxt->alpha_picker_bg;
 	
 	UI_AlphaPickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_AlphaPickerDrawData);
 	draw_data->hsv = hsv;
@@ -850,7 +874,7 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 	
 	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
 	{
-		s32 _alpha;
+		f32 _alpha;
 		_alpha = (cxt->mpos.x - widget->pos.x) / widget->size.x;
 		_alpha = ClampTop(_alpha, 1);
 		_alpha = ClampBot(_alpha, 0);
@@ -877,7 +901,7 @@ function UI_Signal ui_alpha_pickerf(UI_Context *cxt, v3f hsv, f32 *alpha, char *
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
-	UI_Signal out = ui_alpha_picker(cxt, hsv, alpha,text);
+	UI_Signal out = ui_alpha_picker(cxt, hsv, alpha, text);
 	
 	arena_temp_end(&temp);
 	

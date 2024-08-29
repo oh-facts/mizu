@@ -79,6 +79,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		ed_state->hue = 0;
 		ed_state->sat = 0;
 		ed_state->val = 1;
+		ed_state->alpha = 1;
 		
 		ed_state->initialized = 1;
 	}
@@ -231,7 +232,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 											.x = color.x,
 											.y = color.y,
 											.z = color.z,
-											.w = 1
+											.w = ed_state->alpha
 										};
 										
 										ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, colora, str8_lit("inspector panel image"));
@@ -256,7 +257,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 									
 									v3f rgb = hsv_to_rgb({{ed_state->hue * 1.f, ed_state->sat, ed_state->val}});
 									
-									ui_labelf(ed_state->cxt, "rgb: %.2f, %.2f, %.2f", rgb.x, rgb.y, rgb.z);
+									ui_labelf(ed_state->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", rgb.x, rgb.y, rgb.z, ed_state->alpha);
 								}
 							}
 						}
