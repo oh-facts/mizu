@@ -29,13 +29,6 @@ struct UI_Size
 	f32 strictness;
 };
 
-struct UI_Signal
-{
-	b32 hot;
-	b32 active;
-	b32 toggle;
-};
-
 enum UI_Flags
 {
 	UI_Flags_has_text = 1 << 0,
@@ -48,6 +41,15 @@ enum UI_Flags
 };
 
 struct UI_Widget;
+
+struct UI_Signal
+{
+	UI_Widget *widget;
+	b32 hot;
+	b32 active;
+	b32 toggle;
+};
+
 #define UI_CUSTOM_DRAW(name) void name(struct UI_Widget *widget, void *user_data)
 typedef UI_CUSTOM_DRAW(UI_WidgetCustomDrawFunctionType);
 
@@ -142,8 +144,6 @@ struct UI_Context
 	
 	UI_Widget *widget_free_list;
 	
-	R_Handle alpha_picker_bg;
-	
 	ui_make_style_struct_stack(Parent, parent);
 	ui_make_style_struct_stack(Color, text_color);
 	ui_make_style_struct_stack(Color, bg_color);
@@ -191,22 +191,30 @@ function text_extent ui_text_spacing_stats(Glyph *atlas, Str8 text, f32 scale)
 	return out;
 }
 
-function b32 ui_signal(v2f pos, v2f size, v2f mpos)
+function UI_Signal ui_signal(UI_Widget *widget, v2f mpos)
 {
-	b32 hot = 0;
+	UI_Signal out = {};
+	
 	v2f tl = {};
-	tl.x = pos.x;
-	tl.y = pos.y;
+	tl.x = widget->pos.x;
+	tl.y = widget->pos.y;
 	
 	v2f br = {};
-	br.x = tl.x + size.x;
-	br.y = tl.y + size.y;
+	br.x = tl.x + widget->size.x;
+	br.y = tl.y + widget->size.y;
 	
 	if(mpos.x > tl.x && mpos.x < br.x && mpos.y > tl.y && mpos.y < br.y)
 	{
-		hot = true;
+		out.hot = true;
 	}
-	return hot;
+	
+	widget->hot = out.hot;
+	
+	out.active = widget->active;
+	out.toggle = widget->toggle;
+	out.widget = widget;
+	
+	return out;
 }
 
 function UI_Widget *ui_alloc_widget(UI_Context *cxt)
@@ -369,13 +377,6 @@ function UI_Context *ui_alloc_cxt()
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
 	
 	cxt->frames = 0;
-	
-	u32 alpha_bg[] = {
-		0xFF808080, 0xFFc0c0c0,
-		0xFFc0c0c0, 0xFF808080,
-	};
-	
-	cxt->alpha_picker_bg = r_alloc_texture(alpha_bg, 2, 2, 4, &pixel_tiled_params);
 	
 	return cxt;
 }
@@ -567,13 +568,7 @@ function UI_Signal ui_begin_named_rowf(UI_Context *cxt, char *fmt, ...)
 	ui_push_parent(cxt, widget);
 	arena_temp_end(&temp);
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }
@@ -603,13 +598,7 @@ function UI_Signal ui_begin_named_colf(UI_Context *cxt, char *fmt, ...)
 	ui_push_parent(cxt, widget);
 	arena_temp_end(&temp);
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }
@@ -629,13 +618,7 @@ function UI_Signal ui_label(UI_Context *cxt, Str8 text)
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_text;
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }
@@ -653,7 +636,7 @@ function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 	return out;
 }
 
-v3f hsv_to_rgb(v3f hsv) 
+v3f hsv_to_rgb(v3f hsv)
 {
 	float h = hsv.x;
 	float s = hsv.y;
@@ -680,6 +663,19 @@ v3f hsv_to_rgb(v3f hsv)
 	
 	v3f rgb = {{ (r + m), (g + m), (b + m) }};
 	return rgb;
+}
+
+v4f hsva_to_rgba(v4f hsva)
+{
+	v3f hsv = hsv_to_rgb(hsva.xyz);
+	v4f out = {
+		.x = hsv.x,
+		.y = hsv.y,
+		.z = hsv.z,
+		.w = hsva.w,
+	};
+	
+	return out;
 }
 
 struct UI_SatPickerDrawData
@@ -775,13 +771,7 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, S
 		*val = _val;
 	}
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }
@@ -826,7 +816,7 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 	// checker pattern
 	{
 		v2f dim = size_from_rect(w_rect);
-		d_draw_img(w_rect, rect(0, 0, dim.x / 10, dim.y / 10), D_COLOR_WHITE, widget->img);
+		d_draw_img(w_rect, rect(0, 0, dim.x / 10, dim.y / 10), D_COLOR_WHITE, a_get_alpha_bg_tex());
 	}
 	
 	// alpha fade
@@ -863,7 +853,6 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
-	widget->img = cxt->alpha_picker_bg;
 	
 	UI_AlphaPickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_AlphaPickerDrawData);
 	draw_data->hsv = hsv;
@@ -882,13 +871,7 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 		*alpha = _alpha;
 	}
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }
@@ -910,7 +893,7 @@ function UI_Signal ui_alpha_pickerf(UI_Context *cxt, v3f hsv, f32 *alpha, char *
 
 struct UI_HuePickerDrawData
 {
-	s32 hue;
+	f32 hue;
 };
 
 function UI_CUSTOM_DRAW(ui_hue_picker_draw)
@@ -960,7 +943,7 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 	
 }
 
-function UI_Signal ui_hue_picker(UI_Context *cxt, s32 *hue, Str8 text)
+function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
@@ -973,7 +956,7 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, s32 *hue, Str8 text)
 	
 	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
 	{
-		s32 _hue;
+		f32 _hue;
 		_hue = ((cxt->mpos.x - widget->pos.x) / widget->size.x) * 360;
 		_hue = ClampTop(_hue, 360);
 		_hue = ClampBot(_hue, 0);
@@ -981,18 +964,12 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, s32 *hue, Str8 text)
 		*hue = _hue;
 	}
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }
 
-function UI_Signal ui_hue_pickerf(UI_Context *cxt, s32 *hue, char *fmt, ...)
+function UI_Signal ui_hue_pickerf(UI_Context *cxt, f32 *hue, char *fmt, ...)
 {
 	Arena_temp temp = scratch_begin(0,0);
 	va_list args;
@@ -1040,13 +1017,7 @@ function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, 
 	widget->custom_draw = ui_image_draw;
 	widget->custom_draw_data = draw_data;
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }
@@ -1070,13 +1041,7 @@ function UI_Signal ui_named_spacer(UI_Context *cxt, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	
-	b32 hot = ui_signal(widget->pos, widget->size, cxt->mpos);
-	widget->hot = hot;
-	
-	UI_Signal out = {};
-	out.hot = hot;
-	out.active = widget->active;
-	out.toggle = widget->toggle;
+	UI_Signal out = ui_signal(widget, cxt->mpos);
 	
 	return out;
 }

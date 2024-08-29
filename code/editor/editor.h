@@ -41,18 +41,16 @@ struct ED_State
 	
 	Str8 selected_tile;
 	Rect selected_tile_rect;
+	UI_Widget *selected_slot;
 	
-	s32 hue;
-	f32 sat;
-	f32 val;
-	f32 alpha;
+	v4f hsva;
 };
 
 struct State;
 
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
 function void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path);
-function void ed_draw_panel(ED_Panel *panel);
-function void ed_draw_children(ED_Panel *panel, UI_Widget *root);
+function void ed_draw_panel(ED_State *ed_state, ED_Panel *panel);
+function void ed_draw_children(ED_State *ed_state, ED_Panel *panel, UI_Widget *root);
 
 #endif //EDITOR_H

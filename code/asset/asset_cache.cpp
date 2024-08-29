@@ -12,6 +12,23 @@ void a_init()
 	a_asset_cache->asset_dir = str8_join(arena, app_dir, A_ASSET_DIRECTORY);
 	
 	scratch_end(&temp);
+	
+	u32 checker[16] = {
+		0xFF000000, 0xFFFF00FF, 0xFF000000, 0xFFFF00FF,
+		0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
+		0xFF000000, 0xFFFF00FF, 0xFF000000, 0xFFFF00FF,
+		0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
+	}; 
+	
+	a_asset_cache->checker_tex = r_alloc_texture(checker, 4, 4, 4, &tiled_params);
+	
+	u32 alpha_bg[] = {
+		0xFF808080, 0xFFc0c0c0,
+		0xFFc0c0c0, 0xFF808080,
+	};
+	
+	a_asset_cache->alpha_bg_tex = r_alloc_texture(alpha_bg, 2, 2, 4, &pixel_tiled_params);
+	
 }
 
 // djb2
@@ -98,23 +115,15 @@ R_Handle a_handle_from_path(Str8 path)
 		Bitmap bmp = bitmap(abs_path);
 		
 		// if bmp not found, use checkerboard art
-		
-		if(!bmp.data)
+		if(bmp.data)
 		{
-			local_persist u32 checker[16] = {
-				0xFF000000, 0xFFFF00FF, 0xFF000000, 0xFFFF00FF,
-				0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
-				0xFF000000, 0xFFFF00FF, 0xFF000000, 0xFFFF00FF,
-				0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
-			}; 
-			
-			bmp.data = checker;
-			bmp.w = 4;
-			bmp.h = 4;
-			bmp.n = 4;
+			tex_cache->v = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
+		}
+		else
+		{
+			tex_cache->v = a_get_checker_tex();
 		}
 		
-		tex_cache->v = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
 		tex_cache->key = hash;
 		tex_cache->loaded = 1;
 		
@@ -186,4 +195,14 @@ void a_evict()
 			}
 		}
 	}
+}
+
+R_Handle a_get_checker_tex()
+{
+	return a_asset_cache->checker_tex;
+}
+
+R_Handle a_get_alpha_bg_tex()
+{
+	return a_asset_cache->alpha_bg_tex;
 }

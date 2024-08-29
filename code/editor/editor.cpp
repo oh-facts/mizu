@@ -76,10 +76,10 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			p->name = push_str8f(ed_state->arena, "Inspector");
 		}
 		
-		ed_state->hue = 0;
-		ed_state->sat = 0;
-		ed_state->val = 1;
-		ed_state->alpha = 1;
+		ed_state->hsva.x = 0;
+		ed_state->hsva.y = 0;
+		ed_state->hsva.z = 1;
+		ed_state->hsva.w = 1;
 		
 		ed_state->initialized = 1;
 	}
@@ -226,16 +226,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 									{
 										R_Handle img = a_handle_from_path(ed_state->selected_tile);
 										
-										v3f color =  hsv_to_rgb(v3f{{ed_state->hue * 1.f, ed_state->sat, ed_state->val}});
-										v4f colora = 
-										{
-											.x = color.x,
-											.y = color.y,
-											.z = color.z,
-											.w = ed_state->alpha
-										};
-										
-										ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, colora, str8_lit("inspector panel image"));
+										ed_state->selected_slot = ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, hsva_to_rgba(ed_state->hsva), str8_lit("inspector panel image")).widget;
 									}
 									
 									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_tl_varg(ed_state->selected_tile_rect));
@@ -244,20 +235,23 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 									ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
 										ui_pref_size(ed_state->cxt, 360)
 									{
-										ui_sat_picker(ed_state->cxt, ed_state->hue, &ed_state->sat, &ed_state->val, str8_lit("sat picker thing"));
+										ui_sat_picker(ed_state->cxt, ed_state->hsva.x, &ed_state->hsva.y, &ed_state->hsva.z, str8_lit("sat picker thing"));
 										ui_pref_height(ed_state->cxt, 40)
 										{
-											ui_hue_picker(ed_state->cxt, &ed_state->hue, str8_lit("hue picker thing"));
+											ui_hue_picker(ed_state->cxt, &ed_state->hsva.x, str8_lit("hue picker thing"));
 											
-											v3f hsv = {{ed_state->hue * 1.f, ed_state->sat, ed_state->val}};
-											ui_alpha_picker(ed_state->cxt, hsv, &ed_state->alpha, str8_lit("alpha picker thing"));
+											ui_alpha_picker(ed_state->cxt, ed_state->hsva.xyz, &ed_state->hsva.w, str8_lit("alpha picker thing"));
 										}
 									}
-									ui_labelf(ed_state->cxt, "hsv: %d, %d%, %d%", ed_state->hue, (s32)(ed_state->sat * 100), (s32)(ed_state->val * 100));
+									s32 hue = ed_state->hsva.x;
+									s32 sat = ed_state->hsva.y * 100;
+									s32 val = ed_state->hsva.z * 100;
 									
-									v3f rgb = hsv_to_rgb({{ed_state->hue * 1.f, ed_state->sat, ed_state->val}});
+									ui_labelf(ed_state->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
 									
-									ui_labelf(ed_state->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", rgb.x, rgb.y, rgb.z, ed_state->alpha);
+									v4f rgba = hsva_to_rgba(ed_state->hsva);
+									
+									ui_labelf(ed_state->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
 								}
 							}
 						}
@@ -270,7 +264,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		for(u32 i = 0; i < 4; i ++)
 		{
 			ED_Panel *p = ed_state->panels + i;
-			ed_draw_panel(p);
+			ed_draw_panel(ed_state, p);
 		}
 		
 	}
@@ -279,7 +273,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 	ed_state->old_pos = ed_state->cxt->mpos;
 }
 
-void ed_draw_panel(ED_Panel *panel)
+void ed_draw_panel(ED_State *ed_state, ED_Panel *panel)
 {
 	UI_Widget *parent = panel->root;
 	
@@ -301,10 +295,10 @@ void ed_draw_panel(ED_Panel *panel)
 	
 	d_draw_rect(rect(parent->pos, parent->size), panel->color);
 	
-	ed_draw_children(panel, parent);
+	ed_draw_children(ed_state, panel, parent);
 }
 
-void ed_draw_children(ED_Panel *panel, UI_Widget *root)
+void ed_draw_children(ED_State *ed_state, ED_Panel *panel, UI_Widget *root)
 {
 	root->pos.x = root->computed_rel_position[0];
 	root->pos.y = root->computed_rel_position[1];
@@ -342,11 +336,18 @@ void ed_draw_children(ED_Panel *panel, UI_Widget *root)
 	
 	if(root->flags & UI_Flags_has_custom_draw)
 	{
+		
+		if(ed_state->selected_slot == root)
+		{
+			Rect selected_slot_rect = rect(ed_state->selected_slot->pos, ed_state->selected_slot->size);
+			d_draw_img(selected_slot_rect, rect(0, 0, 2, 2), D_COLOR_WHITE, a_get_alpha_bg_tex());
+		}
+		
 		root->custom_draw(root, root->custom_draw_data);
 	}
 	
 	for(UI_Widget *child = root->first; child; child = child->next)
 	{
-		ed_draw_children(panel, child);
+		ed_draw_children(ed_state, panel, child);
 	}
 }

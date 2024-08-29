@@ -34,6 +34,9 @@ struct A_AssetCache
 	u32 num_tex;
 	u64 tex_mem;
 	u64 frame_count;
+	
+	R_Handle checker_tex;
+	R_Handle alpha_bg_tex;
 };
 
 global A_AssetCache *a_asset_cache;
@@ -46,5 +49,7 @@ function void a_free_texture_cache(A_TextureCache *tex);
 function void a_add_to_hash(A_TextureCache *tex);
 function R_Handle a_handle_from_path(Str8 path);
 function void a_evict();
+function R_Handle a_get_checker_tex();
+function R_Handle a_get_alpha_bg_tex();
 
 #endif //ASSET_CACHE_H
