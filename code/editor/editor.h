@@ -12,7 +12,7 @@ enum ED_PanelKind
 	ED_PanelKind_TileSetViewer,
 	ED_PanelKind_Inspector,
 	ED_PanelKind_Debug,
-	ED_PanelKind_TileMap,
+	ED_PanelKind_Game,
 	ED_PanelKind_COUNT
 };
 
@@ -44,6 +44,8 @@ struct ED_State
 	UI_Widget *selected_slot;
 	
 	v4f hsva;
+	
+	R_Handle game_fb;
 };
 
 struct State;

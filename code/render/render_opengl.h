@@ -8,12 +8,14 @@
 enum R_OPENGL_INST_BUFFER
 {
 	R_OPENGL_INST_BUFFER_UI,
+	R_OPENGL_INST_BUFFER_FB,
 	R_OPENGL_INST_BUFFER_COUNT,
 };
 
 enum R_OPENGL_SHADER_PROG
 {
 	R_OPENGL_SHADER_PROG_UI,
+	R_OPENGL_SHADER_PROG_FB,
 	R_OPENGL_SHADER_PROG_COUNT,
 };
 
@@ -40,13 +42,64 @@ function void check_link_errors(GLuint shader, const char *type);
 function GLuint r_opengl_make_shader_program(char *vertexShaderSource, char *fragmentShaderSource);
 function GLuint r_opengl_make_buffer(size_t size);
 
-global u32 sprite_draw_indices[] = {
+global u32 quad_draw_indices[] = {
   0,1,3,
   1,2,3
 };
 
+global char *r_vs_fb_src = 
+R"(
+#version 450 core
 
-global char* r_vs_ui_src =
+struct R_Handle
+{
+uint id;
+uint w;
+uint h;
+};
+
+struct Vertex
+{
+vec2 pos;
+vec2 uv;
+};
+
+out vec2 a_uv;
+void main()
+{
+    
+    Vertex vertices[] = {
+        {{ 0, 0}, {0, 1}},
+        {{ 1, 0}, {1, 1}},
+        {{ 1, 1}, {1, 0}},
+        {{ 0, 1}, {0, 0}},
+    };
+
+    Vertex vertex = vertices[gl_VertexID];
+a_uv = vertex.uv;
+    gl_Position = vec4(vertex.pos, 0.5, 1.0);
+}
+
+)";
+
+global char* r_fs_fb_src = 
+R"(
+	#version 450 core
+	#extension GL_ARB_bindless_texture: require
+
+in vec2 a_uv;
+out vec4 FragColor;
+
+void main()
+{
+		vec4 tex_col = texture(0, a_uv);
+
+FragColor = tex_col;
+}
+)"
+;
+
+global char *r_vs_ui_src =
 R"(
 #version 450 core
 

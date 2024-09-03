@@ -3,13 +3,18 @@
 #ifndef RENDER_H
 #define RENDER_H
 
-// for opengl4.5, textures, 
+// for opengl4.5, 
 // R: Resident handle
 // G: gpu handle
 // W: Width
 // H: height
 // 0: empty
+
+// textures, 
 // RRRRRRRR GGGGWWWW HHHH0000 00000000
+
+// frame buffers,
+// GGGGWWWW HHHH0000 00000000
 
 union R_Handle
 {
@@ -71,7 +76,6 @@ global R_Texture_params pixel_params = {
 	R_TEXTURE_FILTER_NEAREST,
 	R_TEXTURE_WRAP_CLAMP_TO_BORDER
 };
-
 
 enum Corner
 {
@@ -160,7 +164,8 @@ function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND k
 
 function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
 function void r_free_texture(R_Handle handle);
-function void r_submit(R_Pass_list *list, v2s win_size);
+function R_Handle r_alloc_frame_buffer(s32 w, s32 h);
+function void r_submit(R_Handle fb, R_Pass_list *list);
 function v2s r_tex_size_from_handle(R_Handle handle);
 
 #endif //RENDER_H

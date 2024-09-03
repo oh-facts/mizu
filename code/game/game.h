@@ -117,7 +117,7 @@ struct State
 	OS_Event_list events;
 	Atlas atlas;
 	R_Handle atlas_tex[256];
-	
+	R_Handle fb;
 	ED_State ed_state;
 	
 	// game

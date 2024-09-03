@@ -76,6 +76,10 @@
 #define GL_MAP_INVALIDATE_RANGE_BIT 0x0004
 #define GL_MAP_INVALIDATE_BUFFER_BIT 0x0008
 
+#define GL_FRAMEBUFFER 0x8D40
+#define GL_COLOR_ATTACHMENT0 0x8CE0
+#define GL_FRAMEBUFFER_COMPLETE  0x8CD5
+
 typedef void (APIENTRYP PFNGLATTACHSHADERPROC)(GLuint program, GLuint shader);
 typedef void (APIENTRYP PFNGLCOMPILESHADERPROC)(GLuint shader);
 typedef GLuint (APIENTRYP PFNGLCREATEPROGRAMPROC)(void);
@@ -148,6 +152,13 @@ typedef int (WINAPI * PFNWGLGETSWAPINTERVALEXTPROC) (void);
 
 typedef void (APIENTRYP PFNGLGENERATEMIPMAPPROC) (GLenum target);
 
+typedef void (APIENTRYP PFNGLCREATEFRAMEBUFFERSPROC) (GLsizei n, GLuint *framebuffers);
+typedef GLenum (APIENTRYP PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC) (GLuint framebuffer, GLenum target);
+typedef void (APIENTRYP PFNGLNAMEDFRAMEBUFFERTEXTUREPROC) (GLuint framebuffer, GLenum attachment, GLuint texture, GLint level);
+
+typedef void (APIENTRYP PFNGLBINDFRAMEBUFFERPROC) (GLenum target, GLuint framebuffer);
+typedef void (APIENTRYP PFNGLCLEARNAMEDFRAMEBUFFERFVPROC) (GLuint framebuffer, GLenum buffer, GLint drawbuffer, const GLfloat *value);
+
 global PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB;
 global PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
 global PFNGLCREATEVERTEXARRAYS glCreateVertexArrays;
@@ -185,6 +196,11 @@ global PFNGLDELETESHADERPROC glDeleteShader;
 global PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
 global PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT;
 global PFNGLGENERATEMIPMAPPROC glGenerateMipmap;
+global PFNGLCREATEFRAMEBUFFERSPROC glCreateFramebuffers;
+global PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC glCheckNamedFramebufferStatus;
+global PFNGLNAMEDFRAMEBUFFERTEXTUREPROC glNamedFramebufferTexture;
+global PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
+global PFNGLCLEARNAMEDFRAMEBUFFERFVPROC glClearNamedFramebufferfv;
 
 function void opengl_load_functions()
 {
@@ -231,6 +247,15 @@ function void opengl_load_functions()
 	wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
 	
 	glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)wglGetProcAddress("glGenerateMipmap");
+	
+	glCreateFramebuffers = (PFNGLCREATEFRAMEBUFFERSPROC)wglGetProcAddress("glCreateFramebuffers");
+	glCheckNamedFramebufferStatus = (PFNGLCHECKNAMEDFRAMEBUFFERSTATUSPROC)wglGetProcAddress("glCheckNamedFramebufferStatus") ;
+	
+	glNamedFramebufferTexture = (PFNGLNAMEDFRAMEBUFFERTEXTUREPROC)wglGetProcAddress("glNamedFramebufferTexture");
+	
+	glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)wglGetProcAddress("glBindFramebuffer");
+	
+	glClearNamedFramebufferfv = (PFNGLCLEARNAMEDFRAMEBUFFERFVPROC)wglGetProcAddress("glClearNamedFramebufferfv");
 }
 
 

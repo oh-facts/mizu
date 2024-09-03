@@ -87,6 +87,10 @@ void update_and_render(void *memory, f32 delta)
 			e->name = str8_lit("player");
 		}
 		
+		v2s win_size = os_get_window_size(state->win);
+		
+		state->fb = r_alloc_frame_buffer(win_size.x, win_size.y);
+		
 		arena_temp_end(&temp);
 	}
 	
@@ -99,7 +103,6 @@ void update_and_render(void *memory, f32 delta)
 	d_begin(&state->atlas, state->atlas_tex);
 	
 	//f32 zoom = 2;
-	v2s win_size = os_get_window_size(state->win);
 	
 	//f32 aspect = (win_size.x * 1.f)/ win_size.y;
 	
@@ -113,7 +116,7 @@ void update_and_render(void *memory, f32 delta)
 	
 	//d_pop_proj_view();
 	
-	r_submit(&draw->list, win_size);
+	r_submit(state->fb, &draw->list);
 	
 	d_pop_bucket();
 	d_end();
@@ -141,4 +144,9 @@ void update_and_render(void *memory, f32 delta)
 	END_TIMED_BLOCK(UPDATE_AND_RENDER);
 	
 	tcxt_process_debug_counters();
+}
+
+void update_game(R_Handle game_tex)
+{
+	
 }

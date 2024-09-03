@@ -258,15 +258,47 @@ void r_free_texture(R_Handle handle)
 	glDeleteTextures(1, &tex);
 }
 
-void r_submit(R_Pass_list *list, v2s win_size)
+R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 {
-	f32 color[3] = {1,0,1};
-	glClearBufferfv(GL_COLOR, 0, color);
-	v4f win_size_float = {};
-	win_size_float.x = win_size.x;
-	win_size_float.y = win_size.y;
+	GLuint fbo;
+	glCreateFramebuffers(1, &fbo);
 	
-	glViewport(0, 0, win_size.x, win_size.y);
+	GLuint tex;
+	glCreateTextures(GL_TEXTURE_2D, 1, &tex);
+	glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(tex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureStorage2D(tex, 1, GL_RGB8, w, h);
+	glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, tex, 0);
+	
+	auto status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
+	
+	if(status != GL_FRAMEBUFFER_COMPLETE)
+	{
+		printf("frame buffer creation failed");
+		INVALID_CODE_PATH();
+	}
+	
+	R_Handle out = {};
+	out.u32_m[0] = fbo;
+	out.u32_m[1] = w;
+	out.u32_m[2] = h;
+	
+	return out;
+}
+
+void r_submit(R_Handle fb, R_Pass_list *list)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, fb.u32_m[0]);
+	f32 color[3] = {1,0,1};
+	glClearNamedFramebufferfv(fb.u32_m[0], GL_COLOR, 0, color);
+	
+	v4f win_size_float = {};
+	win_size_float.x = fb.u32_m[1];
+	win_size_float.y = fb.u32_m[2];
+	
+	glViewport(0, 0, fb.u32_m[1], fb.u32_m[2]);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
@@ -294,7 +326,7 @@ void r_submit(R_Pass_list *list, v2s win_size)
 					memcpy((u8*)ssbo_data + sizeof(win_size_float), batch->base, batch->count * sizeof(R_Rect));
 					
 					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
-					glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, sprite_draw_indices, batch->count);
+					glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
 					batch = batch->next;
 				}
 			}break;
@@ -302,6 +334,10 @@ void r_submit(R_Pass_list *list, v2s win_size)
 		
 		node = node->next;
 	}
+	
+	glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices);
 }
 
 v2s r_tex_size_from_handle(R_Handle handle)

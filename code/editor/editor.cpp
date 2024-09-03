@@ -55,10 +55,10 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		}
 		
 		{
-			ED_Panel *p = ed_state->panels + ED_PanelKind_TileMap;
+			ED_Panel *p = ed_state->panels + ED_PanelKind_Game;
 			p->pos = {{806, 417}};
 			p->scale = v2f{{1.6,0.3}};
-			p->name = push_str8f(ed_state->arena, "tile map");
+			p->name = push_str8f(ed_state->arena, "game");
 			p->floating = 1;
 		}
 		
@@ -255,6 +255,18 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 									ui_labelf(ed_state->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
 								}
 							}
+						}
+						else if((ED_PanelKind)i == ED_PanelKind_Game)
+						{
+							
+							ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
+							{
+								
+								
+								
+								ui_labelf(ed_state->cxt, "gi jane");
+							}
+							
 						}
 					}
 				}
