@@ -27,7 +27,9 @@ void update_and_render(void *memory, f32 delta)
 		os_api_init(&state->os_api);
 		
 		tcxt_init();
+		state->game_win = os_window_open(arena, "window 2", 300, 100, 1);
 		state->win = os_window_open(arena, "window", 960, 540, 1);
+		
 		opengl_load_functions();
 		//glEnable(GL_FRAMEBUFFER_SRGB);
 		r_opengl_init();
@@ -87,10 +89,6 @@ void update_and_render(void *memory, f32 delta)
 			e->name = str8_lit("player");
 		}
 		
-		v2s win_size = os_get_window_size(state->win);
-		
-		state->fb = r_alloc_frame_buffer(win_size.x, win_size.y);
-		state->game_fb = r_alloc_frame_buffer(300, 300);
 		arena_temp_end(&temp);
 	}
 	
@@ -98,7 +96,7 @@ void update_and_render(void *memory, f32 delta)
 	
 	Arena_temp temp = arena_temp_begin(trans);
 	
-	os_poll_events(temp.arena, state->win, &state->events);
+	os_poll_events(temp.arena, &state->events);
 	
 	d_begin(&state->atlas, state->atlas_tex);
 	
@@ -116,20 +114,11 @@ void update_and_render(void *memory, f32 delta)
 	
 	//d_pop_proj_view();
 	
-	v2s win_size = os_get_window_size(state->win);
-	
-	if(win_size.x != r_tex_size_from_handle(state->fb).x)
-	{
-		// free old please
-		state->fb = r_alloc_frame_buffer(win_size.x, win_size.y);
-	}
-	
-	r_submit(state->fb, &draw->list);
-	//r_submit(state->game_fb, &draw->list);
+	r_submit(state->win, &draw->list);
+	r_submit(state->game_win, &draw->list);
 	
 	d_pop_bucket();
 	d_end();
-	os_swap_buffers(state->win);
 	
 	if(os_key_press(&state->events, OS_Key_F))
 	{

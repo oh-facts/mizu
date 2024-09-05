@@ -84,8 +84,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 		ed_state->initialized = 1;
 	}
 	
-	v2s win_size = os_get_window_size(state->win);
-	ui_begin(ed_state->cxt, win_size, &state->atlas, events);
+	ui_begin(ed_state->cxt, &state->atlas, events);
 	
 	ui_set_next_child_layout_axis(ed_state->cxt, Axis2_X);
 	UI_Widget *dad = ui_make_widget(ed_state->cxt, str8_lit(""));

@@ -297,18 +297,20 @@ R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 	return out;
 }
 
-void r_submit(R_Handle fb, R_Pass_list *list)
+void r_submit(OS_Window win, R_Pass_list *list)
 {
+	S_Window *sdl_win = (S_Window*)win.handle;
+	SDL_GL_MakeCurrent(sdl_win->raw, sdl_win->gl_cxt);
+	
 	//glBindFramebuffer(GL_FRAMEBUFFER, fb.u32_m[2]);
-	//f32 color[3] = {1,0,1};
-	//glClearNamedFramebufferfv(fb.u32_m[2], GL_COLOR, 0, color);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	f32 color[3] = {1,0,1};
+	glClearNamedFramebufferfv(0, GL_COLOR, 0, color);
 	
 	v4f win_size_float = {};
-	win_size_float.x = fb.u32_m[3];
-	win_size_float.y = fb.u32_m[4];
+	win_size_float.x = sdl_win->w;
+	win_size_float.y = sdl_win->h;
 	
-	glViewport(0, 0, fb.u32_m[3], fb.u32_m[4]);
+	glViewport(0, 0, win_size_float.x, win_size_float.y);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
@@ -343,29 +345,32 @@ void r_submit(R_Handle fb, R_Pass_list *list)
 		
 		node = node->next;
 	}
+	
+	os_swap_buffers(win);
+	
 	/*
-	struct
-	{
-		u64 id;
-		s32 w;
-		s32 h;
-	}fb_ssbo;
-	
-	fb_ssbo.id = fb.u64_m[0];
-	fb_ssbo.w = fb.u32_m[3];
-	fb_ssbo.h = fb.u32_m[4];
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
-	void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB], 0, sizeof(fb_ssbo), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-	glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
-	
-	memcpy(ssbo_data, &fb_ssbo, sizeof(fb_ssbo));
-	
-	glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB]);
-	
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices);
-*/
+		struct
+		{
+			u64 id;
+			s32 w;
+			s32 h;
+		}fb_ssbo;
+		
+		fb_ssbo.id = fb.u64_m[0];
+		fb_ssbo.w = fb.u32_m[3];
+		fb_ssbo.h = fb.u32_m[4];
+		
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+		void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB], 0, sizeof(fb_ssbo), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+		glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
+		
+		memcpy(ssbo_data, &fb_ssbo, sizeof(fb_ssbo));
+		
+		glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB]);
+		
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices);
+	*/
 }
 
 v2s r_tex_size_from_handle(R_Handle handle)

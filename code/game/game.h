@@ -114,14 +114,14 @@ struct State
 	
 	// engine
 	OS_Window win;
+	OS_Window game_win;
+	
 	OS_Event_list events;
 	Atlas atlas;
 	R_Handle atlas_tex[256];
-	R_Handle fb;
 	ED_State ed_state;
 	
 	// game
-	R_Handle game_fb;
 	Entity *entities;
 	u32 num_entities;
 };

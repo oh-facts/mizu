@@ -1233,24 +1233,11 @@ function void ui_layout(UI_Widget *root)
 	//printf("\n");
 }
 
-function void ui_begin(UI_Context *cxt, v2s win_size, Atlas *atlas, OS_Event_list *events)
+function void ui_begin(UI_Context *cxt, Atlas *atlas, OS_Event_list *events)
 {
 	cxt->atlas = atlas;
 	
 	v2s mpos = os_mouse_pos(events);
-	/*
-	f32 aspect_ratio = win_size.x * 1.f / win_size.y;
-	v2f screen_norm;
-	//printf("%d %d\n", mpos.x, mpos.y);
-	
-	screen_norm.x = mpos.x * 1.f / win_size.y * 2.f - aspect_ratio;
-	screen_norm.y = 1 - mpos.y * 1.f / win_size.y * 2.f;
-	//printf("%f %f\n", screen_norm.x, screen_norm.y);
-	
-	screen_norm.x *= 2;
-	screen_norm.y *= 2;
-	cxt->mpos = screen_norm;
-	*/
 	
 	cxt->mpos.x = mpos.x;
 	cxt->mpos.y = mpos.y;
