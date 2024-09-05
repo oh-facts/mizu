@@ -121,6 +121,7 @@ struct State
 	ED_State ed_state;
 	
 	// game
+	R_Handle game_fb;
 	Entity *entities;
 	u32 num_entities;
 };

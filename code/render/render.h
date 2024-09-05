@@ -6,6 +6,7 @@
 // for opengl4.5, 
 // R: Resident handle
 // G: gpu handle
+// T: Texture
 // W: Width
 // H: height
 // 0: empty
@@ -14,7 +15,7 @@
 // RRRRRRRR GGGGWWWW HHHH0000 00000000
 
 // frame buffers,
-// GGGGWWWW HHHH0000 00000000
+// RRRRRRRR GGGGWWWW HHHH0000 00000000
 
 union R_Handle
 {
@@ -160,8 +161,9 @@ function R_Pass *r_push_pass(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
 function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
 
 
-// backend hooks
+// remove alloc frame buffer. Instead make submit take a render target that has tl and br.
 
+// backend hooks
 function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
 function void r_free_texture(R_Handle handle);
 function R_Handle r_alloc_frame_buffer(s32 w, s32 h);

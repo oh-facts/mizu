@@ -51,33 +51,37 @@ global char *r_vs_fb_src =
 R"(
 #version 450 core
 
-struct R_Handle
-{
-uint id;
-uint w;
-uint h;
-};
-
 struct Vertex
 {
 vec2 pos;
 vec2 uv;
 };
 
+layout (std430, binding = 1) buffer ssbo {
+uvec2 tex_id;
+    uvec2 screen_size;
+};
+
+flat out uvec2 a_texId;
 out vec2 a_uv;
 void main()
 {
     
     Vertex vertices[] = {
         {{ 0, 0}, {0, 1}},
-        {{ 1, 0}, {1, 1}},
-        {{ 1, 1}, {1, 0}},
-        {{ 0, 1}, {0, 0}},
+        {{ 2, 0}, {1, 1}},
+        {{ 2, 2}, {1, 0}},
+        {{ 0, 2}, {0, 0}},
     };
 
+a_texId = tex_id;
     Vertex vertex = vertices[gl_VertexID];
 a_uv = vertex.uv;
-    gl_Position = vec4(vertex.pos, 0.5, 1.0);
+    
+vec2 norm_pos = (vertex.pos - 1);// / screen_size.xy * 2.0 - 1.0;
+    norm_pos.y =  - norm_pos.y;
+
+    gl_Position = vec4(norm_pos, 0.5, 1.0);
 }
 
 )";
@@ -87,12 +91,13 @@ R"(
 	#version 450 core
 	#extension GL_ARB_bindless_texture: require
 
+flat in uvec2 a_texId;
 in vec2 a_uv;
 out vec4 FragColor;
 
 void main()
 {
-		vec4 tex_col = texture(0, a_uv);
+		vec4 tex_col = texture(sampler2D(a_texId), a_uv);
 
 FragColor = tex_col;
 }

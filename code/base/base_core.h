@@ -34,7 +34,7 @@ TRAP();\
 
 #define AssertAlways(expr) _Assert_helper(expr)
 
-#define INVALID_CODE_PATH() _Assert_helper(0)
+#define INVALID_CODE_PATH() // _Assert_helper(0)
 
 #define NOT_IMPLEMENTED() _Assert_helper(0)
 

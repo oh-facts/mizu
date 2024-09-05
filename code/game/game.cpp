@@ -90,7 +90,7 @@ void update_and_render(void *memory, f32 delta)
 		v2s win_size = os_get_window_size(state->win);
 		
 		state->fb = r_alloc_frame_buffer(win_size.x, win_size.y);
-		
+		state->game_fb = r_alloc_frame_buffer(300, 300);
 		arena_temp_end(&temp);
 	}
 	
@@ -116,7 +116,16 @@ void update_and_render(void *memory, f32 delta)
 	
 	//d_pop_proj_view();
 	
+	v2s win_size = os_get_window_size(state->win);
+	
+	if(win_size.x != r_tex_size_from_handle(state->fb).x)
+	{
+		// free old please
+		state->fb = r_alloc_frame_buffer(win_size.x, win_size.y);
+	}
+	
 	r_submit(state->fb, &draw->list);
+	//r_submit(state->game_fb, &draw->list);
 	
 	d_pop_bucket();
 	d_end();

@@ -258,15 +258,10 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 						}
 						else if((ED_PanelKind)i == ED_PanelKind_Game)
 						{
-							
 							ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
 							{
-								
-								
-								
 								ui_labelf(ed_state->cxt, "gi jane");
 							}
-							
 						}
 					}
 				}

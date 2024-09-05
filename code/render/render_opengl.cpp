@@ -169,13 +169,14 @@ GLuint r_opengl_make_shader_program(char *vertexShaderSource, char *fragmentShad
 
 GLuint r_opengl_make_buffer(size_t size)
 {
+	local_persist s32 num_buffer = 0;
 	GLuint ssbo = 0;
 	
 	// use discard buffer?
 	
 	glCreateBuffers(1, &ssbo);
 	glNamedBufferData(ssbo, size, 0, GL_STREAM_COPY_ARB);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, num_buffer++, ssbo);
 	
 	return ssbo;
 }
@@ -197,8 +198,12 @@ void r_opengl_init()
 	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
 #endif
   
+	
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_make_shader_program(r_vs_ui_src, r_fs_ui_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_make_buffer(Megabytes(8));
+	
+	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB] = r_opengl_make_shader_program(r_vs_fb_src, r_fs_fb_src);
+	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB] = r_opengl_make_buffer(sizeof(u64) * 2);
 }
 
 R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
@@ -280,25 +285,30 @@ R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 		INVALID_CODE_PATH();
 	}
 	
+	GLuint64 gpu_handle = glGetTextureHandleARB(tex);
+	glMakeTextureHandleResidentARB(gpu_handle);
+	
 	R_Handle out = {};
-	out.u32_m[0] = fbo;
-	out.u32_m[1] = w;
-	out.u32_m[2] = h;
+	out.u64_m[0] = gpu_handle;
+	out.u32_m[2] = fbo;
+	out.u32_m[3] = w;
+	out.u32_m[4] = h;
 	
 	return out;
 }
 
 void r_submit(R_Handle fb, R_Pass_list *list)
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, fb.u32_m[0]);
-	f32 color[3] = {1,0,1};
-	glClearNamedFramebufferfv(fb.u32_m[0], GL_COLOR, 0, color);
+	//glBindFramebuffer(GL_FRAMEBUFFER, fb.u32_m[2]);
+	//f32 color[3] = {1,0,1};
+	//glClearNamedFramebufferfv(fb.u32_m[2], GL_COLOR, 0, color);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
 	v4f win_size_float = {};
-	win_size_float.x = fb.u32_m[1];
-	win_size_float.y = fb.u32_m[2];
+	win_size_float.x = fb.u32_m[3];
+	win_size_float.y = fb.u32_m[4];
 	
-	glViewport(0, 0, fb.u32_m[1], fb.u32_m[2]);
+	glViewport(0, 0, fb.u32_m[3], fb.u32_m[4]);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
@@ -314,7 +324,6 @@ void r_submit(R_Handle fb, R_Pass_list *list)
 			{
 				R_Batch_list *batches = &pass->rect_pass.rects;
 				R_Batch *batch = batches->first;
-				
 				for(u32 j = 0; j < batches->num; j++)
 				{
 					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
@@ -334,10 +343,29 @@ void r_submit(R_Handle fb, R_Pass_list *list)
 		
 		node = node->next;
 	}
+	/*
+	struct
+	{
+		u64 id;
+		s32 w;
+		s32 h;
+	}fb_ssbo;
 	
-	glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
+	fb_ssbo.id = fb.u64_m[0];
+	fb_ssbo.w = fb.u32_m[3];
+	fb_ssbo.h = fb.u32_m[4];
+	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB], 0, sizeof(fb_ssbo), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+	glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
+	
+	memcpy(ssbo_data, &fb_ssbo, sizeof(fb_ssbo));
+	
+	glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB]);
+	
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices);
+*/
 }
 
 v2s r_tex_size_from_handle(R_Handle handle)
