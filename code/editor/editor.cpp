@@ -51,21 +51,9 @@ void ed_update(State *state, f32 delta)
 			p->scale = v2f{{1.6,0.3}};
 			p->name = push_str8f(ed_state->arena, "tile set viewer");
 			p->cxt = ui_alloc_cxt();
-			p->events.first = p->events.last = 0;
-			p->events.count = 0; 
-			p->win = os_window_open(ed_state->arena, "tile set viewer", 960, 540, 1);
-		}
-		
-		{
-			ED_Panel *p = ed_state->panels + ED_PanelKind_Game;
-			p->pos = {{806, 417}};
-			p->scale = v2f{{1.6,0.3}};
-			p->name = push_str8f(ed_state->arena, "game");
+			p->win = os_window_open(ed_state->arena, "tile set viewer", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
 			p->floating = 1;
-			p->cxt = ui_alloc_cxt();
-			p->events.first = p->events.last = 0;
-			p->events.count = 0; 
-			p->win = os_window_open(ed_state->arena, "game", 960, 540, 1);
+			p->pos = os_get_window_pos(p->win);
 		}
 		
 		{
@@ -74,9 +62,10 @@ void ed_update(State *state, f32 delta)
 			p->hide = 1;
 			p->name = push_str8f(ed_state->arena, "debug");
 			p->cxt = ui_alloc_cxt();
-			p->events.first = p->events.last = 0;
-			p->events.count = 0; 
-			p->win = os_window_open(ed_state->arena, "debug", 960, 540, 1);
+			p->win = os_window_open(ed_state->arena, "debug", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
+			p->pos = os_get_window_pos(p->win);
+			p->floating = 1;
+			
 		}
 		
 		{
@@ -90,26 +79,25 @@ void ed_update(State *state, f32 delta)
 			p->hsva.y = 0;
 			p->hsva.z = 1;
 			p->hsva.w = 1;
-			p->events.first = p->events.last = 0;
-			p->events.count = 0; 
-			p->win = os_window_open(ed_state->arena, "inspector", 960, 540, 1);
+			p->win = os_window_open(ed_state->arena, "inspector", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
+			p->pos = os_get_window_pos(p->win);
+			p->floating = 0;
+			
 		}
 		
 		ed_state->initialized = 1;
 	}
 	
-	Arena_temp temp = arena_temp_begin(ed_state->arena);
-	d_begin(&state->atlas, state->atlas_tex);
-	
 	for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
 	{
 		ED_Panel *panel = ed_state->panels + i;
-		os_poll_events(temp.arena, &panel->events);
+		
+		OS_Event_list *events = os_event_list_from_window(panel->win);
 		
 		panel->bucket = d_bucket();
 		d_push_bucket(panel->bucket);
 		
-		ui_begin(panel->cxt, &state->atlas, &panel->events);
+		ui_begin(panel->cxt, panel->win, &state->atlas, events);
 		
 		ui_set_next_child_layout_axis(panel->cxt, Axis2_X);
 		UI_Widget *dad = ui_make_widget(panel->cxt, str8_lit(""));
@@ -118,6 +106,7 @@ void ed_update(State *state, f32 delta)
 			ui_size_kind(panel->cxt, UI_SizeKind_ChildrenSum)
 			{
 				panel->root = ui_make_widget(panel->cxt, str8_lit(""));
+				
 				panel->color = ED_THEME_BG;
 				
 				if(panel->floating)
@@ -127,7 +116,7 @@ void ed_update(State *state, f32 delta)
 				
 				ui_parent(panel->cxt, panel->root)
 					ui_text_color(panel->cxt, ED_THEME_TEXT)
-					ui_fixed_pos(panel->cxt, (panel->pos))
+					//ui_fixed_pos(panel->cxt, (panel->pos))
 					ui_col(panel->cxt)
 				{
 					// NOTE(mizu):  title bar, dragging and hiding
@@ -169,11 +158,14 @@ void ed_update(State *state, f32 delta)
 								panel->hide = !panel->hide;
 							}
 							
-							os_mouse_released(&state->events, OS_MouseButton_Left);
+							os_mouse_released(events, panel->win, OS_MouseButton_Left);
 							
-							if(os_mouse_held(OS_MouseButton_Left) && panel->grabbed)
+							if(os_mouse_held(panel->win, OS_MouseButton_Left) && panel->grabbed)
 							{
-								panel->pos += (panel->cxt->mpos - panel->old_pos);
+								f32 x, y;
+								SDL_GetGlobalMouseState(&x, &y);
+								panel->pos += v2f{{x, y}} - panel->old_pos;
+								os_set_window_pos(panel->win, panel->pos);
 							}
 							else
 							{
@@ -181,6 +173,8 @@ void ed_update(State *state, f32 delta)
 							}
 						}
 					}
+					
+					//printf("%d\n", panel->grabbed);
 					
 					if(!panel->hide)
 					{
@@ -276,27 +270,20 @@ void ed_update(State *state, f32 delta)
 								}
 							}
 						}
-						else if((ED_PanelKind)i == ED_PanelKind_Game)
-						{
-							ui_size_kind(panel->cxt, UI_SizeKind_TextContent)
-							{
-								ui_labelf(panel->cxt, "gi jane");
-							}
-						}
 					}
 				}
 			}
 		}
 		
-		panel->old_pos = panel->cxt->mpos;
+		SDL_GetGlobalMouseState(&panel->old_pos.x, &panel->old_pos.y);
 		
 		ui_layout(dad);
 		ed_draw_panel(panel);
 		ui_end(panel->cxt);
 		d_pop_bucket();
 		
-		panel->events.first = panel->events.last = 0;
-		panel->events.count = 0; 
+		events->first = events->last = 0;
+		events->count = 0; 
 	}
 	
 	for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
@@ -304,10 +291,6 @@ void ed_update(State *state, f32 delta)
 		ED_Panel *panel = ed_state->panels + i;
 		r_submit(panel->win, &panel->bucket->list);
 	}
-	
-	d_end();
-	
-	arena_temp_end(&temp);
 }
 
 void ed_draw_panel(ED_Panel *panel)
@@ -324,13 +307,15 @@ void ed_draw_panel(ED_Panel *panel)
 	}
 	else
 	{
-		panel->pos = panel->root->pos;
+		//panel->pos = panel->root->pos;
 	}
 	
 	parent->size.x = parent->computed_size[0];
 	parent->size.y = parent->computed_size[1];
 	
-	d_draw_rect(rect(parent->pos, parent->size), panel->color);
+	d_draw_rect(rect({}, parent->size), panel->color);
+	
+	os_set_window_size(panel->win, parent->size);
 	
 	ed_draw_children(panel, parent);
 }

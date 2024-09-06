@@ -3,12 +3,19 @@
 
 struct S_Window
 {
+	const char *title;
+	
 	SDL_Window *raw;
 	SDL_GLContext gl_cxt;
 	s32 w;
 	s32 h;
 	b32 closed;
 	b32 fullscreen;
+	
+	v2s mpos;
+	b32 mdown[8];
+	
+	OS_Event_list events;
 };
 
 global S_Window **s_windows;
@@ -38,6 +45,57 @@ function S_Window *sdl_win_from_os_win(OS_Window win)
 	return (S_Window*)win.handle;
 }
 
+void os_window_set_mouse_pos(OS_Window win, v2s pos)
+{
+	S_Window *s_win = sdl_win_from_os_win(win);
+	s_win->mpos = pos;
+}
+
+v2s os_window_get_mouse_pos(OS_Window win)
+{
+	S_Window *s_win = sdl_win_from_os_win(win);
+	return s_win->mpos;
+}
+
+void os_window_set_mouse_state(OS_Window win, OS_MouseButton button, b32 state)
+{
+	S_Window *s_win = sdl_win_from_os_win(win);
+	s_win->mdown[button] = state;
+}
+
+b32 os_window_get_mouse_state(OS_Window win, OS_MouseButton button)
+{
+	S_Window *s_win = sdl_win_from_os_win(win);
+	return s_win->mdown[button];
+}
+
+void os_set_window_size(OS_Window handle, v2f size)
+{
+	S_Window *s_win = sdl_win_from_os_win(handle);
+	SDL_SetWindowSize(s_win->raw, size.x, size.y);
+}
+
+void os_set_window_pos(OS_Window handle, v2f pos)
+{
+	S_Window *s_win = sdl_win_from_os_win(handle);
+	SDL_SetWindowPosition(s_win->raw, pos.x, pos.y);
+}
+
+v2f os_get_window_pos(OS_Window handle)
+{
+	S_Window *s_win = sdl_win_from_os_win(handle);
+	
+	v2f out = {};
+	
+	v2s wtf = {};
+	SDL_GetWindowPosition(s_win->raw, &wtf.x, &wtf.y);
+	
+	out.x = wtf.x;
+	out.y = wtf.y;
+	
+	return out;
+}
+
 void os_window_close(OS_Window win)
 {
 	sdl_win_from_os_win(win)->closed = 1;
@@ -58,13 +116,21 @@ void os_swap_buffers(OS_Window handle)
 	SDL_GL_SwapWindow(sdl_win_from_os_win(handle)->raw);
 }
 
-void os_poll_events(Arena *arena, OS_Event_list *events)
+OS_Event_list *os_event_list_from_window(OS_Window win)
+{
+	S_Window *s_win = sdl_win_from_os_win(win);
+	OS_Event_list *out = &s_win->events;
+	
+	return out;
+}
+
+void os_poll_events(Arena *arena)
 {
 	SDL_Event sdl_event;
 	while (SDL_PollEvent(&sdl_event)) 
 	{
 		S_Window *win = sdl_win_from_event(&sdl_event);
-		
+		OS_Event_list *events = &win->events;
 		switch (sdl_event.type) 
 		{
 			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -136,7 +202,6 @@ void os_poll_events(Arena *arena, OS_Event_list *events)
 					
 					event->mpos.x = sdl_event.motion.x;
 					event->mpos.y = sdl_event.motion.y;
-					
 				}
 			}break;
 			
@@ -159,6 +224,9 @@ void os_poll_events(Arena *arena, OS_Event_list *events)
 				OS_Event *event = os_push_event(arena, events);
 				event->kind = pressed ? OS_EventKind_MousePressed : OS_EventKind_MouseReleased;
 				event->button = button_table_shift[sdl_event.button.button];
+				
+				//printf("hi %d %s\n", pressed, win->title);
+				
 				
 			}break;
 		}
@@ -183,7 +251,7 @@ v2s os_get_window_size(OS_Window handle)
 	return out;
 }
 
-OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, b32 init_opengl)
+OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, OS_WindowKind flags)
 {
 	S_Window *win = push_struct(arena, S_Window);
 	win->w = w;
@@ -196,13 +264,21 @@ OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, b32 init
 		INVALID_CODE_PATH();
 	}
 	
-	if(init_opengl)
+	if(flags & OS_WindowKind_Opengl)
 	{
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 		SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-		win->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+		
+		if(flags & OS_WindowKind_Undecorate)
+		{
+			win->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
+		}
+		else
+		{
+			win->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+		}
 		
 		win->gl_cxt = SDL_GL_CreateContext(win->raw);
 		SDL_GL_MakeCurrent(win->raw, win->gl_cxt);
@@ -234,8 +310,9 @@ OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, b32 init
 	
 	s_windows[s_window_num++] = win;
 	
+	win->title = title;
+	
 	OS_Window out = {};
 	out.handle = (u64)win;
 	return out;
 }
-

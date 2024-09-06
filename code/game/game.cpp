@@ -28,7 +28,7 @@ void update_and_render(void *memory, f32 delta)
 		
 		tcxt_init();
 		
-		state->win = os_window_open(arena, "window", 960, 540, 1);
+		state->win = os_window_open(arena, "window", 960, 540, OS_WindowKind_Opengl);
 		
 		//glEnable(GL_FRAMEBUFFER_SRGB);
 		r_opengl_init();
@@ -92,14 +92,11 @@ void update_and_render(void *memory, f32 delta)
 	}
 	
 	BEGIN_TIMED_BLOCK(UPDATE_AND_RENDER);
-	
 	Arena_temp temp = arena_temp_begin(trans);
 	
+	
+	os_poll_events(trans);
 	d_begin(&state->atlas, state->atlas_tex);
-	
-	//f32 zoom = 2;
-	
-	//f32 aspect = (win_size.x * 1.f)/ win_size.y;
 	
 	D_Bucket *draw = d_bucket();
 	d_push_bucket(draw);
@@ -108,12 +105,12 @@ void update_and_render(void *memory, f32 delta)
 	d_draw_img(rect(0,0,1920,1080), rect(0,0,1,1), D_COLOR_WHITE, bg);
 	//d_pop_proj_view();
 	
+	ed_update(state, delta);
+	
 	r_submit(state->win, &draw->list);
 	
 	d_pop_bucket();
 	d_end();
-	
-	ed_update(state, delta);
 	
 	
 	/*

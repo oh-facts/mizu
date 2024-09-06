@@ -133,6 +133,8 @@ struct UI_Context
 	// reset completely every frame. Non zeroed.
 	Arena *frame_arena;
 	
+	OS_Window win;
+	
 	v2f mpos;
 	b32 mclick;
 	
@@ -755,7 +757,7 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, S
 	widget->custom_draw = ui_sat_picker_draw;
 	widget->custom_draw_data = draw_data;
 	
-	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
+	if(widget->hot && os_mouse_held(cxt->win, OS_MouseButton_Left))
 	{
 		f32 _sat, _val;
 		_sat = (cxt->mpos.x - widget->pos.x) / widget->size.x;
@@ -861,7 +863,7 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 	widget->custom_draw = ui_alpha_picker_draw;
 	widget->custom_draw_data = draw_data;
 	
-	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
+	if(widget->hot && os_mouse_held(cxt->win, OS_MouseButton_Left))
 	{
 		f32 _alpha;
 		_alpha = (cxt->mpos.x - widget->pos.x) / widget->size.x;
@@ -954,7 +956,7 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
 	widget->custom_draw = ui_hue_picker_draw;
 	widget->custom_draw_data = draw_data;
 	
-	if(widget->hot && os_mouse_held(OS_MouseButton_Left))
+	if(widget->hot && os_mouse_held(cxt->win, OS_MouseButton_Left))
 	{
 		f32 _hue;
 		_hue = ((cxt->mpos.x - widget->pos.x) / widget->size.x) * 360;
@@ -1233,16 +1235,16 @@ function void ui_layout(UI_Widget *root)
 	//printf("\n");
 }
 
-function void ui_begin(UI_Context *cxt, Atlas *atlas, OS_Event_list *events)
+function void ui_begin(UI_Context *cxt, OS_Window win, Atlas *atlas, OS_Event_list *events)
 {
 	cxt->atlas = atlas;
-	
-	v2s mpos = os_mouse_pos(events);
+	cxt->win = win;
+	v2s mpos = os_mouse_pos(events, win);
 	
 	cxt->mpos.x = mpos.x;
 	cxt->mpos.y = mpos.y;
 	
-	cxt->mclick = os_mouse_pressed(events, OS_MouseButton_Left);
+	cxt->mclick = os_mouse_pressed(events, win, OS_MouseButton_Left);
 	
 	cxt->frame_arena->used = ARENA_HEADER_SIZE;
 	

@@ -12,7 +12,6 @@ enum ED_PanelKind
 	ED_PanelKind_TileSetViewer,
 	ED_PanelKind_Inspector,
 	ED_PanelKind_Debug,
-	ED_PanelKind_Game,
 	ED_PanelKind_COUNT,
 };
 
@@ -22,7 +21,6 @@ struct ED_Panel
 	
 	UI_Widget *root;
 	UI_Context *cxt;
-	OS_Event_list events;
 	
 	Str8 name;
 	b32 hide;

@@ -55,6 +55,14 @@ enum OS_EventKind
 	OS_EventKind_COUNT,
 };
 
+enum OS_WindowKind
+{
+	OS_WindowKind_Opengl = 1 << 0,
+	OS_WindowKind_Undecorate = 1 << 1,
+	
+	OS_WindowKind_COUNT
+};
+
 enum OS_MouseButton
 {
 	OS_MouseButton_Left,
@@ -88,33 +96,48 @@ struct OS_Event_list
 	u32 count;
 };
 
-function OS_Event *os_push_event(Arena *arena, OS_Event_list *list);
-function void os_consume_event(OS_Event_list *list, OS_Event_node *node);
-function b32 os_key_press(OS_Event_list *list, OS_Key key);
-function v2s os_mouse_pos(OS_Event_list *list);
-function b32 os_mouse_held(OS_MouseButton button);
-function b32 os_mouse_pressed(OS_Event_list *list, OS_MouseButton button);
-function b32 os_mouse_released(OS_Event_list *list, OS_MouseButton button);
-
 struct OS_Window
 {
 	u64 handle;
 };
 
-function OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, b32 init_opengl);
-function void os_window_close(OS_Window win);
-function void os_window_toggle_fullscreen(OS_Window win){};
+function OS_Event *os_push_event(Arena *arena, OS_Event_list *list);
+function void os_consume_event(OS_Event_list *list, OS_Event_node *node);
+function b32 os_key_press(OS_Event_list *list, OS_Window win, OS_Key key);
+
+function v2s os_mouse_pos(OS_Event_list *list, OS_Window win);
+function void os_window_set_mouse_pos(OS_Window win, v2s pos);
+function v2s os_window_get_mouse_pos(OS_Window win);
+
+function b32 os_mouse_held(OS_Window win, OS_MouseButton button);
+function void os_window_set_mouse_state(OS_Window win, OS_MouseButton button, b32 state);
+function b32 os_window_get_mouse_state(OS_Window win, OS_MouseButton button);
+
+function b32 os_mouse_pressed(OS_Event_list *list, OS_Window win, OS_MouseButton button);
+function b32 os_mouse_released(OS_Event_list *list, OS_Window win, OS_MouseButton button);
 
 function u64 os_get_perf_counter();
 function u64 os_get_perf_freq();
 function void os_swap_buffers(OS_Window handle);
 function void os_poll_events(Arena *arena, OS_Window handle, OS_Event_list *events);
-function b32 os_window_is_closed(OS_Window win);
-function void os_window_close(OS_Window win);
-function v2s os_get_window_size(OS_Window handle);
 
 function u64 os_get_page_size();
 function Str8 os_get_app_dir(Arena *arena);
+
+// os hooks
+
+function OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, OS_WindowKind flags);
+function void os_window_close(OS_Window win);
+
+function void os_window_toggle_fullscreen(OS_Window win){};
+function b32 os_window_is_closed(OS_Window win);
+function v2s os_get_window_size(OS_Window handle);
+function void os_set_window_size(OS_Window handle, v2f size);
+function void os_set_window_pos(OS_Window handle, v2f pos);
+function v2f os_get_window_pos(OS_Window handle);
+function void os_set_mouse_pos(OS_Window handle, v2f pos);
+function v2f os_get_mouse_pos(OS_Window handle);
+function b32 os_is_mouse_held(OS_Window handle);
 
 #if defined(OS_USE_DYNAMIC_HOOKS)
 
