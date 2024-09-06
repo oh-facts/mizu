@@ -13,12 +13,17 @@ enum ED_PanelKind
 	ED_PanelKind_Inspector,
 	ED_PanelKind_Debug,
 	ED_PanelKind_Game,
-	ED_PanelKind_COUNT
+	ED_PanelKind_COUNT,
 };
 
 struct ED_Panel
 {
+	OS_Window win;
+	
 	UI_Widget *root;
+	UI_Context *cxt;
+	OS_Event_list events;
+	
 	Str8 name;
 	b32 hide;
 	b32 floating;
@@ -29,15 +34,6 @@ struct ED_Panel
 	f32 cc;
 	f32 ft;
 	v4f color;
-};
-
-struct ED_State
-{
-	Arena *arena;
-	b32 initialized;
-	UI_Context *cxt;
-	ED_Panel panels[ED_PanelKind_COUNT];
-	v2f old_pos;
 	
 	Str8 selected_tile;
 	Rect selected_tile_rect;
@@ -45,14 +41,23 @@ struct ED_State
 	
 	v4f hsva;
 	
-	R_Handle game_fb;
+	v2f old_pos;
+	
+	D_Bucket *bucket;
+};
+
+struct ED_State
+{
+	Arena *arena;
+	b32 initialized;
+	ED_Panel panels[ED_PanelKind_COUNT];
 };
 
 struct State;
 
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
-function void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path);
-function void ed_draw_panel(ED_State *ed_state, ED_Panel *panel);
-function void ed_draw_children(ED_State *ed_state, ED_Panel *panel, UI_Widget *root);
+function void ed_draw_spritesheet(ED_Panel *panel, f32 x, f32 y, Str8 path);
+function void ed_draw_panel(ED_Panel *panel);
+function void ed_draw_children(ED_Panel *panel, UI_Widget *root);
 
 #endif //EDITOR_H

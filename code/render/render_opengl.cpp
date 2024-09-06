@@ -169,14 +169,13 @@ GLuint r_opengl_make_shader_program(char *vertexShaderSource, char *fragmentShad
 
 GLuint r_opengl_make_buffer(size_t size)
 {
-	local_persist s32 num_buffer = 0;
 	GLuint ssbo = 0;
 	
 	// use discard buffer?
 	
 	glCreateBuffers(1, &ssbo);
 	glNamedBufferData(ssbo, size, 0, GL_STREAM_COPY_ARB);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, num_buffer++, ssbo);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
 	
 	return ssbo;
 }
@@ -187,10 +186,6 @@ void r_opengl_init()
 	r_opengl_state = push_struct(arena, R_Opengl_state);
 	r_opengl_state->arena = arena;
 	
-	GLuint default_rubbish_bs_vao;
-	glCreateVertexArrays(1,&default_rubbish_bs_vao);
-	glBindVertexArray(default_rubbish_bs_vao);
-  
 #if R_DEBUG
 	glEnable(GL_DEBUG_OUTPUT);
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); 
@@ -201,9 +196,6 @@ void r_opengl_init()
 	
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_make_shader_program(r_vs_ui_src, r_fs_ui_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_make_buffer(Megabytes(8));
-	
-	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB] = r_opengl_make_shader_program(r_vs_fb_src, r_fs_fb_src);
-	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB] = r_opengl_make_buffer(sizeof(u64) * 2);
 }
 
 R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
@@ -314,8 +306,7 @@ void r_submit(OS_Window win, R_Pass_list *list)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
-	R_Pass_node *node = list->first;
-	for(u32 i = 0; i < list->num; i ++)
+	for(R_Pass_node *node = list->first; node; node = node->next)
 	{
 		R_Pass *pass = &node->pass;
 		
@@ -328,6 +319,8 @@ void r_submit(OS_Window win, R_Pass_list *list)
 				R_Batch *batch = batches->first;
 				for(u32 j = 0; j < batches->num; j++)
 				{
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, R_OPENGL_INST_BUFFER_UI, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
+					
 					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
 																									GL_MAP_INVALIDATE_BUFFER_BIT);
 					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI]);
@@ -342,8 +335,6 @@ void r_submit(OS_Window win, R_Pass_list *list)
 				}
 			}break;
 		}
-		
-		node = node->next;
 	}
 	
 	os_swap_buffers(win);

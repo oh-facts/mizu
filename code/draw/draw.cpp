@@ -47,6 +47,7 @@ void d_pop_bucket()
 {
 	d_state->top = d_state->top->next;
 }
+
 void d_push_proj_view(m4f proj_view)
 {
 	D_Bucket *bucket = d_state->top;

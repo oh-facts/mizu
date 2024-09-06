@@ -205,6 +205,13 @@ OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, b32 init
 		win->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 		
 		win->gl_cxt = SDL_GL_CreateContext(win->raw);
+		SDL_GL_MakeCurrent(win->raw, win->gl_cxt);
+		
+		opengl_load_functions();
+		
+		GLuint default_rubbish_bs_vao;
+		glCreateVertexArrays(1,&default_rubbish_bs_vao);
+		glBindVertexArray(default_rubbish_bs_vao);
 		
 		if(!win->gl_cxt)
 		{

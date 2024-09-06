@@ -1,4 +1,4 @@
-void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path)
+void ed_draw_spritesheet(ED_Panel *panel, f32 x, f32 y, Str8 path)
 {
 	R_Handle img = a_handle_from_path(path);
 	
@@ -7,25 +7,25 @@ void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path)
 	
 	f32 advance_y = 1 - height;
 	
-	ui_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum)
-		ui_col(ed_state->cxt)
+	ui_size_kind(panel->cxt, UI_SizeKind_ChildrenSum)
+		ui_col(panel->cxt)
 	{
 		for(u32 i = 0; i < y; i ++)
 		{
 			f32 advance_x = 0;
-			ui_row(ed_state->cxt)
+			ui_row(panel->cxt)
 			{
-				ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
-					ui_pref_size(ed_state->cxt, 60)
+				ui_size_kind(panel->cxt, UI_SizeKind_Pixels)
+					ui_pref_size(panel->cxt, 60)
 				{
 					for(u32 j = 0; j < x; j++)
 					{
 						Rect recty = rect(advance_x, advance_y, advance_x + width, advance_y + height);
 						
-						if(ui_imagef(ed_state->cxt, img, recty, D_COLOR_WHITE, "%.*s%d%d", str8_varg(path), i, j).active)
+						if(ui_imagef(panel->cxt, img, recty, D_COLOR_WHITE, "%.*s%d%d", str8_varg(path), i, j).active)
 						{
-							ed_state->selected_tile = path;
-							ed_state->selected_tile_rect = recty;
+							panel->selected_tile = path;
+							panel->selected_tile_rect = recty;
 						}
 						advance_x += width;
 					}
@@ -37,7 +37,7 @@ void ed_draw_spritesheet(ED_State *ed_state, f32 x, f32 y, Str8 path)
 	}
 }
 
-void ed_update(State *state, OS_Event_list *events, f32 delta)
+void ed_update(State *state, f32 delta)
 {
 	ED_State *ed_state = &state->ed_state;
 	
@@ -45,13 +45,15 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 	{
 		ed_state->arena = arena_create();
 		
-		ed_state->cxt = ui_alloc_cxt();
-		
 		// panel construction
 		{
 			ED_Panel *p = ed_state->panels + ED_PanelKind_TileSetViewer;
 			p->scale = v2f{{1.6,0.3}};
 			p->name = push_str8f(ed_state->arena, "tile set viewer");
+			p->cxt = ui_alloc_cxt();
+			p->events.first = p->events.last = 0;
+			p->events.count = 0; 
+			p->win = os_window_open(ed_state->arena, "tile set viewer", 960, 540, 1);
 		}
 		
 		{
@@ -60,6 +62,10 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			p->scale = v2f{{1.6,0.3}};
 			p->name = push_str8f(ed_state->arena, "game");
 			p->floating = 1;
+			p->cxt = ui_alloc_cxt();
+			p->events.first = p->events.last = 0;
+			p->events.count = 0; 
+			p->win = os_window_open(ed_state->arena, "game", 960, 540, 1);
 		}
 		
 		{
@@ -67,6 +73,10 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			p->scale = v2f{{1.6,0.3}};
 			p->hide = 1;
 			p->name = push_str8f(ed_state->arena, "debug");
+			p->cxt = ui_alloc_cxt();
+			p->events.first = p->events.last = 0;
+			p->events.count = 0; 
+			p->win = os_window_open(ed_state->arena, "debug", 960, 540, 1);
 		}
 		
 		{
@@ -74,29 +84,40 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 			p->scale = v2f{{1.6,0.3}};
 			p->hide = 0;
 			p->name = push_str8f(ed_state->arena, "Inspector");
+			p->cxt = ui_alloc_cxt();
+			
+			p->hsva.x = 0;
+			p->hsva.y = 0;
+			p->hsva.z = 1;
+			p->hsva.w = 1;
+			p->events.first = p->events.last = 0;
+			p->events.count = 0; 
+			p->win = os_window_open(ed_state->arena, "inspector", 960, 540, 1);
 		}
-		
-		ed_state->hsva.x = 0;
-		ed_state->hsva.y = 0;
-		ed_state->hsva.z = 1;
-		ed_state->hsva.w = 1;
 		
 		ed_state->initialized = 1;
 	}
 	
-	ui_begin(ed_state->cxt, &state->atlas, events);
+	Arena_temp temp = arena_temp_begin(ed_state->arena);
+	d_begin(&state->atlas, state->atlas_tex);
 	
-	ui_set_next_child_layout_axis(ed_state->cxt, Axis2_X);
-	UI_Widget *dad = ui_make_widget(ed_state->cxt, str8_lit(""));
-	ui_parent(ed_state->cxt, dad)
+	for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
 	{
-		for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
+		ED_Panel *panel = ed_state->panels + i;
+		os_poll_events(temp.arena, &panel->events);
+		
+		panel->bucket = d_bucket();
+		d_push_bucket(panel->bucket);
+		
+		ui_begin(panel->cxt, &state->atlas, &panel->events);
+		
+		ui_set_next_child_layout_axis(panel->cxt, Axis2_X);
+		UI_Widget *dad = ui_make_widget(panel->cxt, str8_lit(""));
+		ui_parent(panel->cxt, dad)
 		{
-			ED_Panel *panel = ed_state->panels + i;
-			
-			ui_size_kind(ed_state->cxt, UI_SizeKind_ChildrenSum)
+			ui_size_kind(panel->cxt, UI_SizeKind_ChildrenSum)
 			{
-				panel->root = ui_make_widget(ed_state->cxt, str8_lit(""));
+				panel->root = ui_make_widget(panel->cxt, str8_lit(""));
 				panel->color = ED_THEME_BG;
 				
 				if(panel->floating)
@@ -104,34 +125,34 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 					panel->root->flags = (UI_Flags)(UI_Flags_is_floating_x | UI_Flags_is_floating_y);
 				}
 				
-				ui_parent(ed_state->cxt, panel->root)
-					ui_text_color(ed_state->cxt, ED_THEME_TEXT)
-					ui_fixed_pos(ed_state->cxt, (panel->pos))
-					ui_col(ed_state->cxt)
+				ui_parent(panel->cxt, panel->root)
+					ui_text_color(panel->cxt, ED_THEME_TEXT)
+					ui_fixed_pos(panel->cxt, (panel->pos))
+					ui_col(panel->cxt)
 				{
 					// NOTE(mizu):  title bar, dragging and hiding
-					ui_row(ed_state->cxt)
+					ui_row(panel->cxt)
 					{
 						UI_Signal hide = {};
 						
-						ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
+						ui_size_kind(panel->cxt, UI_SizeKind_TextContent)
 						{
 							UI_Signal res = {};
 							
-							ui_pref_height(ed_state->cxt, 30)
-								ui_size_kind_y(ed_state->cxt, UI_SizeKind_Pixels)
+							ui_pref_height(panel->cxt, 30)
+								ui_size_kind_y(panel->cxt, UI_SizeKind_Pixels)
 							{
-								res = ui_label(ed_state->cxt, panel->name);
+								res = ui_label(panel->cxt, panel->name);
 							}
 							
 							if(panel->floating)
 							{
-								ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
-									ui_pref_width(ed_state->cxt, 30)
+								ui_size_kind(panel->cxt, UI_SizeKind_Pixels)
+									ui_pref_width(panel->cxt, 30)
 								{
-									ui_spacer(ed_state->cxt);
+									ui_spacer(panel->cxt);
 								}
-								hide = ui_labelf(ed_state->cxt, "hide%d",i);
+								hide = ui_labelf(panel->cxt, "hide%d",i);
 							}
 							else
 							{
@@ -152,7 +173,7 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 							
 							if(os_mouse_held(OS_MouseButton_Left) && panel->grabbed)
 							{
-								panel->pos += (ed_state->cxt->mpos - ed_state->old_pos);
+								panel->pos += (panel->cxt->mpos - panel->old_pos);
 							}
 							else
 							{
@@ -165,11 +186,11 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 					{
 						if((ED_PanelKind)i == ED_PanelKind_TileSetViewer)
 						{
-							ed_draw_spritesheet(ed_state, 3, 3, str8_lit("debug/numbers.png"));
-							ed_draw_spritesheet(ed_state, 3, 2, str8_lit("fox/fox.png"));
-							ed_draw_spritesheet(ed_state, 3, 3, str8_lit("impolo/impolo-east.png"));
-							ed_draw_spritesheet(ed_state, 3, 1, str8_lit("tree/trees.png"));
-							ed_draw_spritesheet(ed_state, 3, 3, str8_lit("grass/grass_tile.png"));
+							ed_draw_spritesheet(panel, 3, 3, str8_lit("debug/numbers.png"));
+							ed_draw_spritesheet(panel, 3, 2, str8_lit("fox/fox.png"));
+							ed_draw_spritesheet(panel, 3, 3, str8_lit("impolo/impolo-east.png"));
+							ed_draw_spritesheet(panel, 3, 1, str8_lit("tree/trees.png"));
+							ed_draw_spritesheet(panel, 3, 3, str8_lit("grass/grass_tile.png"));
 						}
 						else if((ED_PanelKind)i == ED_PanelKind_Debug)
 						{
@@ -181,21 +202,21 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 								panel->update_timer = 0;
 							}
 							
-							ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
+							ui_size_kind(panel->cxt, UI_SizeKind_TextContent)
 							{
-								if(ui_labelf(ed_state->cxt, "cc : %.f K", panel->cc).active)
+								if(ui_labelf(panel->cxt, "cc : %.f K", panel->cc).active)
 								{
 									printf("pressed\n");
 								}
 								
-								ui_labelf(ed_state->cxt, "ft : %.fms", panel->ft * 1000);
-								ui_labelf(ed_state->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
-								ui_labelf(ed_state->cxt, "res: %.1f GB", state->res * 0.000000001f);
-								ui_labelf(ed_state->cxt, "textures: %.1f MB", a_asset_cache->tex_mem * 0.000001);
+								ui_labelf(panel->cxt, "ft : %.fms", panel->ft * 1000);
+								ui_labelf(panel->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
+								ui_labelf(panel->cxt, "res: %.1f GB", state->res * 0.000000001f);
+								ui_labelf(panel->cxt, "textures: %.1f MB", a_asset_cache->tex_mem * 0.000001);
 								
 								for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
 								{
-									if(ui_labelf(ed_state->cxt, "%d. [%.f, %.f]", i, ed_state->panels[i].pos.x, ed_state->panels[i].pos.y).active)
+									if(ui_labelf(panel->cxt, "%d. [%.f, %.f]", i, ed_state->panels[i].pos.x, ed_state->panels[i].pos.y).active)
 									{
 										ed_state->panels[i].floating = !ed_state->panels[i].floating; 
 									}
@@ -204,83 +225,92 @@ void ed_update(State *state, OS_Event_list *events, f32 delta)
 							
 							R_Handle face = a_handle_from_path(str8_lit("debug/toppema.png"));
 							
-							ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
-								ui_pref_size(ed_state->cxt, 100)
+							ui_size_kind(panel->cxt, UI_SizeKind_Pixels)
+								ui_pref_size(panel->cxt, 100)
 							{
-								ui_image(ed_state->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
+								ui_image(panel->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
 							}
 							
 						}
 						else if((ED_PanelKind)i == ED_PanelKind_Inspector)
 						{
-							if(ed_state->selected_tile.len > 0)
+							if(panel->selected_tile.len > 0)
 							{
-								ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
+								ui_size_kind(panel->cxt, UI_SizeKind_TextContent)
 								{
-									ui_labelf(ed_state->cxt, "%.*s", str8_varg(ed_state->selected_tile));
+									ui_labelf(panel->cxt, "%.*s", str8_varg(panel->selected_tile));
 									
 									
-									ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
-										ui_pref_size(ed_state->cxt, 100)
+									ui_size_kind(panel->cxt, UI_SizeKind_Pixels)
+										ui_pref_size(panel->cxt, 100)
 									{
-										R_Handle img = a_handle_from_path(ed_state->selected_tile);
+										R_Handle img = a_handle_from_path(panel->selected_tile);
 										
-										ed_state->selected_slot = ui_image(ed_state->cxt, img, ed_state->selected_tile_rect, hsva_to_rgba(ed_state->hsva), str8_lit("inspector panel image")).widget;
+										panel->selected_slot = ui_image(panel->cxt, img, panel->selected_tile_rect, hsva_to_rgba(panel->hsva), str8_lit("inspector panel image")).widget;
 									}
 									
-									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_tl_varg(ed_state->selected_tile_rect));
-									ui_labelf(ed_state->cxt, "[%.2f, %.2f]", rect_br_varg(ed_state->selected_tile_rect));
+									ui_labelf(panel->cxt, "[%.2f, %.2f]", rect_tl_varg(panel->selected_tile_rect));
+									ui_labelf(panel->cxt, "[%.2f, %.2f]", rect_br_varg(panel->selected_tile_rect));
 									
-									ui_size_kind(ed_state->cxt, UI_SizeKind_Pixels)
-										ui_pref_size(ed_state->cxt, 360)
+									ui_size_kind(panel->cxt, UI_SizeKind_Pixels)
+										ui_pref_size(panel->cxt, 360)
 									{
-										ui_sat_picker(ed_state->cxt, ed_state->hsva.x, &ed_state->hsva.y, &ed_state->hsva.z, str8_lit("sat picker thing"));
-										ui_pref_height(ed_state->cxt, 40)
+										ui_sat_picker(panel->cxt, panel->hsva.x, &panel->hsva.y, &panel->hsva.z, str8_lit("sat picker thing"));
+										ui_pref_height(panel->cxt, 40)
 										{
-											ui_hue_picker(ed_state->cxt, &ed_state->hsva.x, str8_lit("hue picker thing"));
+											ui_hue_picker(panel->cxt, &panel->hsva.x, str8_lit("hue picker thing"));
 											
-											ui_alpha_picker(ed_state->cxt, ed_state->hsva.xyz, &ed_state->hsva.w, str8_lit("alpha picker thing"));
+											ui_alpha_picker(panel->cxt, panel->hsva.xyz, &panel->hsva.w, str8_lit("alpha picker thing"));
 										}
 									}
 									
-									s32 hue = ed_state->hsva.x;
-									s32 sat = ed_state->hsva.y * 100;
-									s32 val = ed_state->hsva.z * 100;
+									s32 hue = panel->hsva.x;
+									s32 sat = panel->hsva.y * 100;
+									s32 val = panel->hsva.z * 100;
 									
-									ui_labelf(ed_state->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
+									ui_labelf(panel->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
 									
-									v4f rgba = hsva_to_rgba(ed_state->hsva);
+									v4f rgba = hsva_to_rgba(panel->hsva);
 									
-									ui_labelf(ed_state->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
+									ui_labelf(panel->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
 								}
 							}
 						}
 						else if((ED_PanelKind)i == ED_PanelKind_Game)
 						{
-							ui_size_kind(ed_state->cxt, UI_SizeKind_TextContent)
+							ui_size_kind(panel->cxt, UI_SizeKind_TextContent)
 							{
-								ui_labelf(ed_state->cxt, "gi jane");
+								ui_labelf(panel->cxt, "gi jane");
 							}
 						}
 					}
 				}
 			}
 		}
+		
+		panel->old_pos = panel->cxt->mpos;
+		
 		ui_layout(dad);
+		ed_draw_panel(panel);
+		ui_end(panel->cxt);
+		d_pop_bucket();
 		
-		for(u32 i = 0; i < 4; i ++)
-		{
-			ED_Panel *p = ed_state->panels + i;
-			ed_draw_panel(ed_state, p);
-		}
-		
+		panel->events.first = panel->events.last = 0;
+		panel->events.count = 0; 
 	}
-	ui_end(ed_state->cxt);
 	
-	ed_state->old_pos = ed_state->cxt->mpos;
+	for(u32 i = 0; i < ED_PanelKind_COUNT; i++)
+	{
+		ED_Panel *panel = ed_state->panels + i;
+		r_submit(panel->win, &panel->bucket->list);
+	}
+	
+	d_end();
+	
+	arena_temp_end(&temp);
 }
 
-void ed_draw_panel(ED_State *ed_state, ED_Panel *panel)
+void ed_draw_panel(ED_Panel *panel)
 {
 	UI_Widget *parent = panel->root;
 	
@@ -302,10 +332,10 @@ void ed_draw_panel(ED_State *ed_state, ED_Panel *panel)
 	
 	d_draw_rect(rect(parent->pos, parent->size), panel->color);
 	
-	ed_draw_children(ed_state, panel, parent);
+	ed_draw_children(panel, parent);
 }
 
-void ed_draw_children(ED_State *ed_state, ED_Panel *panel, UI_Widget *root)
+void ed_draw_children(ED_Panel *panel, UI_Widget *root)
 {
 	root->pos.x = root->computed_rel_position[0];
 	root->pos.y = root->computed_rel_position[1];
@@ -344,9 +374,9 @@ void ed_draw_children(ED_State *ed_state, ED_Panel *panel, UI_Widget *root)
 	if(root->flags & UI_Flags_has_custom_draw)
 	{
 		
-		if(ed_state->selected_slot == root)
+		if(panel->selected_slot == root)
 		{
-			Rect selected_slot_rect = rect(ed_state->selected_slot->pos, ed_state->selected_slot->size);
+			Rect selected_slot_rect = rect(panel->selected_slot->pos, panel->selected_slot->size);
 			d_draw_img(selected_slot_rect, rect(0, 0, 2, 2), D_COLOR_WHITE, a_get_alpha_bg_tex());
 		}
 		
@@ -355,6 +385,6 @@ void ed_draw_children(ED_State *ed_state, ED_Panel *panel, UI_Widget *root)
 	
 	for(UI_Widget *child = root->first; child; child = child->next)
 	{
-		ed_draw_children(ed_state, panel, child);
+		ed_draw_children(panel, child);
 	}
 }

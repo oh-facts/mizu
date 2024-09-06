@@ -27,10 +27,9 @@ void update_and_render(void *memory, f32 delta)
 		os_api_init(&state->os_api);
 		
 		tcxt_init();
-		state->game_win = os_window_open(arena, "window 2", 300, 100, 1);
+		
 		state->win = os_window_open(arena, "window", 960, 540, 1);
 		
-		opengl_load_functions();
 		//glEnable(GL_FRAMEBUFFER_SRGB);
 		r_opengl_init();
 		d_init();
@@ -96,8 +95,6 @@ void update_and_render(void *memory, f32 delta)
 	
 	Arena_temp temp = arena_temp_begin(trans);
 	
-	os_poll_events(temp.arena, &state->events);
-	
 	d_begin(&state->atlas, state->atlas_tex);
 	
 	//f32 zoom = 2;
@@ -109,34 +106,35 @@ void update_and_render(void *memory, f32 delta)
 	//d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	R_Handle bg = a_handle_from_path(str8_lit("debug/clouds.jpg"));
 	d_draw_img(rect(0,0,1920,1080), rect(0,0,1,1), D_COLOR_WHITE, bg);
-	
-	ed_update(state, &state->events, delta);
-	
 	//d_pop_proj_view();
 	
 	r_submit(state->win, &draw->list);
-	r_submit(state->game_win, &draw->list);
 	
 	d_pop_bucket();
 	d_end();
 	
-	if(os_key_press(&state->events, OS_Key_F))
-	{
-		printf("Toggle Fullscreen\n");
-	}
+	ed_update(state, delta);
 	
-	if(os_key_press(&state->events, OS_Key_R) || get_file_last_modified_time((char*)state->hr.path.c) > state->hr.reloaded_time)
-	{
-		state->hr.state = HotReloadState_Requested;
-	}
 	
-	if(os_key_press(&state->events, OS_Key_Q))
-	{
-		os_window_close(state->win);
-	}
+	/*
+		if(os_key_press(&state->events, OS_Key_F))
+		{
+			printf("Toggle Fullscreen\n");
+		}
+		
+		if(os_key_press(&state->events, OS_Key_R) || get_file_last_modified_time((char*)state->hr.path.c) > state->hr.reloaded_time)
+		{
+			state->hr.state = HotReloadState_Requested;
+		}
+		
+		if(os_key_press(&state->events, OS_Key_Q))
+		{
+			os_window_close(state->win);
+		}
+		*/
 	
-	state->events.first = state->events.last = 0;
-	state->events.count = 0; 
+	//state->events.first = state->events.last = 0;
+	//state->events.count = 0; 
 	arena_temp_end(&temp);
 	
 	END_TIMED_BLOCK(UPDATE_AND_RENDER);

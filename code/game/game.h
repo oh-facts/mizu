@@ -114,7 +114,6 @@ struct State
 	
 	// engine
 	OS_Window win;
-	OS_Window game_win;
 	
 	OS_Event_list events;
 	Atlas atlas;
