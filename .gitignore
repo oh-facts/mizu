@@ -26,4 +26,5 @@ art.txt
 
 //art
 data/assets/*
+!data/assets/debug/
 !data/assets/debug/*
