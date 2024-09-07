@@ -1,4 +1,4 @@
-void ed_draw_spritesheet(ED_Panel *panel, f32 x, f32 y, Str8 path)
+void ed_draw_spritesheet(ED_Panel *panel, ED_Panel *insp, f32 x, f32 y, Str8 path)
 {
 	R_Handle img = a_handle_from_path(path);
 	
@@ -24,8 +24,8 @@ void ed_draw_spritesheet(ED_Panel *panel, f32 x, f32 y, Str8 path)
 						
 						if(ui_imagef(panel->cxt, img, recty, D_COLOR_WHITE, "%.*s%d%d", str8_varg(path), i, j).active)
 						{
-							panel->selected_tile = path;
-							panel->selected_tile_rect = recty;
+							insp->selected_tile = path;
+							insp->selected_tile_rect = recty;
 						}
 						advance_x += width;
 					}
@@ -53,19 +53,9 @@ void ed_update(State *state, f32 delta)
 			p->cxt = ui_alloc_cxt();
 			p->win = os_window_open(ed_state->arena, "tile set viewer", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
 			p->floating = 1;
-			p->pos = os_get_window_pos(p->win);
-		}
-		
-		{
-			ED_Panel *p = ed_state->panels + ED_PanelKind_Debug;
-			p->scale = v2f{{1.6,0.3}};
-			p->hide = 1;
-			p->name = push_str8f(ed_state->arena, "debug");
-			p->cxt = ui_alloc_cxt();
-			p->win = os_window_open(ed_state->arena, "debug", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
-			p->pos = os_get_window_pos(p->win);
-			p->floating = 1;
 			
+			p->pos = v2f{{1550, 16}};
+			os_set_window_pos(p->win, p->pos);
 		}
 		
 		{
@@ -80,9 +70,25 @@ void ed_update(State *state, f32 delta)
 			p->hsva.z = 1;
 			p->hsva.w = 1;
 			p->win = os_window_open(ed_state->arena, "inspector", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
-			p->pos = os_get_window_pos(p->win);
-			p->floating = 0;
 			
+			p->pos = v2f{{39, 16}};
+			os_set_window_pos(p->win, p->pos);
+			
+			p->floating = 1;
+		}
+		
+		{
+			ED_Panel *p = ed_state->panels + ED_PanelKind_Debug;
+			p->scale = v2f{{1.6,0.3}};
+			p->hide = 0;
+			p->name = push_str8f(ed_state->arena, "debug");
+			p->cxt = ui_alloc_cxt();
+			p->win = os_window_open(ed_state->arena, "debug", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
+			
+			p->pos = v2f{{431, 675}};
+			os_set_window_pos(p->win, p->pos);
+			
+			p->floating = 1;
 		}
 		
 		ed_state->initialized = 1;
@@ -180,11 +186,12 @@ void ed_update(State *state, f32 delta)
 					{
 						if((ED_PanelKind)i == ED_PanelKind_TileSetViewer)
 						{
-							ed_draw_spritesheet(panel, 3, 3, str8_lit("debug/numbers.png"));
-							ed_draw_spritesheet(panel, 3, 2, str8_lit("fox/fox.png"));
-							ed_draw_spritesheet(panel, 3, 3, str8_lit("impolo/impolo-east.png"));
-							ed_draw_spritesheet(panel, 3, 1, str8_lit("tree/trees.png"));
-							ed_draw_spritesheet(panel, 3, 3, str8_lit("grass/grass_tile.png"));
+							ED_Panel *insp = ed_state->panels + ED_PanelKind_Inspector;
+							ed_draw_spritesheet(panel, insp, 3, 3, str8_lit("debug/numbers.png"));
+							ed_draw_spritesheet(panel, insp, 3, 2, str8_lit("fox/fox.png"));
+							ed_draw_spritesheet(panel, insp, 3, 3, str8_lit("impolo/impolo-east.png"));
+							ed_draw_spritesheet(panel, insp, 3, 1, str8_lit("tree/trees.png"));
+							ed_draw_spritesheet(panel, insp, 3, 3, str8_lit("grass/grass_tile.png"));
 						}
 						else if((ED_PanelKind)i == ED_PanelKind_Debug)
 						{

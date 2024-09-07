@@ -193,6 +193,11 @@ void os_poll_events(Arena *arena)
 				
 			}break;
 			
+			case SDL_EVENT_WINDOW_MOUSE_ENTER:
+			{
+				SDL_RaiseWindow(win->raw);
+			}break;
+			
 			case SDL_EVENT_MOUSE_MOTION:
 			{
 				if(sdl_event.motion.x < win->w && sdl_event.motion.x >= 0 && sdl_event.motion.y >= 0 && sdl_event.motion.y < win->h)

@@ -29,7 +29,7 @@ void update_and_render(void *memory, f32 delta)
 		tcxt_init();
 		
 		state->win = os_window_open(arena, "window", 960, 540, OS_WindowKind_Opengl);
-		
+		os_set_window_pos(state->win, v2f{{480, 46}});
 		//glEnable(GL_FRAMEBUFFER_SRGB);
 		r_opengl_init();
 		d_init();

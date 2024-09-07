@@ -7,6 +7,23 @@
 
 #define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
 
+// TODO(mizu): If a window is focussed, other windows come to the top too. Also, add a minimize and maximize and close button. And work on making the panels better to interact with.
+
+// Also fix the focus stealing thing where if a window is being interacted with
+// but it hovers over another window, other window and current window fight for focus.
+
+// TODO(mizu): Call panels windows, because thats what they are. Then work on panels.
+// and then on tabs
+
+// Also make it so that if a window is ontop of main window, it moves with the main window
+// 
+// oh yeah, and make parent sibling relationships for the windows
+// Main window meaning parent window. child windows always display on top of main window
+// and if they are inside the parent window's rect, then they should move with it too (?).
+
+// And give the debug panel lots of functionality to control all other windows's features.
+
+// And ofc, make the main engine window also one of these ui windows.
 enum ED_PanelKind
 {
 	ED_PanelKind_TileSetViewer,
@@ -29,13 +46,15 @@ struct ED_Panel
 	v2f scale;
 	b32 grabbed;
 	f32 update_timer;
-	f32 cc;
-	f32 ft;
-	v4f color;
+	
+	UI_Widget *selected_slot;
 	
 	Str8 selected_tile;
 	Rect selected_tile_rect;
-	UI_Widget *selected_slot;
+	
+	f32 cc;
+	f32 ft;
+	v4f color;
 	
 	v4f hsva;
 	
