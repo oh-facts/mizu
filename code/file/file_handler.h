@@ -215,7 +215,7 @@ function Glyph *make_bmp_font(u8* path, char *codepoints, u32 num_cp, Arena* are
 	for(u32 i = 0; i < num_cp; i++)
 	{
 		s32 w,h,xoff,yoff;
-		f32 size = stbtt_ScaleForPixelHeight(&font, 64);
+		f32 size = stbtt_ScaleForPixelHeight(&font, 256);
 		
 		u8* bmp = stbtt_GetCodepointBitmap(&font, 0, size, codepoints[i] ,&w,&h, &xoff, &yoff);
 		

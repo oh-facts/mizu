@@ -16,7 +16,7 @@ void update_and_render(void *memory, f32 delta)
 		tcxt = state->tcxt;
 		d_state = state->d_state;
 		r_opengl_state = state->r_opengl_state;
-		a_asset_cache = state->a_asset_cache;
+		a_state = state->a_state;
 		
 		state->hr.state = HotReloadState_Null;
 	}
@@ -28,7 +28,7 @@ void update_and_render(void *memory, f32 delta)
 		
 		tcxt_init();
 		
-		state->win = os_window_open(arena, "window", 960, 540, OS_WindowKind_Opengl);
+		state->win = os_window_open(arena, "alfia", 960, 540, OS_WindowKind_Opengl);
 		os_set_window_pos(state->win, v2f{{480, 46}});
 		//glEnable(GL_FRAMEBUFFER_SRGB);
 		r_opengl_init();
@@ -38,7 +38,7 @@ void update_and_render(void *memory, f32 delta)
 		state->tcxt = tcxt;
 		state->d_state = d_state;
 		state->r_opengl_state = r_opengl_state;
-		state->a_asset_cache = a_asset_cache;
+		state->a_state = a_state;
 		
 		char codepoints[] =
 		{
@@ -112,13 +112,12 @@ void update_and_render(void *memory, f32 delta)
 	d_pop_bucket();
 	d_end();
 	
+	if(os_key_press(&state->events, state->win, OS_Key_F))
+	{
+		printf("Toggle Fullscreen\n");
+	}
 	
 	/*
-		if(os_key_press(&state->events, OS_Key_F))
-		{
-			printf("Toggle Fullscreen\n");
-		}
-		
 		if(os_key_press(&state->events, OS_Key_R) || get_file_last_modified_time((char*)state->hr.path.c) > state->hr.reloaded_time)
 		{
 			state->hr.state = HotReloadState_Requested;
@@ -130,8 +129,8 @@ void update_and_render(void *memory, f32 delta)
 		}
 		*/
 	
-	//state->events.first = state->events.last = 0;
-	//state->events.count = 0; 
+	state->events.first = state->events.last = 0;
+	state->events.count = 0; 
 	arena_temp_end(&temp);
 	
 	END_TIMED_BLOCK(UPDATE_AND_RENDER);

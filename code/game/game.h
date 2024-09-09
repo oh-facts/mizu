@@ -110,7 +110,7 @@ struct State
 	TCXT *tcxt;
 	D_State *d_state;
 	R_Opengl_state *r_opengl_state;
-	A_AssetCache *a_asset_cache;
+	A_State *a_state;
 	
 	// engine
 	OS_Window win;

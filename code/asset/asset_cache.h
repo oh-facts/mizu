@@ -7,29 +7,73 @@
 
 const Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
 
-struct A_TextureCache
+// two things need to happen here. Caching font data, and caching glyphs
+
+// For font; it has hashed font binary data;
+struct A_Handle
 {
-	// used as hash link when in map, used as free list link when freed
-	A_TextureCache *next;
-	u64 key;
-	Str8 path;
-	R_Handle v;
-	b32 loaded;
-	u64 last_touched;
+	u64 m_u64;
 };
 
-struct A_TextureCacheSlot
+struct A_FontCache
 {
-	A_TextureCache *first;
-	A_TextureCache *last;
+	A_Handle atlas;
+};
+
+struct A_GlyphCache
+{
+	A_Handle font;
+	R_Handle tex;
+	Glyph metrics;
+};
+
+struct A_TextureCache
+{
+	R_Handle v;
+};
+
+enum A_AssetKind
+{
+	A_AssetKind_Null,
+	A_AssetKind_Font,
+	A_AssetKind_Glyph,
+	A_AssetKind_Texture,
+	A_AssetKind_COUNT
 };
 
 struct A_AssetCache
 {
-	Arena *arena;
-	A_TextureCacheSlot *slots;
-	A_TextureCache *free;
+	A_AssetKind kind;
+	A_AssetCache *next;
+	u64 key;
+	u64 last_touched;
+	
+	union
+	{
+		A_FontCache fontCache;
+		A_GlyphCache glyphCache;
+		A_TextureCache textureCache;
+	};
+};
+
+struct A_AssetCacheSlot
+{
+	A_AssetCache *first;
+	A_AssetCache *last;
+};
+
+struct A_AssetStore
+{
+	A_AssetCacheSlot *slots;
 	u32 num_slots;
+};
+
+struct A_State
+{
+	Arena *arena;
+	A_AssetStore store[A_AssetKind];
+	A_AssetCache *free;
+	
 	Str8 asset_dir;
 	u32 num_tex;
 	u64 tex_mem;
@@ -39,13 +83,19 @@ struct A_AssetCache
 	R_Handle alpha_bg_tex;
 };
 
-global A_AssetCache *a_asset_cache;
+global A_State *a_state;
 
-// djb2
+// NOTE(mizu): helpers
+function A_FontCache *a_getFontCache();
+function A_GlyphCache *a_getGlyphCache();
+function A_TextureCache *a_getTextureCache();
+
 function void a_init();
+// djb2
 function u64 a_hash(Str8 str);
-function A_TextureCache *a_alloc_texture_cache();
-function void a_free_texture_cache(A_TextureCache *tex);
+function A_AssetCache *a_allocAssetCache(A_AssetKind kind);
+function void a_freeAssetCache(A_AssetCache *ass);
+
 function void a_add_to_hash(A_TextureCache *tex);
 function R_Handle a_handle_from_path(Str8 path);
 function void a_evict();
