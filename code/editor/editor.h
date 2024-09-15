@@ -3,8 +3,7 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 0.8}}
-
+#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 1}}
 #define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
 
 // TODO(mizu): If a window is focussed, other windows come to the top too. Also, add a minimize and maximize and close button. And work on making the panels better to interact with.
@@ -23,11 +22,12 @@
 
 // And give the debug panel lots of functionality to control all other windows's features.
 
-// And ofc, make the main engine window also one of these ui windows.
-
 // rects with borders.
 // padding in ui
 // make text look proper
+
+// DOTO(mizu): And ofc, make the main engine window also one of these ui windows.
+
 
 enum ED_WindowKind
 {

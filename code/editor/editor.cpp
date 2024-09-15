@@ -57,10 +57,10 @@ void ed_init(State *state)
     os_set_window_pos(p->win, p->pos);
     ed_state->num_windows++;
   }
-  /*
+  
   {
     ED_Window *p = ed_state->windows + ED_WindowKind_TileSetViewer;
-    p->scale = v2f{{1.6,0.3}};
+    p->scale = v2f{{300, 0}};
     p->name = push_str8f(ed_state->arena, "tile set viewer");
     p->cxt = ui_alloc_cxt();
     p->win = os_window_open(ed_state->arena, "tile set viewer", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
@@ -68,11 +68,12 @@ void ed_init(State *state)
     
     p->pos = v2f{{1550, 16}};
     os_set_window_pos(p->win, p->pos);
+    ed_state->num_windows++;
   }
   
   {
     ED_Window *p = ed_state->windows + ED_WindowKind_Inspector;
-    p->scale = v2f{{1.6,0.3}};
+    p->scale = v2f{{300, 0}};
     p->hide = 0;
     p->name = push_str8f(ed_state->arena, "Inspector");
     p->cxt = ui_alloc_cxt();
@@ -87,11 +88,12 @@ void ed_init(State *state)
     os_set_window_pos(p->win, p->pos);
     
     p->floating = 1;
+    ed_state->num_windows++;
   }
   
   {
     ED_Window *p = ed_state->windows + ED_WindowKind_Debug;
-    p->scale = v2f{{1.6,0.3}};
+    p->scale = v2f{{300, 0}};
     p->hide = 0;
     p->name = push_str8f(ed_state->arena, "debug");
     p->cxt = ui_alloc_cxt();
@@ -101,8 +103,9 @@ void ed_init(State *state)
     os_set_window_pos(p->win, p->pos);
     
     p->floating = 1;
+    ed_state->num_windows++;
   }
-  */
+  
 }
 
 void ed_update(State *state, f32 delta)
