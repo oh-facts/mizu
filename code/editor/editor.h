@@ -28,6 +28,7 @@
 // rects with borders.
 // padding in ui
 // make text look proper
+
 enum ED_WindowKind
 {
 	ED_WindowKind_Game,
@@ -46,11 +47,16 @@ struct ED_Window
 	UI_Context *cxt;
 	
 	Str8 name;
-	b32 hide;
-	b32 floating;
-	v2f pos;
-	v2f scale;
+	
+  // NOTE(mizu): at some point, make these flags?
+  b32 hide;
+	b32 minimize;
+  b32 maximize;
+  b32 floating;
 	b32 grabbed;
+	
+  v2f pos;
+	v2f scale;
 	f32 update_timer;
 	
 	UI_Widget *selected_slot;

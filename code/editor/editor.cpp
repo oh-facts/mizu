@@ -151,11 +151,12 @@ void ed_update(State *state, f32 delta)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
               R_Handle hide_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
-              hide = ui_imagef(window->cxt, hide_img, rect(0, 0, 0.5, 1), ED_THEME_TEXT, "hide img %d", i);
+              hide = ui_imagef(window->cxt, hide_img, rect(0, 0, 0.25, 1), ED_THEME_TEXT, "hide img %d", i);
 						}
             
             ui_size_kind_x(window->cxt, UI_SizeKind_Pixels)
-              ui_pref_width(window->cxt, 960)
+              // NOTE(mizu): bandaid fix until I get aligning done
+              ui_pref_width(window->cxt, 960 - 32 * 4)
               ui_named_rowf(window->cxt, "menu bar %d", i)
             {
               UI_Widget *menu_bar = window->cxt->parent_stack.top->v;
@@ -196,7 +197,18 @@ void ed_update(State *state, f32 delta)
                 ui_size_kind(window->cxt, UI_SizeKind_Pixels)
               {
                 R_Handle hide_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
-                if(ui_imagef(window->cxt, hide_img, rect(0.5, 0, 1, 1), ED_THEME_TEXT, "close img %d", i).active)
+                
+                if(ui_imagef(window->cxt, hide_img, rect(0.25, 0, 0.5, 1), ED_THEME_TEXT, "minimize img %d", i).active)
+                {
+                  window->minimize = !window->minimize;
+                }
+                
+                if(ui_imagef(window->cxt, hide_img, rect(0.5, 0, 0.75, 1), ED_THEME_TEXT, "maximize img %d", i).active)
+                {
+                  window->maximize = !window->maximize;
+                }
+                
+                if(ui_imagef(window->cxt, hide_img, rect(0.75, 0, 1, 1), ED_THEME_TEXT, "close img %d", i).active)
                 {
                   os_window_close(window->win);
                 }
