@@ -47,7 +47,7 @@ void ed_init(State *state)
   // window construction
   {
     ED_Window *p = ed_state->windows + ED_WindowKind_Game;
-    p->scale = v2f{{1.6,0.3}};
+    p->scale = v2f{{960, 540}};
     p->name = push_str8f(ed_state->arena, "Game");
     p->cxt = ui_alloc_cxt();
     p->win = os_window_open(ed_state->arena, "Game", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
@@ -156,7 +156,7 @@ void ed_update(State *state, f32 delta)
             
             ui_size_kind_x(window->cxt, UI_SizeKind_Pixels)
               // NOTE(mizu): bandaid fix until I get aligning done
-              ui_pref_width(window->cxt, 960 - 32 * 4)
+              ui_pref_width(window->cxt, window->scale.x - 32 * 4)
               ui_named_rowf(window->cxt, "menu bar %d", i)
             {
               UI_Widget *menu_bar = window->cxt->parent_stack.top->v;
