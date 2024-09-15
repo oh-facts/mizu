@@ -25,6 +25,9 @@
 
 // And ofc, make the main engine window also one of these ui windows.
 
+// rects with borders.
+// padding in ui
+// make text look proper
 enum ED_WindowKind
 {
 	ED_WindowKind_Game,

@@ -13,6 +13,12 @@ enum Axis2
 	Axis2_COUNT
 };
 
+enum UI_AlignKind
+{
+  UI_AlignKind_Left,
+  UI_AlignKind_Right,
+};
+
 enum UI_SizeKind
 {
 	UI_SizeKind_Null,
@@ -77,7 +83,8 @@ struct UI_Widget
 	v4f color;
 	v4f bg_color;
 	Axis2 child_layout_axis;
-	v2f fixed_position;
+	UI_AlignKind alignKind;
+  v2f fixed_position;
 	UI_WidgetCustomDrawFunctionType *custom_draw;
 	void *custom_draw_data;
 	
@@ -106,6 +113,8 @@ ui_make_style_struct(Color, v4f)
 ui_make_style_struct(Pref_width, f32)
 ui_make_style_struct(Pref_height, f32)
 ui_make_style_struct(Fixed_pos, v2f)
+
+ui_make_style_struct(AlignKind_x, UI_AlignKind)
 ui_make_style_struct(Axis2, Axis2)
 
 ui_make_style_struct(SizeKind_x, UI_SizeKind)
@@ -155,8 +164,9 @@ struct UI_Context
 	ui_make_style_struct_stack(Axis2, child_layout_axis);
 	ui_make_style_struct_stack(SizeKind_x, size_kind_x);
 	ui_make_style_struct_stack(SizeKind_y, size_kind_y);
-	
-	u32 num;
+	ui_make_style_struct_stack(AlignKind_x, align_kind_x);
+  
+  u32 num;
 };
 
 struct text_extent
@@ -292,6 +302,9 @@ ui_make_free_node(SizeKind_x, size_kind_x)
 ui_make_alloc_node(SizeKind_y, size_kind_y)
 ui_make_free_node(SizeKind_y, size_kind_y)
 
+ui_make_alloc_node(AlignKind_x, align_kind_x)
+ui_make_free_node(AlignKind_x, align_kind_x)
+
 #define ui_make_push_style(Name, name, Type) \
 function void ui_push_##name(UI_Context *cxt, Type val) { \
 UI_##Name##_node *node = ui_alloc_##name##_node(cxt);\
@@ -353,6 +366,9 @@ ui_make_pop_style(SizeKind_x, size_kind_x)
 ui_make_push_style(SizeKind_y, size_kind_y, UI_SizeKind)
 ui_make_pop_style(SizeKind_y, size_kind_y)
 
+ui_make_push_style(AlignKind_x, align_kind_x, UI_AlignKind)
+ui_make_pop_style(AlignKind_x, align_kind_x)
+
 #define ui_push_size_kind(cxt, kind) ui_push_size_kind_x(cxt, kind); \
 ui_push_size_kind_y(cxt, kind);
 
@@ -377,6 +393,7 @@ function UI_Context *ui_alloc_cxt()
 	ui_push_pref_height(cxt, 0);
 	ui_push_fixed_pos(cxt, v2f{{0,0}});
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
+	ui_push_align_kind_x(cxt, UI_AlignKind_Left);
 	
 	cxt->frames = 0;
 	
@@ -498,6 +515,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		}
 	}
 	
+  widget->alignKind = cxt->align_kind_x_stack.top->v;
 	widget->color = cxt->text_color_stack.top->v;
 	widget->bg_color = cxt->bg_color_stack.top->v;
 	
@@ -1090,6 +1108,7 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 
 #define ui_pref_size(cxt, v) ui_pref_width(cxt, v) ui_pref_height(cxt, v)
 
+#define ui_align_kind_x(cxt, v) UI_DeferLoop(ui_push_align_kind_x(cxt, v), ui_pop_align_kind_x(cxt))
 
 function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)
 {
@@ -1172,14 +1191,16 @@ function void ui_layout_pos(UI_Widget *root)
 			if(!(root->flags & UI_Flags_is_floating_x))
 			{
 				root->computed_rel_position[Axis2_X] = root->prev->computed_rel_position[Axis2_X] + root->prev->computed_size[Axis2_X];
-			}
+        // NOTE(mizu): working on this rn
+        //root->computed_rel_position[Axis2_X] += root->parent->computed_size[Axis2_X];// * 0.5;
+      }
 		}
 		else if(root->parent->child_layout_axis == Axis2_Y)
 		{
 			if(!(root->flags & UI_Flags_is_floating_y))
 			{
 				root->computed_rel_position[Axis2_Y] = root->prev->computed_rel_position[Axis2_Y] + root->prev->computed_size[Axis2_Y];
-			}
+      }
 		}
 	}
 	
@@ -1187,7 +1208,6 @@ function void ui_layout_pos(UI_Widget *root)
 	{
 		ui_layout_pos(child);
 	}
-	
 }
 
 // post order dfs

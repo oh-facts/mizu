@@ -135,76 +135,80 @@ void ed_update(State *state, f32 delta)
 					window->root->flags = (UI_Flags)(UI_Flags_is_floating_x | UI_Flags_is_floating_y);
 				}
 				
-				ui_parent(window->cxt, window->root)
+        ui_parent(window->cxt, window->root)
 					ui_text_color(window->cxt, ED_THEME_TEXT)
 					//ui_fixed_pos(window->cxt, (window->pos))
 					ui_col(window->cxt)
 				{
 					// NOTE(mizu):  title bar, dragging and hiding
-					ui_row(window->cxt)
+					
+          ui_row(window->cxt)
 					{
-						UI_Signal hide = {};
-						
-						ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-						{
-							UI_Signal res = {};
-							
-							ui_pref_height(window->cxt, 30)
-								ui_size_kind_y(window->cxt, UI_SizeKind_Pixels)
-							{
-								res = ui_label(window->cxt, window->name);
-							}
-							
-							if(window->floating)
-							{
-								ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-									ui_pref_width(window->cxt, 30)
-								{
-									ui_spacer(window->cxt);
-								}
-								hide = ui_labelf(window->cxt, "hide%d",i);
-							}
-							else
-							{
-								hide = res;
-							}
-							
-							if(res.active)
-							{
-								window->grabbed = 1;
-							}
-							
-							if(hide.active)
-							{
-								window->hide = !window->hide;
-							}
-							
-							os_mouse_released(events, window->win, OS_MouseButton_Left);
-							
-							if(os_mouse_held(window->win, OS_MouseButton_Left) && window->grabbed)
-							{
-								f32 x, y;
-								SDL_GetGlobalMouseState(&x, &y);
-								window->pos += v2f{{x, y}} - window->old_pos;
-								os_set_window_pos(window->win, window->pos);
-							}
-							else
-							{
-								window->grabbed = 0;
-							}
+            UI_Signal hide = {};
+            UI_Signal drag = {};
+            
+            ui_pref_size(window->cxt, 32)
+              ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+            {
+              R_Handle hide_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
+              hide = ui_imagef(window->cxt, hide_img, rect(0, 0, 0.5, 1), ED_THEME_TEXT, "hide img %d", i);
+						}
+            
+            ui_size_kind_x(window->cxt, UI_SizeKind_Pixels)
+              ui_pref_width(window->cxt, 960)
+              ui_named_rowf(window->cxt, "menu bar %d", i)
+            {
+              UI_Widget *menu_bar = window->cxt->parent_stack.top->v;
               
-              if(ui_labelf(window->cxt, "close%d", i).active)
+              drag = ui_signal(menu_bar, window->cxt->mpos);
+              
+              ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+                ui_label(window->cxt, window->name);
+            }
+            
+            ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+						{
+              if(drag.active)
               {
-                os_window_close(window->win);
+                window->grabbed = 1;
               }
               
-						}
-					}
-					
-					//printf("%d\n", window->grabbed);
-					
-					if(!window->hide)
-					{
+              if(hide.active)
+              {
+                window->hide = !window->hide;
+              }
+              
+              os_mouse_released(events, window->win, OS_MouseButton_Left);
+              
+              if(os_mouse_held(window->win, OS_MouseButton_Left) && window->grabbed)
+              {
+                f32 x, y;
+                SDL_GetGlobalMouseState(&x, &y);
+                window->pos += v2f{{x, y}} - window->old_pos;
+                os_set_window_pos(window->win, window->pos);
+              }
+              else
+              {
+                window->grabbed = 0;
+              }
+              
+              ui_pref_size(window->cxt, 32)
+                ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+              {
+                R_Handle hide_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
+                if(ui_imagef(window->cxt, hide_img, rect(0.5, 0, 1, 1), ED_THEME_TEXT, "close img %d", i).active)
+                {
+                  os_window_close(window->win);
+                }
+              }
+              
+            }
+          }
+          
+          //printf("%d\n", window->grabbed);
+          
+          if(!window->hide)
+          {
             if((ED_WindowKind)i == ED_WindowKind_Game)
             {
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
@@ -217,113 +221,113 @@ void ed_update(State *state, f32 delta)
             }
             
             if((ED_WindowKind)i == ED_WindowKind_TileSetViewer)
-						{
-							ED_Window *insp = ed_state->windows + ED_WindowKind_Inspector;
-							ed_draw_spritesheet(window, insp, 3, 3, str8_lit("debug/numbers.png"));
-							ed_draw_spritesheet(window, insp, 3, 2, str8_lit("fox/fox.png"));
-							ed_draw_spritesheet(window, insp, 3, 3, str8_lit("impolo/impolo-east.png"));
-							ed_draw_spritesheet(window, insp, 3, 1, str8_lit("tree/trees.png"));
-							ed_draw_spritesheet(window, insp, 3, 3, str8_lit("grass/grass_tile.png"));
-						}
-						else if((ED_WindowKind)i == ED_WindowKind_Debug)
-						{
-							window->update_timer += delta;
-							if(window->update_timer > 1.f)
-							{
-								window->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
-								window->ft = delta;
-								window->update_timer = 0;
-							}
-							
-							ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-							{
-								if(ui_labelf(window->cxt, "cc : %.f K", window->cc).active)
-								{
-									printf("pressed\n");
-								}
-								
-								ui_labelf(window->cxt, "ft : %.fms", window->ft * 1000);
-								ui_labelf(window->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
-								ui_labelf(window->cxt, "res: %.1f GB", state->res * 0.000000001f);
-								ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
-								
-								for(u32 i = 0; i < ed_state->num_windows; i++)
-								{
-									if(ui_labelf(window->cxt, "%d. [%.f, %.f]", i, ed_state->windows[i].pos.x, ed_state->windows[i].pos.y).active)
-									{
-										ed_state->windows[i].floating = !ed_state->windows[i].floating; 
-									}
-								}
-							}
-							
-							R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
-							
-							ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-								ui_pref_size(window->cxt, 100)
-							{
-								ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
-							}
-							
-						}
-						else if((ED_WindowKind)i == ED_WindowKind_Inspector)
-						{
-							if(window->selected_tile.len > 0)
-							{
-								ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-								{
-									ui_labelf(window->cxt, "%.*s", str8_varg(window->selected_tile));
-									
-									
-									ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-										ui_pref_size(window->cxt, 100)
-									{
-										R_Handle img = a_handleFromPath(window->selected_tile);
-										
-										window->selected_slot = ui_image(window->cxt, img, window->selected_tile_rect, hsva_to_rgba(window->hsva), str8_lit("inspector window image")).widget;
-									}
-									
-									ui_labelf(window->cxt, "[%.2f, %.2f]", rect_tl_varg(window->selected_tile_rect));
-									ui_labelf(window->cxt, "[%.2f, %.2f]", rect_br_varg(window->selected_tile_rect));
-									
-									ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-										ui_pref_size(window->cxt, 360)
-									{
-										ui_sat_picker(window->cxt, window->hsva.x, &window->hsva.y, &window->hsva.z, str8_lit("sat picker thing"));
-										ui_pref_height(window->cxt, 40)
-										{
-											ui_hue_picker(window->cxt, &window->hsva.x, str8_lit("hue picker thing"));
-											
-											ui_alpha_picker(window->cxt, window->hsva.xyz, &window->hsva.w, str8_lit("alpha picker thing"));
-										}
-									}
-									
-									s32 hue = window->hsva.x;
-									s32 sat = window->hsva.y * 100;
-									s32 val = window->hsva.z * 100;
-									
-									ui_labelf(window->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
-									
-									v4f rgba = hsva_to_rgba(window->hsva);
-									
-									ui_labelf(window->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		
-		SDL_GetGlobalMouseState(&window->old_pos.x, &window->old_pos.y);
-		
-		ui_layout(dad);
-		ed_draw_window(window);
-		ui_end(window->cxt);
-		d_pop_bucket();
-		
-		events->first = events->last = 0;
-		events->count = 0; 
-	}
+            {
+              ED_Window *insp = ed_state->windows + ED_WindowKind_Inspector;
+              ed_draw_spritesheet(window, insp, 3, 3, str8_lit("debug/numbers.png"));
+              ed_draw_spritesheet(window, insp, 3, 2, str8_lit("fox/fox.png"));
+              ed_draw_spritesheet(window, insp, 3, 3, str8_lit("impolo/impolo-east.png"));
+              ed_draw_spritesheet(window, insp, 3, 1, str8_lit("tree/trees.png"));
+              ed_draw_spritesheet(window, insp, 3, 3, str8_lit("grass/grass_tile.png"));
+            }
+            else if((ED_WindowKind)i == ED_WindowKind_Debug)
+            {
+              window->update_timer += delta;
+              if(window->update_timer > 1.f)
+              {
+                window->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
+                window->ft = delta;
+                window->update_timer = 0;
+              }
+              
+              ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+              {
+                if(ui_labelf(window->cxt, "cc : %.f K", window->cc).active)
+                {
+                  printf("pressed\n");
+                }
+                
+                ui_labelf(window->cxt, "ft : %.fms", window->ft * 1000);
+                ui_labelf(window->cxt, "cmt: %.1f MB", state->cmt * 0.000001f);
+                ui_labelf(window->cxt, "res: %.1f GB", state->res * 0.000000001f);
+                ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
+                
+                for(u32 i = 0; i < ed_state->num_windows; i++)
+                {
+                  if(ui_labelf(window->cxt, "%d. [%.f, %.f]", i, ed_state->windows[i].pos.x, ed_state->windows[i].pos.y).active)
+                  {
+                    ed_state->windows[i].floating = !ed_state->windows[i].floating; 
+                  }
+                }
+              }
+              
+              R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
+              
+              ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                ui_pref_size(window->cxt, 100)
+              {
+                ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
+              }
+              
+            }
+            else if((ED_WindowKind)i == ED_WindowKind_Inspector)
+            {
+              if(window->selected_tile.len > 0)
+              {
+                ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+                {
+                  ui_labelf(window->cxt, "%.*s", str8_varg(window->selected_tile));
+                  
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                    ui_pref_size(window->cxt, 100)
+                  {
+                    R_Handle img = a_handleFromPath(window->selected_tile);
+                    
+                    window->selected_slot = ui_image(window->cxt, img, window->selected_tile_rect, hsva_to_rgba(window->hsva), str8_lit("inspector window image")).widget;
+                  }
+                  
+                  ui_labelf(window->cxt, "[%.2f, %.2f]", rect_tl_varg(window->selected_tile_rect));
+                  ui_labelf(window->cxt, "[%.2f, %.2f]", rect_br_varg(window->selected_tile_rect));
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                    ui_pref_size(window->cxt, 360)
+                  {
+                    ui_sat_picker(window->cxt, window->hsva.x, &window->hsva.y, &window->hsva.z, str8_lit("sat picker thing"));
+                    ui_pref_height(window->cxt, 40)
+                    {
+                      ui_hue_picker(window->cxt, &window->hsva.x, str8_lit("hue picker thing"));
+                      
+                      ui_alpha_picker(window->cxt, window->hsva.xyz, &window->hsva.w, str8_lit("alpha picker thing"));
+                    }
+                  }
+                  
+                  s32 hue = window->hsva.x;
+                  s32 sat = window->hsva.y * 100;
+                  s32 val = window->hsva.z * 100;
+                  
+                  ui_labelf(window->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
+                  
+                  v4f rgba = hsva_to_rgba(window->hsva);
+                  
+                  ui_labelf(window->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    SDL_GetGlobalMouseState(&window->old_pos.x, &window->old_pos.y);
+    
+    ui_layout(dad);
+    ed_draw_window(window);
+    ui_end(window->cxt);
+    d_pop_bucket();
+    
+    events->first = events->last = 0;
+    events->count = 0; 
+  }
 }
 
 void ed_draw_window(ED_Window *window)
