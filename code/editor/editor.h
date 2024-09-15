@@ -24,9 +24,11 @@
 // And give the debug panel lots of functionality to control all other windows's features.
 
 // And ofc, make the main engine window also one of these ui windows.
+
 enum ED_WindowKind
 {
-	ED_WindowKind_TileSetViewer,
+	ED_WindowKind_Game,
+  ED_WindowKind_TileSetViewer,
 	ED_WindowKind_Inspector,
 	ED_WindowKind_Debug,
 	ED_WindowKind_COUNT,
@@ -34,6 +36,7 @@ enum ED_WindowKind
 
 struct ED_Window
 {
+  ED_WindowKind kind;
 	OS_Window win;
 	
 	UI_Widget *root;
@@ -66,12 +69,13 @@ struct ED_Window
 struct ED_State
 {
 	Arena *arena;
-	b32 initialized;
 	ED_Window windows[ED_WindowKind_COUNT];
+  s32 num_windows;
 };
 
 struct State;
 
+function void ed_init(State *state);
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
 function void ed_draw_spritesheet(ED_Window *window, f32 x, f32 y, Str8 path);
 function void ed_draw_window(ED_Window *window);

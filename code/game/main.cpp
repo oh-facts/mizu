@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 	f64 time_elapsed = 0;
 	f64 delta = 0;
 	
-	do
+	for(;;)
 	{
 		if(state->hr.state == HotReloadState_Requested)
 		{
@@ -51,8 +51,16 @@ int main(int argc, char **argv)
 		time_elapsed = (double)(end - start) / freq;
 		
 		delta = time_elapsed - time_since_last;
-		
-	}while(!os_window_is_closed(state->win));
+    
+    for(u32 i = 0; i < state->ed_state.num_windows; i++)
+    {
+      if(os_window_is_closed((state->ed_state.windows + i)->win))
+      {
+        return 0;
+      }
+    }
+    
+  }
 	
 	return 0;
 }

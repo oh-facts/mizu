@@ -1,18 +1,3 @@
-A_FontCache *a_getFontCache()
-{
-	return a_state->slots.store + A_AssetKind_Font;
-}
-
-A_GlyphCache *a_getGlyphCache()
-{
-	return a_state->slots.store + A_AssetKind_Glyph;
-}
-
-A_TextureCache *a_getTextureCache()
-{
-	return a_state->slots.store + A_AssetKind_Texture;
-}
-
 void a_init()
 {
 	Arena *arena = arena_create(100, Megabytes(1));
@@ -20,19 +5,19 @@ void a_init()
 	a_state->arena = arena;
 	
 	{
-		A_AssetStore *cache = a_getFontCache();
-		cache->num_slots = 10;
+		A_AssetStore *cache = a_state->stores + A_AssetKind_Font;
+    cache->num_slots = 10;
 		cache->slots = push_array(arena, A_AssetCacheSlot, cache->num_slots);
 	}
 	
 	{
-		A_AssetStore *cache = a_getGlyphCache();
+		A_AssetStore *cache = a_state->stores + A_AssetKind_Texture;
 		cache->num_slots = 1024;
 		cache->slots = push_array(arena, A_AssetCacheSlot, cache->num_slots);
 	}
 	
 	{
-		A_AssetStore *cache = a_getTextureCache();
+		A_AssetStore *cache = a_state->stores + A_AssetKind_Glyph;
 		cache->num_slots = 1024;
 		cache->slots = push_array(arena, A_AssetCacheSlot, cache->num_slots);
 	}
@@ -101,123 +86,153 @@ void a_freeAssetCache(A_AssetCache *ass)
 	a_state->free = ass;
 }
 
-void a_add_to_hash(A_TextureCache *tex)
+void a_addToHash(A_AssetStore *store, A_AssetCache *cache)
 {
-	u64 hash = tex->key;
-	u64 slot = hash % a_state->num_slots;
+  u64 hash = cache->hash;
+	u64 slot = hash % store->num_slots;
 	
-	if(a_state->slots[slot].last)
+	if(store->slots[slot].last)
 	{
-		a_state->slots[slot].last = a_state->slots[slot].last->next = tex;
+		store->slots[slot].last = store->slots[slot].last->next = cache;
 	}
 	else
 	{
-		a_state->slots[slot].last = a_state->slots[slot].first = tex;
+		store->slots[slot].last = store->slots[slot].first = cache;
 	}
 }
 
-R_Handle a_handle_from_path(Str8 path)
+A_AssetCache *a_assetCacheFromKey(A_AssetKind kind, Str8 key)
 {
-	u64 hash = a_hash(path);
-	u64 slot = hash % a_state->num_slots;
+  A_AssetStore *store = a_state->stores + kind;
+	u64 hash = a_hash(key);
+	u64 slot = hash % store->num_slots;
 	
-	A_TextureCache *tex_cache = a_state->slots[slot].first;
-	
-	while(tex_cache)
+	A_AssetCache *cache = store->slots[slot].first;
+  
+	while(cache)
 	{
-		if(hash == tex_cache->key)
+		if(hash == cache->hash)
 		{
 			break;
 		}
-		
-		tex_cache = tex_cache->next;
+		cache = cache->next;
 	}
 	
-	if(!tex_cache)
+	if(!cache)
 	{
-		printf("Added %.*s\n", str8_varg(path));
+		printf("Added %.*s\n", str8_varg(key));
 		
-		if(a_state->tex_mem > A_MAX_TEXTURE_MEM)
-		{
-			a_evict();
+    cache = a_allocAssetCache(kind);
+		cache->hash = hash;
+    cache->key = key;
+    
+    switch(kind)
+    {
+      default: INVALID_CODE_PATH();
+      case A_AssetKind_Texture:
+      {
+        if(a_state->tex_mem > A_MAX_TEXTURE_MEM)
+        {
+          a_evict(A_AssetKind_Texture);
+        }
+        
+        Arena_temp temp = scratch_begin(0, 0);
+        Str8 abs_path = str8_join(temp.arena, a_state->asset_dir, key);
+        
+        Bitmap bmp = bitmap(abs_path);
+        
+        // if bmp not found, use checkerboard art
+        if(bmp.data)
+        {
+          cache->textureCache.v = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
+        }
+        else
+        {
+          cache->textureCache.v = a_get_checker_tex();
+        }
+        
+        a_state->tex_mem += bmp.w * bmp.h * 4; 
+        ++a_state->num_tex;
+        scratch_end(&temp);
+        
+      }break;
 		}
 		
-		tex_cache = a_alloc_texture_cache();
-		Arena_temp temp = scratch_begin(0, 0);
-		Str8 abs_path = str8_join(temp.arena, a_state->asset_dir, path);
-		Bitmap bmp = bitmap(abs_path);
-		
-		// if bmp not found, use checkerboard art
-		if(bmp.data)
-		{
-			tex_cache->v = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
-		}
-		else
-		{
-			tex_cache->v = a_get_checker_tex();
-		}
-		
-		tex_cache->key = hash;
-		
-		a_add_to_hash(tex_cache);
-		
-		scratch_end(&temp);
-		a_state->tex_mem += bmp.w * bmp.h * 4; 
-		++a_state->num_tex;
+    a_addToHash(store, cache);
 	}
 	
 	a_state->frame_count++;
-	tex_cache->last_touched = a_state->frame_count;
-	tex_cache->path = path;
-	R_Handle out = tex_cache->v;
-	return out;
+	cache->last_touched = a_state->frame_count;
+	
+  return cache;
+	//R_Handle out = tex_cache->textureCache.v;
+	//return out;
 }
 
-void a_evict()
+R_Handle a_handleFromPath(Str8 path)
 {
-	for(u32 i = 0; i < a_state->num_slots; i++)
+  R_Handle out = {};
+  out = a_assetCacheFromKey(A_AssetKind_Texture, path)->textureCache.v;
+  
+  return out;
+}
+
+void a_evict(A_AssetKind kind)
+{
+  A_AssetStore *store = a_state->stores + kind;
+  for(u32 i = 0; i < store->num_slots; i++)
 	{
-		A_TextureCache *first_hash = (a_state->slots + i)->first;
+		A_AssetCache *first_hash = (store->slots + i)->first;
 		if(!first_hash)
 		{
 			continue;
 		}
 		if(first_hash)
 		{
-			A_TextureCache *cur = first_hash;
-			A_TextureCache *prev = 0;
+      A_AssetCache *cur = first_hash;
+      A_AssetCache *prev = 0;
 			while(cur)
 			{
 				if(cur->last_touched != a_state->frame_count)
 				{
-					printf("pruned %.*s\n", str8_varg(cur->path));
-					--a_state->num_tex;
-					v2s tex_size = r_tex_size_from_handle(cur->v);
-					a_state->tex_mem -= tex_size.x * tex_size.y * 4; 
-					r_free_texture(cur->v);
+					printf("pruned %.*s\n", str8_varg(cur->key));
 					
-					if(prev)
-					{
-						prev->next = cur->next;
-						if (!cur->next)
-						{
-							(a_state->slots + i)->last = prev;
-						}
-					}
-					else
-					{
-						(a_state->slots + i)->first = cur->next;
-						if (!cur->next)
-						{
-							(a_state->slots + i)->last = 0;
-						}
-					}
-					
-					A_TextureCache *to_free = cur;
-					cur = cur->next;
-					a_free_texture_cache(to_free);
-					// free to_free
-				}
+          switch(kind)
+          {
+            default: INVALID_CODE_PATH();
+            case A_AssetKind_Texture:
+            {
+              --a_state->num_tex;
+              v2s tex_size = r_tex_size_from_handle(cur->textureCache.v);
+              a_state->tex_mem -= tex_size.x * tex_size.y * 4; 
+              r_free_texture(cur->textureCache.v);
+              
+              if(prev)
+              {
+                prev->next = cur->next;
+                if (!cur->next)
+                {
+                  (store->slots + i)->last = prev;
+                }
+              }
+              else
+              {
+                (store->slots + i)->first = cur->next;
+                if (!cur->next)
+                {
+                  (store->slots + i)->last = 0;
+                }
+              }
+              
+            }break;
+          }
+          
+          // free to_free
+          A_AssetCache *to_free = cur;
+          cur = cur->next;
+          a_freeAssetCache(to_free);
+          
+        }
 				else
 				{
 					prev = cur;

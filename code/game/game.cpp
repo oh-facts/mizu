@@ -28,10 +28,9 @@ void update_and_render(void *memory, f32 delta)
 		
 		tcxt_init();
 		
-		state->win = os_window_open(arena, "alfia", 960, 540, OS_WindowKind_Opengl);
-		os_set_window_pos(state->win, v2f{{480, 46}});
-		//glEnable(GL_FRAMEBUFFER_SRGB);
-		r_opengl_init();
+    //glEnable(GL_FRAMEBUFFER_SRGB);
+		ed_init(state);
+    r_opengl_init();
 		d_init();
 		a_init();
 		
@@ -88,12 +87,13 @@ void update_and_render(void *memory, f32 delta)
 			e->name = str8_lit("player");
 		}
 		
+    //os_window_close(temp_win);
+    
 		arena_temp_end(&temp);
 	}
 	
 	BEGIN_TIMED_BLOCK(UPDATE_AND_RENDER);
 	Arena_temp temp = arena_temp_begin(trans);
-	
 	
 	os_poll_events(trans);
 	d_begin(&state->atlas, state->atlas_tex);
@@ -101,24 +101,27 @@ void update_and_render(void *memory, f32 delta)
 	D_Bucket *draw = d_bucket();
 	d_push_bucket(draw);
 	//d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
-	R_Handle bg = a_handle_from_path(str8_lit("debug/clouds.jpg"));
-	d_draw_img(rect(0,0,1920,1080), rect(0,0,1,1), D_COLOR_WHITE, bg);
 	//d_pop_proj_view();
 	
 	ed_update(state, delta);
 	
-	r_submit(state->win, &draw->list);
+  ED_State *ed_state = &state->ed_state;
+	for(u32 i = 0; i < ed_state->num_windows; i++)
+	{
+		ED_Window *window = ed_state->windows + i;
+		r_submit(window->win, &window->bucket->list);
+	}
 	
 	d_pop_bucket();
 	d_end();
 	
-	if(os_key_press(&state->events, state->win, OS_Key_F))
+	/*
+		if(os_key_press(&state->events, state->win, OS_Key_F))
 	{
 		printf("Toggle Fullscreen\n");
 	}
 	
-	/*
-		if(os_key_press(&state->events, OS_Key_R) || get_file_last_modified_time((char*)state->hr.path.c) > state->hr.reloaded_time)
+if(os_key_press(&state->events, OS_Key_R) || get_file_last_modified_time((char*)state->hr.path.c) > state->hr.reloaded_time)
 		{
 			state->hr.state = HotReloadState_Requested;
 		}
@@ -129,8 +132,6 @@ void update_and_render(void *memory, f32 delta)
 		}
 		*/
 	
-	state->events.first = state->events.last = 0;
-	state->events.count = 0; 
 	arena_temp_end(&temp);
 	
 	END_TIMED_BLOCK(UPDATE_AND_RENDER);

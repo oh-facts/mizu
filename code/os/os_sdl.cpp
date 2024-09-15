@@ -96,11 +96,6 @@ v2f os_get_window_pos(OS_Window handle)
 	return out;
 }
 
-void os_window_close(OS_Window win)
-{
-	sdl_win_from_os_win(win)->closed = 1;
-}
-
 u64 os_get_perf_counter()
 {
 	return SDL_GetPerformanceCounter();
@@ -322,4 +317,10 @@ OS_Window os_window_open(Arena *arena, const char *title, s32 w, s32 h, OS_Windo
 	OS_Window out = {};
 	out.handle = (u64)win;
 	return out;
+}
+
+void os_window_close(OS_Window handle)
+{
+  S_Window *win = sdl_win_from_os_win(handle);
+  win->closed = 1;
 }

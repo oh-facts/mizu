@@ -113,9 +113,6 @@ struct State
 	A_State *a_state;
 	
 	// engine
-	OS_Window win;
-	
-	OS_Event_list events;
 	Atlas atlas;
 	R_Handle atlas_tex[256];
 	ED_State ed_state;

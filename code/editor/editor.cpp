@@ -1,6 +1,6 @@
 void ed_draw_spritesheet(ED_Window *window, ED_Window *insp, f32 x, f32 y, Str8 path)
 {
-	R_Handle img = a_handle_from_path(path);
+	R_Handle img = a_handleFromPath(path);
 	
 	f32 width = 1.f/x;
 	f32 height = 1.f/y;
@@ -37,64 +37,79 @@ void ed_draw_spritesheet(ED_Window *window, ED_Window *insp, f32 x, f32 y, Str8 
 	}
 }
 
+
+void ed_init(State *state)
+{
+  ED_State *ed_state = &state->ed_state;
+	
+  ed_state->arena = arena_create();
+  
+  // window construction
+  {
+    ED_Window *p = ed_state->windows + ED_WindowKind_Game;
+    p->scale = v2f{{1.6,0.3}};
+    p->name = push_str8f(ed_state->arena, "Game");
+    p->cxt = ui_alloc_cxt();
+    p->win = os_window_open(ed_state->arena, "Game", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
+    p->floating = 1;
+    
+    p->pos = v2f{{480, 46}};
+    os_set_window_pos(p->win, p->pos);
+    ed_state->num_windows++;
+  }
+  /*
+  {
+    ED_Window *p = ed_state->windows + ED_WindowKind_TileSetViewer;
+    p->scale = v2f{{1.6,0.3}};
+    p->name = push_str8f(ed_state->arena, "tile set viewer");
+    p->cxt = ui_alloc_cxt();
+    p->win = os_window_open(ed_state->arena, "tile set viewer", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
+    p->floating = 1;
+    
+    p->pos = v2f{{1550, 16}};
+    os_set_window_pos(p->win, p->pos);
+  }
+  
+  {
+    ED_Window *p = ed_state->windows + ED_WindowKind_Inspector;
+    p->scale = v2f{{1.6,0.3}};
+    p->hide = 0;
+    p->name = push_str8f(ed_state->arena, "Inspector");
+    p->cxt = ui_alloc_cxt();
+    
+    p->hsva.x = 0;
+    p->hsva.y = 0;
+    p->hsva.z = 1;
+    p->hsva.w = 1;
+    p->win = os_window_open(ed_state->arena, "inspector", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
+    
+    p->pos = v2f{{39, 16}};
+    os_set_window_pos(p->win, p->pos);
+    
+    p->floating = 1;
+  }
+  
+  {
+    ED_Window *p = ed_state->windows + ED_WindowKind_Debug;
+    p->scale = v2f{{1.6,0.3}};
+    p->hide = 0;
+    p->name = push_str8f(ed_state->arena, "debug");
+    p->cxt = ui_alloc_cxt();
+    p->win = os_window_open(ed_state->arena, "debug", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
+    
+    p->pos = v2f{{431, 675}};
+    os_set_window_pos(p->win, p->pos);
+    
+    p->floating = 1;
+  }
+  */
+}
+
 void ed_update(State *state, f32 delta)
 {
 	ED_State *ed_state = &state->ed_state;
 	
-	if(!ed_state->initialized)
-	{
-		ed_state->arena = arena_create();
-		
-		// window construction
-		{
-			ED_Window *p = ed_state->windows + ED_WindowKind_TileSetViewer;
-			p->scale = v2f{{1.6,0.3}};
-			p->name = push_str8f(ed_state->arena, "tile set viewer");
-			p->cxt = ui_alloc_cxt();
-			p->win = os_window_open(ed_state->arena, "tile set viewer", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
-			p->floating = 1;
-			
-			p->pos = v2f{{1550, 16}};
-			os_set_window_pos(p->win, p->pos);
-		}
-		
-		{
-			ED_Window *p = ed_state->windows + ED_WindowKind_Inspector;
-			p->scale = v2f{{1.6,0.3}};
-			p->hide = 0;
-			p->name = push_str8f(ed_state->arena, "Inspector");
-			p->cxt = ui_alloc_cxt();
-			
-			p->hsva.x = 0;
-			p->hsva.y = 0;
-			p->hsva.z = 1;
-			p->hsva.w = 1;
-			p->win = os_window_open(ed_state->arena, "inspector", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
-			
-			p->pos = v2f{{39, 16}};
-			os_set_window_pos(p->win, p->pos);
-			
-			p->floating = 1;
-		}
-		
-		{
-			ED_Window *p = ed_state->windows + ED_WindowKind_Debug;
-			p->scale = v2f{{1.6,0.3}};
-			p->hide = 0;
-			p->name = push_str8f(ed_state->arena, "debug");
-			p->cxt = ui_alloc_cxt();
-			p->win = os_window_open(ed_state->arena, "debug", 960, 540, (OS_WindowKind)(OS_WindowKind_Opengl | OS_WindowKind_Undecorate));
-			
-			p->pos = v2f{{431, 675}};
-			os_set_window_pos(p->win, p->pos);
-			
-			p->floating = 1;
-		}
-		
-		ed_state->initialized = 1;
-	}
-	
-	for(u32 i = 0; i < ED_WindowKind_COUNT; i++)
+	for(u32 i = 0; i < ed_state->num_windows; i++)
 	{
 		ED_Window *window = ed_state->windows + i;
 		
@@ -177,6 +192,12 @@ void ed_update(State *state, f32 delta)
 							{
 								window->grabbed = 0;
 							}
+              
+              if(ui_labelf(window->cxt, "close%d", i).active)
+              {
+                os_window_close(window->win);
+              }
+              
 						}
 					}
 					
@@ -184,7 +205,18 @@ void ed_update(State *state, f32 delta)
 					
 					if(!window->hide)
 					{
-						if((ED_WindowKind)i == ED_WindowKind_TileSetViewer)
+            if((ED_WindowKind)i == ED_WindowKind_Game)
+            {
+              ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                ui_pref_width(window->cxt, 960)
+                ui_pref_height(window->cxt, 540)
+              {
+                R_Handle bg = a_handleFromPath(str8_lit("debug/clouds.jpg"));
+                ui_image(window->cxt, bg, rect(0, 0, 1, 1), D_COLOR_WHITE, str8_lit("hehe image"));
+              }
+            }
+            
+            if((ED_WindowKind)i == ED_WindowKind_TileSetViewer)
 						{
 							ED_Window *insp = ed_state->windows + ED_WindowKind_Inspector;
 							ed_draw_spritesheet(window, insp, 3, 3, str8_lit("debug/numbers.png"));
@@ -215,7 +247,7 @@ void ed_update(State *state, f32 delta)
 								ui_labelf(window->cxt, "res: %.1f GB", state->res * 0.000000001f);
 								ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
 								
-								for(u32 i = 0; i < ED_WindowKind_COUNT; i++)
+								for(u32 i = 0; i < ed_state->num_windows; i++)
 								{
 									if(ui_labelf(window->cxt, "%d. [%.f, %.f]", i, ed_state->windows[i].pos.x, ed_state->windows[i].pos.y).active)
 									{
@@ -224,7 +256,7 @@ void ed_update(State *state, f32 delta)
 								}
 							}
 							
-							R_Handle face = a_handle_from_path(str8_lit("debug/toppema.png"));
+							R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
 							
 							ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 								ui_pref_size(window->cxt, 100)
@@ -245,7 +277,7 @@ void ed_update(State *state, f32 delta)
 									ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 										ui_pref_size(window->cxt, 100)
 									{
-										R_Handle img = a_handle_from_path(window->selected_tile);
+										R_Handle img = a_handleFromPath(window->selected_tile);
 										
 										window->selected_slot = ui_image(window->cxt, img, window->selected_tile_rect, hsva_to_rgba(window->hsva), str8_lit("inspector window image")).widget;
 									}
@@ -291,12 +323,6 @@ void ed_update(State *state, f32 delta)
 		
 		events->first = events->last = 0;
 		events->count = 0; 
-	}
-	
-	for(u32 i = 0; i < ED_WindowKind_COUNT; i++)
-	{
-		ED_Window *window = ed_state->windows + i;
-		r_submit(window->win, &window->bucket->list);
 	}
 }
 

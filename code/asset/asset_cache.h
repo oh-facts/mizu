@@ -45,9 +45,10 @@ struct A_AssetCache
 {
 	A_AssetKind kind;
 	A_AssetCache *next;
-	u64 key;
+	Str8 key;
+	u64 hash;
 	u64 last_touched;
-	
+  
 	union
 	{
 		A_FontCache fontCache;
@@ -71,7 +72,7 @@ struct A_AssetStore
 struct A_State
 {
 	Arena *arena;
-	A_AssetStore store[A_AssetKind];
+	A_AssetStore stores[A_AssetKind_COUNT];
 	A_AssetCache *free;
 	
 	Str8 asset_dir;
@@ -85,10 +86,16 @@ struct A_State
 
 global A_State *a_state;
 
-// NOTE(mizu): helpers
-function A_FontCache *a_getFontCache();
-function A_GlyphCache *a_getGlyphCache();
-function A_TextureCache *a_getTextureCache();
+// you need to solve two more problems.
+// 1) freeing must happen next frame
+// 2) If I have multiple expensive textures would it be hiccupy to evict them at the same time?
+// Should I only free as many as required, or as many as can be? Batch alloc / dealloc is better, no? I need to test this with massive textures to understand.
+// 3) Lastly, all alloc and eviction must happen on separate thread
+
+// public
+function R_Handle a_handleFromPath(Str8 path);
+function R_Handle a_get_checker_tex();
+function R_Handle a_get_alpha_bg_tex();
 
 function void a_init();
 // djb2
@@ -96,10 +103,10 @@ function u64 a_hash(Str8 str);
 function A_AssetCache *a_allocAssetCache(A_AssetKind kind);
 function void a_freeAssetCache(A_AssetCache *ass);
 
-function void a_add_to_hash(A_TextureCache *tex);
-function R_Handle a_handle_from_path(Str8 path);
-function void a_evict();
-function R_Handle a_get_checker_tex();
-function R_Handle a_get_alpha_bg_tex();
+function void a_addToHash(A_AssetStore *store, A_AssetCache *cache);
+function A_AssetCache *a_assetCacheFromKey(A_AssetKind kind, Str8 key);
+
+// Texture Store
+function void a_evict(A_AssetKind kind);
 
 #endif //ASSET_CACHE_H
