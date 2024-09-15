@@ -28,6 +28,8 @@ I am making a demo with it. As the demo requires more features, I will add them 
 
 ## Build
 
+Build `stable` branch since `main` is not `stable`.
+
 As of today, I have revoked the asset directory because it has proprietary art. I will make an alternate directory that uses placeholder stuff. Fonts still work and everywhere you expect to see art, you'll see checkerboard textures.
 
 Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`
