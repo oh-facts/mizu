@@ -3,7 +3,7 @@
 void update_and_render(void *memory, f32 delta)
 {
 	State *state = (State*)memory;
-	Arena *arena = state->arena;
+	//Arena *arena = state->arena;
 	Arena *trans = state->trans;
 	
 	if(state->hr.state == HotReloadState_Completed)
@@ -29,7 +29,9 @@ void update_and_render(void *memory, f32 delta)
 		tcxt_init();
 		
     //glEnable(GL_FRAMEBUFFER_SRGB);
-		ed_init(state);
+		
+    ed_init(state);
+    ed_open_window(&state->ed_state, ED_WindowKind_Game, ED_SizeKind_FixedSize, v2f{{480, 46}}, v2f{{960, 540}});
     r_opengl_init();
 		d_init();
 		a_init();
@@ -98,13 +100,20 @@ void update_and_render(void *memory, f32 delta)
 	os_poll_events(trans);
 	d_begin(&state->atlas, state->atlas_tex);
 	
-	D_Bucket *draw = d_bucket();
+  f32 aspect = 16 / 9.f;
+  f32 zoom = 1;
+  
+  D_Bucket *draw = d_bucket();
 	d_push_bucket(draw);
-	//d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
-	//d_pop_proj_view();
+	d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
-	ed_update(state, delta);
-	
+  
+  gltf_load_mesh(temp.arena, str8_lit("gltf_test/asuka/scene.gltf"));
+  
+  
+  
+  ed_update(state, delta);
+  
   ED_State *ed_state = &state->ed_state;
 	for(u32 i = 0; i < ed_state->num_windows; i++)
 	{
@@ -112,6 +121,7 @@ void update_and_render(void *memory, f32 delta)
 		r_submit(window->win, &window->bucket->list);
 	}
 	
+  d_pop_proj_view();
 	d_pop_bucket();
 	d_end();
 	

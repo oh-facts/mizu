@@ -156,5 +156,4 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		rect->color = p->color;
 		//pass->rect_pass.proj_view = bucket->proj_view_top->v;
 	}
-	
 }

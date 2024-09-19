@@ -11,8 +11,7 @@
 // Also fix the focus stealing thing where if a window is being interacted with
 // but it hovers over another window, other window and current window fight for focus.
 
-// TODO(mizu): Call panels windows, because thats what they are. Then work on panels.
-// and then on tabs
+// TODO(mizu): Then work on panels and then on tabs
 
 // Also make it so that if a window is ontop of main window, it moves with the main window
 // 
@@ -25,9 +24,17 @@
 // rects with borders.
 // padding in ui
 // make text look proper
+// UI_SizeKind_PercentOfParent
 
-// DOTO(mizu): And ofc, make the main engine window also one of these ui windows.
+// DOTO(mizu): And ofc, make the main engine window also one of these ui windows. 
+// Call panels windows, because thats what they are. 
 
+
+enum ED_SizeKind
+{
+  ED_SizeKind_ChildrenSum,
+  ED_SizeKind_FixedSize
+};
 
 enum ED_WindowKind
 {
@@ -38,10 +45,20 @@ enum ED_WindowKind
 	ED_WindowKind_COUNT,
 };
 
+global char *ed_window_str[ED_WindowKind_COUNT] = 
+{
+  "Game",
+  "tile set viewer",
+  "inspector",
+  "debug"
+};
+
 struct ED_Window
 {
   ED_WindowKind kind;
-	OS_Window win;
+	ED_SizeKind sizeKind;
+  
+  OS_Window win;
 	
 	UI_Widget *root;
 	UI_Context *cxt;
@@ -56,7 +73,7 @@ struct ED_Window
 	b32 grabbed;
 	
   v2f pos;
-	v2f scale;
+	v2f size;
 	f32 update_timer;
 	
 	UI_Widget *selected_slot;
@@ -72,19 +89,24 @@ struct ED_Window
 	
 	v2f old_pos;
 	
+  ED_Window *inspector;
+  
 	D_Bucket *bucket;
 };
+
+#define ED_MAX_WINDOWS 10
 
 struct ED_State
 {
 	Arena *arena;
-	ED_Window windows[ED_WindowKind_COUNT];
+	ED_Window windows[ED_MAX_WINDOWS];
   s32 num_windows;
 };
 
 struct State;
 
 function void ed_init(State *state);
+function ED_Window *ed_open_window(ED_State *ed_state, ED_WindowKind kind, ED_SizeKind sizeKind, v2f pos, v2f size);
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
 function void ed_draw_spritesheet(ED_Window *window, f32 x, f32 y, Str8 path);
 function void ed_draw_window(ED_Window *window);

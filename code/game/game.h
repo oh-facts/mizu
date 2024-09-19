@@ -2,6 +2,9 @@
 
 #ifndef GAME_H
 #define GAME_H
+
+#define _CRT_SECURE_NO_WARNINGS
+
 #define FONT_SIZE 0.03
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb/stb_sprintf.h"
@@ -13,6 +16,9 @@
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb/stb_truetype.h"
+
+#define CGLTF_IMPLEMENTATION
+#include <cgltf/cgltf.h>
 
 #include <stdint.h>
 
@@ -46,6 +52,7 @@
 #include <editor/editor.h>
 #include <entity/entity.h>
 
+
 #include <base/base_core.cpp>
 #include <base/base_string.cpp>
 #include <base/base_tcxt.cpp>
@@ -53,6 +60,7 @@
 #include <os/os.cpp>
 #include <render/render.cpp>
 #include <asset/asset_cache.cpp>
+#include <gltf_loader/gltf_loader.h>
 #include <draw/draw.cpp>
 
 #if defined(OS_WIN32)

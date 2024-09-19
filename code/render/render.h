@@ -24,6 +24,15 @@ union R_Handle
 	u16 u16_m[16];
 };
 
+struct R_Vertex
+{
+  v3f pos;
+  f32 uv_x;
+  v3f normal;
+  f32 uv_y;
+  v4f color;
+};
+
 enum R_TEXTURE_FILTER
 {
 	R_TEXTURE_FILTER_NEAREST,
@@ -95,6 +104,8 @@ struct R_Rect
 	v4f color;
 	v4f fade[Corner_COUNT];
 	R_Handle tex;
+  f32 rot;
+  f32 pad[3];
 };
 
 struct R_Batch
@@ -117,6 +128,7 @@ struct R_Batch_list
 struct R_Rect_pass
 {
 	R_Batch_list rects;
+  //m4f proj_view;
 };
 
 enum R_PASS_KIND
@@ -159,7 +171,6 @@ function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list);
 function R_Pass *r_push_pass(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
 
 function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
-
 
 // remove alloc frame buffer. Instead make submit take a render target that has tl and br.
 

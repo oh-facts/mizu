@@ -142,6 +142,8 @@ struct TextObject
     vec4 tint;
 vec4 fade[Corner_COUNT];
     R_Handle handle;
+float rot;
+float pad[3];
 };
 
 layout (std430, binding = 0) buffer ssbo {
@@ -219,6 +221,52 @@ in vec4 tint;
 in vec2 tex;
 flat in uvec2 texId;
 flat in vec2 tex_size;
+
+out vec4 FragColor;
+
+void main()
+{
+		vec4 tex_col = texture(sampler2D(texId), tex);
+
+#if 0
+		if (tex_col.a < 0.01f && fade.a < 0.01f)
+		{
+				discard;
+		}
+#endif
+
+//FragColor =  tint * tex_col * fade;
+//FragColor =  srgb_to_linear(tint * tex_col);
+//FragColor = vec4(hsvToRgb(fade.xyz), 1);
+FragColor = fade * tex_col;
+}
+)"
+;
+
+// ============= //
+
+global char *r_vs_mesh_src =
+R"(
+#version 450 core
+
+layout (std430, binding = 0) buffer ssbo {
+    vec4 screen_size;
+    TextObject objects[];
+};
+
+void main()
+{
+    
+    gl_Position = vec4(norm_pos, 0.5, 1.0);
+}
+
+)"
+;
+
+global char* r_fs_mesh_src = 
+R"(
+	#version 450 core
+	#extension GL_ARB_bindless_texture: require
 
 out vec4 FragColor;
 
