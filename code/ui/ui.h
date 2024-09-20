@@ -722,22 +722,25 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		col.z = rgb.z;
 		col.w = 1;
 		
-		R_Rect *recty = d_draw_rect(w_rect, {{0,0,0,0.1}});
+		R_Rect *recty = d_rect(w_rect, {{0,0,0,0.1}});
 		
 		recty->fade[Corner_00] = v4f{{1, 1, 1, 1}};
 		recty->fade[Corner_01] = v4f{{1, 1, 1, 1}};
 		recty->fade[Corner_10] = col;
 		recty->fade[Corner_11] = col;
-	}
+    recty->radius = 10;
+    
+  }
 	
 	{
-		R_Rect *recty = d_draw_rect(w_rect, {{0,0,0,0}});
+		R_Rect *recty = d_rect(w_rect, {{0,0,0,0}});
 		
 		recty->fade[Corner_00] = v4f{{0,0,0,0}};
 		recty->fade[Corner_01] = v4f{{0, 0, 0, 1}};
 		recty->fade[Corner_10] = v4f{{0,0,0,0}};
 		recty->fade[Corner_11] = v4f{{0, 0, 0, 1}};
-	}
+    recty->radius = 10;
+  }
 	
 	// indicator
 	{
@@ -757,7 +760,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 			color = D_COLOR_BLACK;
 		}
 		
-		d_draw_rect(recty, color);
+		d_rect(recty, color);
 	}
 	
 }
@@ -836,12 +839,14 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 	// checker pattern
 	{
 		v2f dim = size_from_rect(w_rect);
-		d_draw_img(w_rect, rect(0, 0, dim.x / 10, dim.y / 10), D_COLOR_WHITE, a_get_alpha_bg_tex());
-	}
+		R_Rect *checker = d_rect(w_rect, D_COLOR_WHITE);
+    checker->src = rect(0, 0, dim.x / 10, dim.y / 10);
+    checker->tex = a_get_alpha_bg_tex();
+  }
 	
 	// alpha fade
 	{
-		R_Rect *recty = d_draw_rect(w_rect, {{}});
+		R_Rect *recty = d_rect(w_rect, {{}});
 		
 		recty->fade[Corner_00] = v4f{{0,0,0,0}};
 		recty->fade[Corner_01] = v4f{{0, 0, 0, 0}};
@@ -864,7 +869,7 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 		
 		v4f color = D_COLOR_WHITE;
 		
-		d_draw_rect(recty, color);
+		d_rect(recty, color);
 	}
 	
 }
@@ -931,11 +936,11 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		f32 hue2 = (i+1);
 		v3f rgb = hsv_to_rgb(v3f{{hue, 1, 1}});
 		v3f rgb2 = hsv_to_rgb(v3f{{hue2, 1, 1}});
-		
-		v4f rgba = {.xyz = rgb, .aw = 1}; 
+    
+    v4f rgba = {.xyz = rgb, .aw = 1}; 
 		v4f rgba2 = {.xyz = rgb2, .aw = 1};
 		
-		R_Rect *recty = d_draw_rect(segment_rect, {});
+		R_Rect *recty = d_rect(segment_rect, {});
 		
 		recty->fade[Corner_00] = rgba;
 		recty->fade[Corner_01] = rgba;
@@ -958,7 +963,7 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		
 		Rect recty = rect(pos, {{size,size}});
 		
-		d_draw_rect(recty, D_COLOR_BLACK);
+		d_rect(recty, D_COLOR_BLACK);
 	}
 	
 }
@@ -1021,7 +1026,9 @@ function UI_CUSTOM_DRAW(ui_image_draw)
 		color = v4f{{0, 0, 1, 0.3f}};
 	}
 	
-	d_draw_img(rect(widget->pos, widget->size), draw_data->src, color, draw_data->img);
+	R_Rect *img = d_rect(rect(widget->pos, widget->size), color);
+  img->src = draw_data->src;
+  img->tex = draw_data->img;
 }
 
 function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, Str8 text)

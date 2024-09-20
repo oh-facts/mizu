@@ -8,7 +8,7 @@ set debug_build="-O0 -g"
 set release_build="-O3"
 set build_type=""
 
-set common_flags="-std=c++17 -msse4.1 -fno-rtti -fno-exceptions -Wall -Wno-unused-function -Wno-writable-strings -Wno-comment -g"
+set common_flags="-std=c++17 -msse4.1 -fno-rtti -fno-exceptions -Wall -Wno-unused-function -Wno-writable-strings -Wno-comment -g -ferror-limit=10000"
 
 if not exist out mkdir out
 if not exist out\SDL3.dll xcopy /s /y data\bin\SDL3.dll out

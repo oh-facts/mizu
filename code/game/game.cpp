@@ -107,8 +107,7 @@ void update_and_render(void *memory, f32 delta)
 	d_push_bucket(draw);
 	d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
-  
-  gltf_load_mesh(temp.arena, str8_lit("gltf_test/asuka/scene.gltf"));
+  //gltf_load_mesh(temp.arena, str8_lit("gltf_test/asuka/scene.gltf"));
   
   
   

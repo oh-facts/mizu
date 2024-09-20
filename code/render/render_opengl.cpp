@@ -220,8 +220,8 @@ R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
 		GL_REPEAT,
 	};
 	
-	glTextureParameteri(texture, GL_TEXTURE_WRAP_S, wrap_table[p->wrap]);
-	glTextureParameteri(texture, GL_TEXTURE_WRAP_T, wrap_table[p->wrap]);
+	glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	
 	glTextureStorage2D(texture, 1, GL_SRGB8_ALPHA8, w, h);
 	

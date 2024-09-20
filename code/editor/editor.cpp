@@ -62,18 +62,18 @@ void ed_init(State *state)
 	
   ed_state->arena = arena_create();
   
-  /*
   // default windows construction
   {
-    ED_Window *ts_viewer = ed_open_window(ed_state, ED_WindowKind_TileSetViewer, v2f{{1550, 16}}, v2f{{300, 0}});
+    ED_Window *ts_viewer = ed_open_window(ed_state, ED_WindowKind_TileSetViewer, ED_SizeKind_ChildrenSum, v2f{{1550, 16}}, v2f{{300, 0}});
     
-    ED_Window *insp = ed_open_window(ed_state, ED_WindowKind_Inspector, v2f{{39, 16}}, v2f{{300, 0}});
+    ED_Window *insp = ed_open_window(ed_state, ED_WindowKind_Inspector, ED_SizeKind_ChildrenSum, v2f{{39, 16}}, v2f{{300, 0}});
     insp->hsva = {{1,0,1,1}};
-    
     ts_viewer->inspector = insp;
-    ed_open_window(ed_state, ED_WindowKind_Debug, v2f{{431, 675}}, v2f{{300, 0}});
+    
+    /*
+      ed_open_window(ed_state, ED_WindowKind_Debug, v2f{{431, 675}}, v2f{{300, 0}});
+  */
   }
-*/
 }
 
 void ed_update(State *state, f32 delta)
@@ -196,7 +196,11 @@ void ed_update(State *state, f32 delta)
               default: INVALID_CODE_PATH();
               case ED_WindowKind_Game:
               {
-                d_draw_rect(rect(100,100,300,300), D_COLOR_BLUE);
+                d_rect(rect(0,0,60,60), D_COLOR_WHITE);
+                R_Rect *test_sq = d_rect(rect(100,100,600,300), D_COLOR_BLUE);
+                test_sq->border_thickness = 3.f;
+                test_sq->border_color = D_COLOR_GREEN;
+                test_sq->radius = 30;
               }break;
               
               case ED_WindowKind_TileSetViewer:
@@ -331,7 +335,7 @@ void ed_draw_window(ED_Window *window)
 	parent->size.x = parent->computed_size[0];
 	parent->size.y = parent->computed_size[1];
 	
-	d_draw_rect(rect({}, parent->size), window->color);
+	d_rect(rect({}, parent->size), window->color);
 	
   if(window->sizeKind == ED_SizeKind_ChildrenSum || window->hide)
   {
@@ -386,8 +390,10 @@ void ed_draw_children(ED_Window *window, UI_Widget *root)
 		if(window->selected_slot == root)
 		{
 			Rect selected_slot_rect = rect(window->selected_slot->pos, window->selected_slot->size);
-			d_draw_img(selected_slot_rect, rect(0, 0, 2, 2), D_COLOR_WHITE, a_get_alpha_bg_tex());
-		}
+			R_Rect *slot = d_rect(selected_slot_rect, D_COLOR_WHITE);
+      slot->src = rect(0, 0, 2, 2);
+      slot->tex = a_get_alpha_bg_tex();
+    }
 		
 		root->custom_draw(root, root->custom_draw_data);
 	}

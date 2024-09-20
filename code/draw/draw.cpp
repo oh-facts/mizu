@@ -71,34 +71,26 @@ void d_pop_proj_view()
 	bucket->proj_view_top = bucket->proj_view_top->next;
 }
 
-R_Rect *d_draw_img(Rect dst, Rect src, v4f color, R_Handle tex)
+R_Rect *d_rect(Rect dst, v4f color)
 {
 	D_Bucket *bucket = d_state->top;
 	R_Pass *pass = r_push_pass(d_state->arena, &bucket->list, R_PASS_KIND_UI);
 	R_Rect *out = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 	
-	out->dst = dst;
-	out->src = src;
+  out->dst = dst;
+	out->src = rect(0, 0, 1, 1);
 	out->fade[Corner_00] = color;
 	out->fade[Corner_01] = color;
 	out->fade[Corner_10] = color;
 	out->fade[Corner_11] = color;
-	out->tex = tex;
-	out->color = color;
+	out->tex = d_state->white_square;
 	
-	return out;
-	//pass->out_pass.proj_view = bucket->proj_view_top->v;
-}
-
-R_Rect *d_draw_rect(Rect dst, v4f color)
-{
-	Rect src = {};
-	src.tl.x = 0;
-	src.tl.y = 0;
-	src.br.x = 1;
-	src.br.y = 1;
-	
-	return d_draw_img(dst, src, color, d_state->white_square);
+  // NOTE(mizu): figure out why there is a 1px ghost outline even when thickness is 0
+  out->border_color = color;
+	out->radius = {};
+  out->border_thickness = {};
+  
+  return out;
 }
 
 void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
@@ -147,13 +139,17 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		rect->src.br.x = 1;
 		rect->src.br.y = 1;
 		
-		rect->fade[Corner_00] = p->color;;
-		rect->fade[Corner_01] = p->color;;
-		rect->fade[Corner_10] = p->color;;
-		rect->fade[Corner_11] = p->color;;
+		rect->fade[Corner_00] = p->color;
+		rect->fade[Corner_01] = p->color;
+		rect->fade[Corner_10] = p->color;
+		rect->fade[Corner_11] = p->color;
 		
 		rect->tex = p->atlas_tex[(u32)c];
-		rect->color = p->color;
-		//pass->rect_pass.proj_view = bucket->proj_view_top->v;
+		
+    rect->border_color = p->color;
+    rect->radius = 0;
+    rect->border_thickness = -2;
+    
+    //pass->rect_pass.proj_view = bucket->proj_view_top->v;
 	}
 }

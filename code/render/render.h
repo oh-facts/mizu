@@ -101,11 +101,12 @@ struct R_Rect
 	Rect src;
 	Rect dst;
 	
-	v4f color;
+	v4f border_color;
 	v4f fade[Corner_COUNT];
 	R_Handle tex;
-  f32 rot;
-  f32 pad[3];
+  f32 border_thickness;
+  f32 radius;
+  f32 pad[2];
 };
 
 struct R_Batch

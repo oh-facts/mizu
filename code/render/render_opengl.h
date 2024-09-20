@@ -20,7 +20,8 @@ enum R_OPENGL_SHADER_PROG
 struct R_Opengl_state
 {
 	Arena *arena;
-	GLuint shader_prog[R_OPENGL_SHADER_PROG_COUNT];
+	//R_Opengl_window windows[10];
+  GLuint shader_prog[R_OPENGL_SHADER_PROG_COUNT];
 	GLuint inst_buffer[R_OPENGL_INST_BUFFER_COUNT];
 };
 
@@ -139,11 +140,12 @@ struct TextObject
 {
     Rect src;
     Rect dst;
-    vec4 tint;
+    vec4 border_color;
 vec4 fade[Corner_COUNT];
     R_Handle handle;
-float rot;
-float pad[3];
+float border_thickness;
+float radius;
+float pad[2];
 };
 
 layout (std430, binding = 0) buffer ssbo {
@@ -151,15 +153,28 @@ layout (std430, binding = 0) buffer ssbo {
     TextObject objects[];
 };
 
-out vec4 tint;
+out vec4 border_color;
 out vec4 fade;
 out vec2 tex;
 flat out uvec2 texId;
 flat out vec2 tex_size;
+flat out float border_thickness;
+flat out vec2 half_size;
+flat out float radius;
+out vec2 norm_tex;
 
 void main()
 {
     TextObject obj = objects[gl_InstanceID];
+
+vec2 base_uv[] = {
+{0, 1},
+        {1, 1},
+        {1, 0},
+        {0, 0},
+    };
+
+norm_tex = base_uv[gl_VertexID];
 
     Vertex vertices[] = {
         {{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}, obj.fade[Corner_00]},
@@ -168,19 +183,21 @@ void main()
         {{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_01]},
     };
 
+ half_size = vec2((obj.dst.br.x - obj.dst.tl.x) * 0.5, (obj.dst.br.y - obj.dst.tl.y) * 0.5);
+
     Vertex vertex = vertices[gl_VertexID];
 
     texId = obj.handle.sprite_id;
 tex_size.x = obj.handle.w;
     tex_size.y = obj.handle.h;
- tint = obj.tint;
+  border_color = obj.border_color;
     fade = vertex.fade;
-
+border_thickness = obj.border_thickness;
+radius = obj.radius;
 tex = vertex.uv;
     vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
     norm_pos.y =  - norm_pos.y;
-
-    gl_Position = vec4(norm_pos, 0.5, 1.0);
+gl_Position = vec4(norm_pos, 0.5, 1.0);
 }
 
 )"
@@ -191,6 +208,52 @@ R"(
 	#version 450 core
 	#extension GL_ARB_bindless_texture: require
 
+in vec4 border_color;
+ in vec4 fade;
+in vec2 tex;
+flat in uvec2 texId;
+flat in vec2 tex_size;
+flat in float border_thickness;
+flat in vec2 half_size;
+flat in float radius;
+in vec2 norm_tex;
+
+out vec4 FragColor;
+
+float RectSDF(vec2 p, vec2 b, float r)
+{
+    vec2 d = abs(p) - b + vec2(r);
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;   
+}
+
+void main() 
+{
+vec4 tex_col = texture(sampler2D(texId), tex);
+
+vec2 pos = half_size * 2 * norm_tex;
+        
+    float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
+    
+if(tex_col.a < 0.1)
+{
+discard;
+}
+
+if(fDist < 0.0)
+{
+FragColor = fade * tex_col;
+}
+else if(fDist < border_thickness / 2)
+{
+FragColor = border_color;
+}
+
+}
+)"
+;
+
+/*
+ 
 vec4 linear_to_srgb(vec4 linearCol) {
 		vec4 srgbCol;
 		for (int i = 0; i < 3; ++i) {
@@ -216,32 +279,13 @@ vec4 srgb_to_linear(vec4 srgbCol) {
 return linearCol;
 }
 
-in vec4 tint;
- in vec4 fade;
-in vec2 tex;
-flat in uvec2 texId;
-flat in vec2 tex_size;
 
-out vec4 FragColor;
-
-void main()
+if (tex.x < border_thickness || tex.x > (1 - border_thickness) || tex.y < border_thickness || tex.y > (1 - border_thickness)) 
 {
-		vec4 tex_col = texture(sampler2D(texId), tex);
-
-#if 0
-		if (tex_col.a < 0.01f && fade.a < 0.01f)
-		{
-				discard;
-		}
-#endif
-
-//FragColor =  tint * tex_col * fade;
-//FragColor =  srgb_to_linear(tint * tex_col);
-//FragColor = vec4(hsvToRgb(fade.xyz), 1);
-FragColor = fade * tex_col;
+    FragColor = fade * tex_col;
 }
-)"
-;
+*/
+
 
 // ============= //
 
