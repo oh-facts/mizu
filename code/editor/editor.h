@@ -3,9 +3,6 @@
 #ifndef EDITOR_H
 #define EDITOR_H
 
-#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 1}}
-#define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
-
 // TODO(mizu): If a window is focussed, other windows come to the top too. Also, add a minimize and maximize and close button. And work on making the panels better to interact with.
 
 // Also fix the focus stealing thing where if a window is being interacted with
@@ -21,14 +18,19 @@
 
 // And give the debug panel lots of functionality to control all other windows's features.
 
-// rects with borders.
 // padding in ui
 // make text look proper
 // UI_SizeKind_PercentOfParent
+// make a transition_time so when you press on ui, you can see it as a certain color for
+// some time
 
 // DOTO(mizu): And ofc, make the main engine window also one of these ui windows. 
 // Call panels windows, because thats what they are. 
-
+// rects with borders.
+// rects with round edges
+// render game to an image, then render that as a ui element
+// make a render parameter - output frame buffer. used by submit maybe? If 0, renders to default
+// fb, otherwise, renders to the passed framebuffer
 
 enum ED_SizeKind
 {
@@ -47,7 +49,7 @@ enum ED_WindowKind
 
 global char *ed_window_str[ED_WindowKind_COUNT] = 
 {
-  "Game",
+  "GAME",
   "tile set viewer",
   "inspector",
   "debug"
@@ -63,6 +65,8 @@ struct ED_Window
 	UI_Widget *root;
 	UI_Context *cxt;
 	
+  UI_Widget *menu_bar;
+  
 	Str8 name;
 	
   // NOTE(mizu): at some point, make these flags?
@@ -89,6 +93,8 @@ struct ED_Window
 	
 	v2f old_pos;
 	
+  R_Handle target;
+  
   ED_Window *inspector;
   
 	D_Bucket *bucket;

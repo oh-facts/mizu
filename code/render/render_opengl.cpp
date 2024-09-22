@@ -220,8 +220,8 @@ R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
 		GL_REPEAT,
 	};
 	
-	glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTextureParameteri(texture, GL_TEXTURE_WRAP_S, wrap_table[p->wrap]);
+	glTextureParameteri(texture, GL_TEXTURE_WRAP_T, wrap_table[p->wrap]);
 	
 	glTextureStorage2D(texture, 1, GL_SRGB8_ALPHA8, w, h);
 	
@@ -330,7 +330,17 @@ void r_submit(OS_Window win, R_Pass_list *list)
 					memcpy((u8*)ssbo_data + sizeof(win_size_float), batch->base, batch->count * sizeof(R_Rect));
 					
 					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
-					glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
+					
+          if(pass->rect_pass.target.u64_m[0] == 0)
+          {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+          }
+          else
+          {
+            glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
+          }
+          
+          glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
 					batch = batch->next;
 				}
 			}break;

@@ -18,12 +18,6 @@
 #define D_COLOR_THEME_2 (v4f){{0.03, 0.02, 0.03,1}}
 #define D_COLOR_THEME_3 (v4f){{0.21044,0.02368,0.06198,1}}
 
-struct D_Proj_view_node
-{
-	D_Proj_view_node *next;
-	m4f v;
-};
-
 struct D_Text_params
 {
 	v4f color;
@@ -32,11 +26,22 @@ struct D_Text_params
 	R_Handle *atlas_tex;
 };
 
+// TODO(mizu): make the gen produce a header and src file
+struct D_Proj_view_node;
+struct D_Target_node;
+struct D_Viewport_node;
+
 struct D_Bucket
 {
 	D_Bucket *next;
 	R_Pass_list list;
+  
+  u64 stack_gen;
+  u64 last_stack_gen;
+  
 	D_Proj_view_node *proj_view_top;
+  D_Target_node *target_top;
+  D_Viewport_node *viewport_top;
 };
 
 struct D_State
@@ -55,12 +60,11 @@ function void d_begin(Atlas *atlas, R_Handle *atlas_tex);
 function void d_end();
 
 function D_Bucket *d_bucket();
-function void d_push_bucket(D_Bucket *bucket);
 
+function void d_push_bucket(D_Bucket *bucket);
 function void d_pop_bucket();
 
-function void d_push_proj_view(m4f proj_view);
-function void d_pop_proj_view();
+function R_Pass *d_push_pass(Arena *arena, D_Bucket *bucket, R_PASS_KIND kind);
 
 function R_Rect *d_rect(Rect dst, v4f color);
 function void d_draw_text(Str8 text, v2f pos, D_Text_params *p);

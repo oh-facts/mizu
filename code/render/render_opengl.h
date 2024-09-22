@@ -232,23 +232,15 @@ vec4 tex_col = texture(sampler2D(texId), tex);
 
 vec2 pos = half_size * 2 * norm_tex;
         
-    float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
-    
-if(tex_col.a < 0.1)
-{
-discard;
+float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
+  float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
+  
+  vec4 v4FromColor = border_color;
+  vec4 v4ToColor = (fDist < 0.0) ? fade * tex_col : vec4(0);
+FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
 }
 
-if(fDist < 0.0)
-{
-FragColor = fade * tex_col;
-}
-else if(fDist < border_thickness / 2)
-{
-FragColor = border_color;
-}
 
-}
 )"
 ;
 

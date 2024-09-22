@@ -1,40 +1,56 @@
 void ed_draw_spritesheet(ED_Window *window, f32 x, f32 y, Str8 path)
 {
-	R_Handle img = a_handleFromPath(path);
-	
-	f32 width = 1.f/x;
-	f32 height = 1.f/y;
-	
-	f32 advance_y = 1 - height;
-	
-	ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-		ui_col(window->cxt)
-	{
-		for(u32 i = 0; i < y; i ++)
-		{
-			f32 advance_x = 0;
-			ui_row(window->cxt)
-			{
-				ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-					ui_pref_size(window->cxt, 60)
-				{
-					for(u32 j = 0; j < x; j++)
-					{
-						Rect recty = rect(advance_x, advance_y, advance_x + width, advance_y + height);
-						
-						if(ui_imagef(window->cxt, img, recty, D_COLOR_WHITE, "%.*s%d%d", str8_varg(path), i, j).active)
-						{
-							window->inspector->selected_tile = path;
-							window->inspector->selected_tile_rect = recty;
-						}
-						advance_x += width;
-					}
-				}
-				
-			}
-			advance_y -= height;
-		}
-	}
+  ui_press_color(window->cxt, D_COLOR_RED)
+    ui_hover_color(window->cxt, D_COLOR_BLUE)
+    ui_col(window->cxt)
+  {
+    ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+      ui_pref_height(window->cxt, 15)
+    {
+      ui_spacer(window->cxt);
+    }
+    
+    ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+    {
+      ui_label(window->cxt, path);
+    }
+    
+    R_Handle img = a_handleFromPath(path);
+    
+    f32 width = 1.f/x;
+    f32 height = 1.f/y;
+    
+    f32 advance_y = 1 - height;
+    
+    ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+      ui_col(window->cxt)
+    {
+      for(u32 i = 0; i < y; i ++)
+      {
+        f32 advance_x = 0;
+        ui_row(window->cxt)
+        {
+          ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+            ui_pref_size(window->cxt, 60)
+          {
+            for(u32 j = 0; j < x; j++)
+            {
+              Rect recty = rect(advance_x, advance_y, advance_x + width, advance_y + height);
+              
+              if(ui_imagef(window->cxt, img, recty, D_COLOR_WHITE, "%.*s%d%d", str8_varg(path), i, j).active)
+              {
+                window->inspector->selected_tile = path;
+                window->inspector->selected_tile_rect = recty;
+              }
+              advance_x += width;
+            }
+          }
+          
+        }
+        advance_y -= height;
+      }
+    }
+  }
 }
 
 ED_Window *ed_open_window(ED_State *ed_state, ED_WindowKind kind, ED_SizeKind sizeKind, v2f pos, v2f size)
@@ -64,9 +80,9 @@ void ed_init(State *state)
   
   // default windows construction
   {
-    ED_Window *ts_viewer = ed_open_window(ed_state, ED_WindowKind_TileSetViewer, ED_SizeKind_ChildrenSum, v2f{{1550, 16}}, v2f{{300, 0}});
+    ED_Window *ts_viewer = ed_open_window(ed_state, ED_WindowKind_TileSetViewer, ED_SizeKind_ChildrenSum, v2f{{1550, 16}}, v2f{{400, 0}});
     
-    ED_Window *insp = ed_open_window(ed_state, ED_WindowKind_Inspector, ED_SizeKind_ChildrenSum, v2f{{39, 16}}, v2f{{300, 0}});
+    ED_Window *insp = ed_open_window(ed_state, ED_WindowKind_Inspector, ED_SizeKind_ChildrenSum, v2f{{39, 16}}, v2f{{360, 0}});
     insp->hsva = {{1,0,1,1}};
     ts_viewer->inspector = insp;
     
@@ -112,17 +128,20 @@ void ed_update(State *state, f32 delta)
 					//ui_fixed_pos(window->cxt, (window->pos))
 					ui_col(window->cxt)
 				{
-          ui_row(window->cxt)
+          ui_named_rowf(window->cxt, "%d editor title bar")
 					{
-            UI_Signal hide = {};
-            UI_Signal drag = {};
+            window->menu_bar = window->cxt->parent_stack.top->v;
             
             // hide button
             ui_pref_size(window->cxt, 32)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
               R_Handle hide_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
-              hide = ui_imagef(window->cxt, hide_img, rect(0, 0, 0.25, 1), ED_THEME_TEXT, "hide img %d", i);
+              
+              if(ui_imagef(window->cxt, hide_img, rect(0, 0, 0.25, 1), ED_THEME_TEXT, "hide img %d", i).active)
+              {
+                window->hide = !window->hide;
+              }
 						}
             
             // drag titlebar region (entire titlebar - labels/buttons + title)
@@ -133,42 +152,46 @@ void ed_update(State *state, f32 delta)
             {
               UI_Widget *menu_bar = window->cxt->parent_stack.top->v;
               
-              drag = ui_signal(menu_bar, window->cxt->mpos);
+              if(ui_signal(menu_bar, window->cxt->mpos).active)
+              {
+                window->grabbed = 1;
+              }
               
-              ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-                ui_label(window->cxt, window->name);
+              ui_col(window->cxt)
+              {
+                ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                  ui_pref_height(window->cxt, 8)
+                {
+                  ui_spacer(window->cxt);
+                }
+                
+                ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+                  ui_label(window->cxt, window->name);
+                
+              }
+              
             }
             
             // minimize, maximize, close
             ui_pref_size(window->cxt, 32)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
-              R_Handle hide_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
+              R_Handle menu_button_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
               
-              if(ui_imagef(window->cxt, hide_img, rect(0.25, 0, 0.5, 1), ED_THEME_TEXT, "minimize img %d", i).active)
+              if(ui_imagef(window->cxt, menu_button_img, rect(0.25, 0, 0.5, 1), ED_THEME_TEXT, "minimize img %d", i).active)
               {
                 window->minimize = !window->minimize;
               }
               
-              if(ui_imagef(window->cxt, hide_img, rect(0.5, 0, 0.75, 1), ED_THEME_TEXT, "maximize img %d", i).active)
+              if(ui_imagef(window->cxt, menu_button_img, rect(0.5, 0, 0.75, 1), ED_THEME_TEXT, "maximize img %d", i).active)
               {
                 window->maximize = !window->maximize;
               }
               
-              if(ui_imagef(window->cxt, hide_img, rect(0.75, 0, 1, 1), ED_THEME_TEXT, "close img %d", i).active)
+              if(ui_imagef(window->cxt, menu_button_img, rect(0.75, 0, 1, 1), ED_THEME_TEXT, "close img %d", i).active)
               {
                 os_window_close(window->win);
               }
-            }
-            
-            if(drag.active)
-            {
-              window->grabbed = 1;
-            }
-            
-            if(hide.active)
-            {
-              window->hide = !window->hide;
             }
             
             os_mouse_released(events, window->win, OS_MouseButton_Left);
@@ -196,19 +219,88 @@ void ed_update(State *state, f32 delta)
               default: INVALID_CODE_PATH();
               case ED_WindowKind_Game:
               {
-                d_rect(rect(0,0,60,60), D_COLOR_WHITE);
-                R_Rect *test_sq = d_rect(rect(100,100,600,300), D_COLOR_BLUE);
-                test_sq->border_thickness = 3.f;
-                test_sq->border_color = D_COLOR_GREEN;
-                test_sq->radius = 30;
+                
+                s32 tilemap[9][16] = 
+                {
+                  {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
+                  {1, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 1},
+                  {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
+                  {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
+                  {1, 1, 0, 1,  1, 0, 0, 0,  1, 1, 1, 0,  0, 0, 0, 0},
+                  {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
+                  {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
+                  {1, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1},
+                  {1, 0, 1, 0,  1, 0, 1, 0,  0, 0, 1, 0,  1, 0, 0, 1},
+                };
+                
+                d_push_target(window->target);
+                
+                for(s32 row = 0; row < 9; row++)
+                {
+                  for(s32 col = 0; col < 16; col++)
+                  {
+                    s32 tile_id = tilemap[row][col];
+                    v4f color = {};
+                    if(tile_id == 0)
+                    {
+                      color = D_COLOR_RED;
+                    }
+                    else
+                    {
+                      color = D_COLOR_GREEN;
+                    }
+                    
+                    f32 size = 64;
+                    
+                    Rect dst = {};
+                    dst.tl.x = col * size;
+                    dst.tl.y = row * size;
+                    dst.br.x = dst.tl.x + size;
+                    dst.br.y = dst.tl.y + size;
+                    
+                    d_rect(dst, color);
+                  }
+                }
+                
+                d_pop_target();
+                
+                ui_pref_width(window->cxt, 960)
+                  ui_pref_height(window->cxt, 540)
+                  ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                {
+                  ui_imagef(window->cxt, window->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+                }
+                
+                
               }break;
               
               case ED_WindowKind_TileSetViewer:
               {
-                ed_draw_spritesheet(window, 3, 3, str8_lit("debug/numbers.png"));
-                ed_draw_spritesheet(window, 3, 2, str8_lit("fox/fox.png"));
-                ed_draw_spritesheet(window, 3, 3, str8_lit("impolo/impolo-east.png"));
-                ed_draw_spritesheet(window, 3, 1, str8_lit("tree/trees.png"));
+                ui_row(window->cxt)
+                {
+                  ed_draw_spritesheet(window, 3, 3, str8_lit("debug/numbers.png"));
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                    ui_pref_width(window->cxt, 45)
+                  {
+                    ui_spacer(window->cxt);
+                  }
+                  
+                  ed_draw_spritesheet(window, 3, 2, str8_lit("fox/fox.png"));
+                }
+                
+                ui_row(window->cxt)
+                {
+                  ed_draw_spritesheet(window, 3, 3, str8_lit("impolo/impolo-east.png"));
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                    ui_pref_width(window->cxt, 15)
+                  {
+                    ui_spacer(window->cxt);
+                  }
+                  
+                  ed_draw_spritesheet(window, 3, 1, str8_lit("tree/trees.png"));
+                }
                 ed_draw_spritesheet(window, 3, 3, str8_lit("grass/grass_tile.png"));
               }break;
               
@@ -279,6 +371,10 @@ void ed_update(State *state, f32 delta)
                       ui_sat_picker(window->cxt, window->hsva.x, &window->hsva.y, &window->hsva.z, str8_lit("sat picker thing"));
                       ui_pref_height(window->cxt, 40)
                       {
+                        ui_pref_height(window->cxt, 10)
+                        {
+                          ui_spacer(window->cxt);
+                        }
                         ui_hue_picker(window->cxt, &window->hsva.x, str8_lit("hue picker thing"));
                         
                         ui_alpha_picker(window->cxt, window->hsva.xyz, &window->hsva.w, str8_lit("alpha picker thing"));
@@ -317,30 +413,32 @@ void ed_update(State *state, f32 delta)
 
 void ed_draw_window(ED_Window *window)
 {
-	UI_Widget *parent = window->root;
-	
-	parent->pos.x = parent->computed_rel_position[0];
-	parent->pos.y = parent->computed_rel_position[1];
-	
-	if(window->floating)
-	{
-		parent->pos.x +=  window->pos.x;
-		parent->pos.y +=  window->pos.y;
-	}
-	else
-	{
-		//window->pos = window->root->pos;
-	}
-	
-	parent->size.x = parent->computed_size[0];
-	parent->size.y = parent->computed_size[1];
-	
-	d_rect(rect({}, parent->size), window->color);
-	
+  UI_Widget *parent = window->root;
+  
+  parent->pos.x = parent->computed_rel_position[0];
+  parent->pos.y = parent->computed_rel_position[1];
+  
+  if(window->floating)
+  {
+    parent->pos.x +=  window->pos.x;
+    parent->pos.y +=  window->pos.y;
+  }
+  else
+  {
+    //window->pos = window->root->pos;
+  }
+  
+  parent->size.x = parent->computed_size[0];
+  parent->size.y = parent->computed_size[1];
+  
+  d_rect(rect({}, parent->size), window->color);
+  
+  d_rect(rect(window->menu_bar->pos, window->menu_bar->size), D_COLOR_BLUE);
+  
   if(window->sizeKind == ED_SizeKind_ChildrenSum || window->hide)
   {
     os_set_window_size(window->win, parent->size);
-	}
+  }
   else
   {
     os_set_window_size(window->win, window->size);
@@ -350,56 +448,60 @@ void ed_draw_window(ED_Window *window)
 
 void ed_draw_children(ED_Window *window, UI_Widget *root)
 {
-	root->pos.x = root->computed_rel_position[0];
-	root->pos.y = root->computed_rel_position[1];
-	root->size.x = root->computed_size[0];
-	root->size.y = root->computed_size[1];
-	
-	if(window->floating)
-	{
-		root->pos.x += root->fixed_position.x;
-		root->pos.y += root->fixed_position.y;
-	}
-	
-	if(root->flags & UI_Flags_has_text)
-	{
-		v4f color = {};
-		if(root->hot)
-		{
-			color = D_COLOR_BLUE;
-		}
-		else
-		{
-			color = root->color;
-		}
-		
-		D_Text_params params = 
-		{
-			color,
-			d_state->default_text_params.scale,
-			d_state->default_text_params.atlas,
-			d_state->default_text_params.atlas_tex,
-		};
-		
-		d_draw_text(root->text, root->pos, &params);
-	}
-	
-	if(root->flags & UI_Flags_has_custom_draw)
-	{
-		
-		if(window->selected_slot == root)
-		{
-			Rect selected_slot_rect = rect(window->selected_slot->pos, window->selected_slot->size);
-			R_Rect *slot = d_rect(selected_slot_rect, D_COLOR_WHITE);
+  root->pos.x = root->computed_rel_position[0];
+  root->pos.y = root->computed_rel_position[1];
+  root->size.x = root->computed_size[0];
+  root->size.y = root->computed_size[1];
+  
+  if(window->floating)
+  {
+    root->pos.x += root->fixed_position.x;
+    root->pos.y += root->fixed_position.y;
+  }
+  
+  if(root->flags & UI_Flags_has_text)
+  {
+    v4f color = {};
+    if(root->active)
+    {
+      color = root->press_color;
+    }
+    else if(root->hot)
+    {
+      color = root->hover_color;
+    }
+    else
+    {
+      color = root->color;
+    }
+    
+    D_Text_params params = 
+    {
+      color,
+      d_state->default_text_params.scale,
+      d_state->default_text_params.atlas,
+      d_state->default_text_params.atlas_tex,
+    };
+    
+    d_draw_text(root->text, root->pos, &params);
+  }
+  
+  if(root->flags & UI_Flags_has_custom_draw)
+  {
+    
+    if(window->selected_slot == root)
+    {
+      Rect selected_slot_rect = rect(window->selected_slot->pos, window->selected_slot->size);
+      R_Rect *slot = d_rect(selected_slot_rect, D_COLOR_WHITE);
       slot->src = rect(0, 0, 2, 2);
       slot->tex = a_get_alpha_bg_tex();
     }
-		
-		root->custom_draw(root, root->custom_draw_data);
-	}
-	
-	for(UI_Widget *child = root->first; child; child = child->next)
-	{
-		ed_draw_children(window, child);
-	}
+    
+    root->custom_draw(root, root->custom_draw_data);
+  }
+  
+  for(UI_Widget *child = root->first; child; child = child->next)
+  {
+    ed_draw_children(window, child);
+  }
 }

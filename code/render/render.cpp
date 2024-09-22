@@ -36,22 +36,6 @@ R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list)
 	return node;
 }
 
-R_Pass *r_push_pass(Arena *arena, R_Pass_list *list, R_PASS_KIND kind)
-{
-	R_Pass_node *node = list->last;
-	R_Pass *pass = 0;
-	if(!node || node->pass.kind != kind)
-	{
-		pass = r_push_pass_list(arena, list, kind);
-	}
-	else
-	{
-		pass = &node->pass;
-	}
-	
-	return pass;
-}
-
 R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind)
 {
 	R_Pass_node *node = push_struct(arena, R_Pass_node);

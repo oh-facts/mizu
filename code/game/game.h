@@ -5,7 +5,14 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
-#define FONT_SIZE 0.03
+
+#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 1}}
+#define ED_THEME_BG_DARKER v4f{{0, 0, 0, 0.2}}
+
+#define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
+
+#define FONT_SIZE 0.01
+
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb/stb_sprintf.h"
 
@@ -48,10 +55,11 @@
 #include <render/render.h>
 #include <asset/asset_cache.h>
 #include <draw/draw.h>
+#include <draw/draw_styles.cpp>
+
 #include <ui/ui.h>
 #include <editor/editor.h>
 #include <entity/entity.h>
-
 
 #include <base/base_core.cpp>
 #include <base/base_string.cpp>

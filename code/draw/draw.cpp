@@ -48,34 +48,35 @@ void d_pop_bucket()
 	d_state->top = d_state->top->next;
 }
 
-void d_push_proj_view(m4f proj_view)
+R_Pass *d_push_pass(Arena *arena, D_Bucket *bucket, R_PASS_KIND kind)
 {
-	D_Bucket *bucket = d_state->top;
-	D_Proj_view_node *node = push_struct(d_state->arena, D_Proj_view_node);
-	node->v = proj_view;
+	R_Pass_node *node = bucket->list.last;
+	R_Pass *pass = 0;
 	
-	if(bucket->proj_view_top)
+  if(!node || node->pass.kind != kind || bucket->stack_gen != bucket->last_stack_gen)
 	{
-		node->next = bucket->proj_view_top;
-		bucket->proj_view_top = node;
-	}
+		pass = r_push_pass_list(arena, &bucket->list, kind);
+    
+    if(bucket->target_top)
+    {
+      pass->rect_pass.target = bucket->target_top->v;
+    }
+  }
 	else
 	{
-		bucket->proj_view_top = node;
+		pass = &node->pass;
 	}
-}
-
-void d_pop_proj_view()
-{
-	D_Bucket *bucket = d_state->top;
-	bucket->proj_view_top = bucket->proj_view_top->next;
+	
+	return pass;
 }
 
 R_Rect *d_rect(Rect dst, v4f color)
 {
 	D_Bucket *bucket = d_state->top;
-	R_Pass *pass = r_push_pass(d_state->arena, &bucket->list, R_PASS_KIND_UI);
-	R_Rect *out = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
+	
+  R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_UI);
+	
+  R_Rect *out = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 	
   out->dst = dst;
 	out->src = rect(0, 0, 1, 1);
@@ -89,13 +90,15 @@ R_Rect *d_rect(Rect dst, v4f color)
   out->border_color = color;
 	out->radius = {};
   out->border_thickness = {};
-  
+  bucket->last_stack_gen = bucket->stack_gen;
   return out;
 }
 
 void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 {
-	text_extent ex = 
+	D_Bucket *bucket = d_state->top;
+  
+  text_extent ex = 
 		ui_text_spacing_stats(p->atlas->glyphs, text, p->scale);
 	
 	v2f text_pos = pos;
@@ -124,8 +127,7 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		
 		text_pos.x += ch->advance * p->scale;
 		
-		D_Bucket *bucket = d_state->top;
-		R_Pass *pass = r_push_pass(d_state->arena, &bucket->list, R_PASS_KIND_UI);
+		R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_UI);
 		R_Rect *rect = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 		
 		rect->dst.tl.x = xpos;
@@ -149,7 +151,8 @@ void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
     rect->border_color = p->color;
     rect->radius = 0;
     rect->border_thickness = -2;
-    
     //pass->rect_pass.proj_view = bucket->proj_view_top->v;
 	}
+  
+  bucket->last_stack_gen = bucket->stack_gen;
 }

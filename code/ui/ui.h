@@ -82,7 +82,10 @@ struct UI_Widget
 	UI_Size pref_size[Axis2_COUNT];
 	v4f color;
 	v4f bg_color;
-	Axis2 child_layout_axis;
+	v4f hover_color;
+  v4f press_color;
+  
+  Axis2 child_layout_axis;
 	UI_AlignKind alignKind;
   v2f fixed_position;
 	UI_WidgetCustomDrawFunctionType *custom_draw;
@@ -158,7 +161,10 @@ struct UI_Context
 	ui_make_style_struct_stack(Parent, parent);
 	ui_make_style_struct_stack(Color, text_color);
 	ui_make_style_struct_stack(Color, bg_color);
-	ui_make_style_struct_stack(Pref_width, pref_width);
+  ui_make_style_struct_stack(Color, hover_color);
+	ui_make_style_struct_stack(Color, press_color);
+	
+  ui_make_style_struct_stack(Pref_width, pref_width);
 	ui_make_style_struct_stack(Pref_height, pref_height);
 	ui_make_style_struct_stack(Fixed_pos, fixed_pos);
 	ui_make_style_struct_stack(Axis2, child_layout_axis);
@@ -284,6 +290,12 @@ ui_make_free_node(Color, text_color)
 ui_make_alloc_node(Color, bg_color)
 ui_make_free_node(Color, bg_color)
 
+ui_make_alloc_node(Color, hover_color)
+ui_make_free_node(Color, hover_color)
+
+ui_make_alloc_node(Color, press_color)
+ui_make_free_node(Color, press_color)
+
 ui_make_alloc_node(Pref_width, pref_width)
 ui_make_free_node(Pref_width, pref_width)
 
@@ -346,6 +358,12 @@ ui_make_pop_style(Color, text_color)
 ui_make_push_style(Color, bg_color, v4f)
 ui_make_pop_style(Color, bg_color)
 
+ui_make_push_style(Color, hover_color, v4f)
+ui_make_pop_style(Color, hover_color)
+
+ui_make_push_style(Color, press_color, v4f)
+ui_make_pop_style(Color, press_color)
+
 ui_make_push_style(Pref_width, pref_width, f32)
 ui_make_pop_style(Pref_width, pref_width)
 
@@ -389,7 +407,10 @@ function UI_Context *ui_alloc_cxt()
 	
 	ui_push_text_color(cxt, D_COLOR_WHITE);
 	ui_push_bg_color(cxt, D_COLOR_WHITE);
-	ui_push_pref_width(cxt, 0);
+	ui_push_hover_color(cxt, D_COLOR_WHITE);
+  ui_push_press_color(cxt, D_COLOR_WHITE);
+  
+  ui_push_pref_width(cxt, 0);
 	ui_push_pref_height(cxt, 0);
 	ui_push_fixed_pos(cxt, v2f{{0,0}});
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
@@ -518,7 +539,9 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
   widget->alignKind = cxt->align_kind_x_stack.top->v;
 	widget->color = cxt->text_color_stack.top->v;
 	widget->bg_color = cxt->bg_color_stack.top->v;
-	
+	widget->hover_color = cxt->hover_color_stack.top->v;
+  widget->press_color = cxt->press_color_stack.top->v;
+  
 	text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, FONT_SIZE);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
@@ -744,7 +767,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 	
 	// indicator
 	{
-		v2f size = {.x = 4, .y = 4};
+		v2f size = {.x = 20, .y = 20};
 		v2f pos = widget->pos;
 		pos.x += draw_data->sat * widget->size.x;
 		pos.y += (1 - draw_data->val) * widget->size.y;
@@ -760,7 +783,10 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 			color = D_COLOR_BLACK;
 		}
 		
-		d_rect(recty, color);
+		R_Rect *indi = d_rect(recty, {});
+    indi->radius = 5;
+    indi->border_color = color;
+    indi->border_thickness = 5;
 	}
 	
 }
@@ -858,7 +884,7 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 	
 	// indicator
 	{
-		v2f size = {.x = 4, .y = 4};
+		v2f size = {.x = 20, .y = 20};
 		v2f pos = widget->pos;
 		pos.x += draw_data->alpha * widget->size.x;
 		pos.y += widget->size.y / 2;
@@ -869,7 +895,11 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 		
 		v4f color = D_COLOR_WHITE;
 		
-		d_rect(recty, color);
+    
+		R_Rect *indi = d_rect(recty, {});
+    indi->radius = 5;
+    indi->border_color = color;
+    indi->border_thickness = 5;
 	}
 	
 }
@@ -949,21 +979,24 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		
 		segment_rect.tl.x += segment;
 		segment_rect.br.x += segment;
-		
 	}
 	
 	UI_HuePickerDrawData *draw_data = (UI_HuePickerDrawData*)user_data;
 	
 	// indicator
 	{
-		f32 size = 4;
+		f32 size = 20;
 		v2f pos = widget->pos;
 		pos.x += ((draw_data->hue * 1.f - size/2) * widget->size.x) / 360;
-		pos.y += widget->size.y / 2;
+		pos.y += widget->size.y / 2 - 10;
 		
 		Rect recty = rect(pos, {{size,size}});
 		
-		d_rect(recty, D_COLOR_BLACK);
+    
+		R_Rect *indi = d_rect(recty, {});
+    indi->radius = 5;
+    indi->border_color = D_COLOR_BLACK;
+    indi->border_thickness = 5;
 	}
 	
 }
@@ -1023,12 +1056,15 @@ function UI_CUSTOM_DRAW(ui_image_draw)
 	v4f color = draw_data->color;
 	if(widget->hot)
 	{
-		color = v4f{{0, 0, 1, 0.3f}};
+		color = widget->hover_color;
 	}
 	
 	R_Rect *img = d_rect(rect(widget->pos, widget->size), color);
   img->src = draw_data->src;
   img->tex = draw_data->img;
+  img->border_thickness = 5;
+  img->border_color = ED_THEME_BG_DARKER;
+  img->radius = 5;
 }
 
 function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, Str8 text)
@@ -1102,6 +1138,8 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 #define ui_fixed_pos(cxt, v) UI_DeferLoop(ui_push_fixed_pos(cxt, v), ui_pop_fixed_pos(cxt))
 #define ui_text_color(cxt, v) UI_DeferLoop(ui_push_text_color(cxt, v), ui_pop_text_color(cxt))
 #define ui_bg_color(cxt, v) UI_DeferLoop(ui_push_bg_color(cxt, v), ui_pop_bg_color(cxt))
+#define ui_hover_color(cxt, v) UI_DeferLoop(ui_push_hover_color(cxt, v), ui_pop_hover_color(cxt))
+#define ui_press_color(cxt, v) UI_DeferLoop(ui_push_press_color(cxt, v), ui_pop_press_color(cxt))
 
 #define ui_size_kind_x(cxt, v) UI_DeferLoop(ui_push_size_kind_x(cxt, v), ui_pop_size_kind_x(cxt))
 

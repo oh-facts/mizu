@@ -31,9 +31,13 @@ void update_and_render(void *memory, f32 delta)
     //glEnable(GL_FRAMEBUFFER_SRGB);
 		
     ed_init(state);
-    ed_open_window(&state->ed_state, ED_WindowKind_Game, ED_SizeKind_FixedSize, v2f{{480, 46}}, v2f{{960, 540}});
+    ED_Window *game = ed_open_window(&state->ed_state, ED_WindowKind_Game, ED_SizeKind_FixedSize, v2f{{480, 46}}, v2f{{960, 540}});
+    
     r_opengl_init();
-		d_init();
+		
+    game->target = r_alloc_frame_buffer(960, 540);
+    
+    d_init();
 		a_init();
 		
 		state->tcxt = tcxt;
@@ -60,7 +64,7 @@ void update_and_render(void *memory, f32 delta)
 		
 		Arena_temp temp = arena_temp_begin(state->trans);
 		
-		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/assets/fonts/delius.ttf"));
+		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/assets/fonts/arial.ttf"));
 		Glyph *temp_font = make_bmp_font(font_path.c, codepoints, ARRAY_LEN(codepoints), state->trans);
 		
 		for(u32 i = 0; i < ARRAY_LEN(codepoints); i ++)
@@ -108,8 +112,6 @@ void update_and_render(void *memory, f32 delta)
 	d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
   //gltf_load_mesh(temp.arena, str8_lit("gltf_test/asuka/scene.gltf"));
-  
-  
   
   ed_update(state, delta);
   

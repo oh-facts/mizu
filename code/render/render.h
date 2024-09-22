@@ -130,6 +130,7 @@ struct R_Rect_pass
 {
 	R_Batch_list rects;
   //m4f proj_view;
+  R_Handle target;
 };
 
 enum R_PASS_KIND
@@ -168,8 +169,6 @@ struct R_Pass_list
 function void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size);
 
 function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list);
-
-function R_Pass *r_push_pass(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
 
 function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind);
 
