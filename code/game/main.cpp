@@ -52,9 +52,9 @@ int main(int argc, char **argv)
 		
 		delta = time_elapsed - time_since_last;
     
-    for(u32 i = 0; i < state->ed_state.num_windows; i++)
+    for(u32 i = 0; i < state->num_windows; i++)
     {
-      if(os_window_is_closed((state->ed_state.windows + i)->win))
+      if(os_window_is_closed((state->windows + i)->win))
       {
         return 0;
       }

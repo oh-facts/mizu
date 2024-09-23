@@ -106,6 +106,8 @@
 
 #define max_entities 10
 
+#define ED_MAX_WINDOWS 10
+
 struct State
 {
 	b32 initialized;
@@ -131,8 +133,14 @@ struct State
 	// engine
 	Atlas atlas;
 	R_Handle atlas_tex[256];
-	ED_State ed_state;
 	
+  // editor
+  ED_Window windows[ED_MAX_WINDOWS];
+  s32 num_windows;
+  
+  ED_Window *game;
+  ED_Panel *free_panel;
+  
 	// game
 	Entity *entities;
 	u32 num_entities;

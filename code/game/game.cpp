@@ -3,7 +3,7 @@
 void update_and_render(void *memory, f32 delta)
 {
 	State *state = (State*)memory;
-	//Arena *arena = state->arena;
+	Arena *arena = state->arena;
 	Arena *trans = state->trans;
 	
 	if(state->hr.state == HotReloadState_Completed)
@@ -30,12 +30,16 @@ void update_and_render(void *memory, f32 delta)
 		
     //glEnable(GL_FRAMEBUFFER_SRGB);
 		
-    ed_init(state);
-    ED_Window *game = ed_open_window(&state->ed_state, ED_WindowKind_Game, ED_SizeKind_FixedSize, v2f{{480, 46}}, v2f{{960, 540}});
+    ED_Window *game_win = ed_open_window(state, ED_WindowFlags_HasSurface | ED_WindowFlags_ChildrenSum, v2f{{480, 46}}, v2f{{960, 540}});
+    
+    ED_Panel *ts_viewer = ed_open_panel(arena, game_win, ED_PanelKind_TileSetViewer);
+    ED_Panel *insp = ed_open_panel(arena, game_win, ED_PanelKind_Inspector);
+    insp->hsva = {{1,0,1,1}};
+    ts_viewer->inspector = insp;
+    
+    ed_open_panel(arena, game_win, ED_PanelKind_Game);
     
     r_opengl_init();
-		
-    game->target = r_alloc_frame_buffer(960, 540);
     
     d_init();
 		a_init();
@@ -115,10 +119,9 @@ void update_and_render(void *memory, f32 delta)
   
   ed_update(state, delta);
   
-  ED_State *ed_state = &state->ed_state;
-	for(u32 i = 0; i < ed_state->num_windows; i++)
+  for(u32 i = 0; i < state->num_windows; i++)
 	{
-		ED_Window *window = ed_state->windows + i;
+		ED_Window *window = state->windows + i;
 		r_submit(window->win, &window->bucket->list);
 	}
 	

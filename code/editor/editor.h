@@ -32,34 +32,68 @@
 // make a render parameter - output frame buffer. used by submit maybe? If 0, renders to default
 // fb, otherwise, renders to the passed framebuffer
 
-enum ED_SizeKind
+typedef int ED_WindowFlags;
+
+enum
 {
-  ED_SizeKind_ChildrenSum,
-  ED_SizeKind_FixedSize
+  ED_WindowFlags_HasSurface = 1 << 0,
+  ED_WindowFlags_ChildrenSum = 1 << 1,
+  ED_WindowFlags_FixedSize = 1 << 2,
+  ED_WindowFlags_Hidden = 1 << 3,
+  ED_WindowFlags_Minimized = 1 << 4,
+  ED_WindowFlags_Maximized = 1 << 5,
+  ED_WindowFlags_Floating = 1 << 6,
+  ED_WindowFlags_Grabbed = 1 << 7,
+  ED_WindowFlags_Tab = 1 << 8,
 };
 
-enum ED_WindowKind
+enum ED_PanelKind
 {
-	ED_WindowKind_Game,
-  ED_WindowKind_TileSetViewer,
-	ED_WindowKind_Inspector,
-	ED_WindowKind_Debug,
-	ED_WindowKind_COUNT,
+	ED_PanelKind_Game,
+  ED_PanelKind_TileSetViewer,
+	ED_PanelKind_Inspector,
+	ED_PanelKind_Debug,
+	ED_PanelKind_COUNT,
 };
 
-global char *ed_window_str[ED_WindowKind_COUNT] = 
+global char *panel_names[ED_PanelKind_COUNT] =
 {
-  "GAME",
-  "tile set viewer",
+  "Alfia",
+  "tileset",
   "inspector",
   "debug"
 };
 
+struct ED_Window;
+
+struct ED_Panel
+{
+  ED_Panel *next;
+  ED_Panel *prev;
+  ED_Window *parent;
+  
+  ED_PanelKind kind;
+	Str8 name;
+	
+  ED_Panel *inspector;
+  
+  f32 update_timer;
+	
+	UI_Widget *selected_slot;
+	Str8 selected_tile;
+	Rect selected_tile_rect;
+	
+	f32 cc;
+	f32 ft;
+	
+	v4f hsva;
+  
+  R_Handle target;
+};
+
 struct ED_Window
 {
-  ED_WindowKind kind;
-	ED_SizeKind sizeKind;
-  
+  ED_WindowFlags flags;
   OS_Window win;
 	
 	UI_Widget *root;
@@ -67,54 +101,26 @@ struct ED_Window
 	
   UI_Widget *menu_bar;
   
-	Str8 name;
-	
-  // NOTE(mizu): at some point, make these flags?
-  b32 hide;
-	b32 minimize;
-  b32 maximize;
-  b32 floating;
-	b32 grabbed;
-	
   v2f pos;
 	v2f size;
-	f32 update_timer;
-	
-	UI_Widget *selected_slot;
-	
-	Str8 selected_tile;
-	Rect selected_tile_rect;
-	
-	f32 cc;
-	f32 ft;
-	v4f color;
-	
-	v4f hsva;
 	
 	v2f old_pos;
 	
-  R_Handle target;
+  ED_Panel *active_tab;
+  ED_Panel *first_tab;
+  ED_Panel *last_tab;
   
-  ED_Window *inspector;
-  
-	D_Bucket *bucket;
-};
-
-#define ED_MAX_WINDOWS 10
-
-struct ED_State
-{
-	Arena *arena;
-	ED_Window windows[ED_MAX_WINDOWS];
-  s32 num_windows;
+  v4f color;
+	
+  // per frame artifacts
+  D_Bucket *bucket;
 };
 
 struct State;
 
-function void ed_init(State *state);
-function ED_Window *ed_open_window(ED_State *ed_state, ED_WindowKind kind, ED_SizeKind sizeKind, v2f pos, v2f size);
+function ED_Window *ed_open_window(State *state, ED_WindowFlags flags, v2f pos, v2f size);
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
-function void ed_draw_spritesheet(ED_Window *window, f32 x, f32 y, Str8 path);
+function void ed_draw_spritesheet(ED_Panel *panel, f32 x, f32 y, Str8 path);
 function void ed_draw_window(ED_Window *window);
 function void ed_draw_children(ED_Window *window, UI_Widget *root);
 
