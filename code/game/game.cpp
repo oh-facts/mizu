@@ -31,13 +31,14 @@ void update_and_render(void *memory, f32 delta)
     //glEnable(GL_FRAMEBUFFER_SRGB);
 		
     ED_Window *game_win = ed_open_window(state, ED_WindowFlags_HasSurface | ED_WindowFlags_ChildrenSum, v2f{{480, 46}}, v2f{{960, 540}});
+    ED_Panel *main_panel = ed_open_panel(arena, game_win, Axis2_X, 1);
     
-    ED_Panel *ts_viewer = ed_open_panel(arena, game_win, ED_PanelKind_TileSetViewer);
-    ED_Panel *insp = ed_open_panel(arena, game_win, ED_PanelKind_Inspector);
+    ED_Tab *ts_viewer = ed_open_tab(arena, main_panel, ED_TabKind_TileSetViewer);
+    ED_Tab *insp = ed_open_tab(arena, main_panel, ED_TabKind_Inspector);
     insp->hsva = {{1,0,1,1}};
     ts_viewer->inspector = insp;
     
-    ed_open_panel(arena, game_win, ED_PanelKind_Game);
+    ed_open_tab(arena, main_panel, ED_TabKind_Game);
     
     r_opengl_init();
     

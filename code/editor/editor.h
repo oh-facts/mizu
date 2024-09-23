@@ -47,16 +47,16 @@ enum
   ED_WindowFlags_Tab = 1 << 8,
 };
 
-enum ED_PanelKind
+enum ED_TabKind
 {
-	ED_PanelKind_Game,
-  ED_PanelKind_TileSetViewer,
-	ED_PanelKind_Inspector,
-	ED_PanelKind_Debug,
-	ED_PanelKind_COUNT,
+	ED_TabKind_Game,
+  ED_TabKind_TileSetViewer,
+	ED_TabKind_Inspector,
+	ED_TabKind_Debug,
+	ED_TabKind_COUNT,
 };
 
-global char *panel_names[ED_PanelKind_COUNT] =
+global char *tab_names[ED_TabKind_COUNT] =
 {
   "Alfia",
   "tileset",
@@ -65,17 +65,18 @@ global char *panel_names[ED_PanelKind_COUNT] =
 };
 
 struct ED_Window;
+struct ED_Panel;
 
-struct ED_Panel
+struct ED_Tab
 {
-  ED_Panel *next;
-  ED_Panel *prev;
-  ED_Window *parent;
+  ED_Tab *next;
+  ED_Tab *prev;
+  ED_Panel *parent;
   
-  ED_PanelKind kind;
+  ED_TabKind kind;
 	Str8 name;
 	
-  ED_Panel *inspector;
+  ED_Tab *inspector;
   
   f32 update_timer;
 	
@@ -89,6 +90,21 @@ struct ED_Panel
 	v4f hsva;
   
   R_Handle target;
+};
+
+struct ED_Panel
+{
+  ED_Panel *next;
+  ED_Panel *prev;
+  
+  ED_Tab *active_tab;
+  ED_Tab *first_tab;
+  ED_Tab *last_tab;
+  
+  ED_Window *parent;
+  
+  Axis2 axis;
+  f32 pct_of_parent;
 };
 
 struct ED_Window
@@ -106,12 +122,11 @@ struct ED_Window
 	
 	v2f old_pos;
 	
-  ED_Panel *active_tab;
-  ED_Panel *first_tab;
-  ED_Panel *last_tab;
-  
   v4f color;
 	
+  ED_Panel *first_panel;
+  ED_Panel *last_panel;
+  
   // per frame artifacts
   D_Bucket *bucket;
 };
@@ -120,8 +135,8 @@ struct State;
 
 function ED_Window *ed_open_window(State *state, ED_WindowFlags flags, v2f pos, v2f size);
 function void ed_update(State *state, OS_Event_list *events, f32 delta);
-function void ed_draw_spritesheet(ED_Panel *panel, f32 x, f32 y, Str8 path);
+function void ed_draw_spritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path);
 function void ed_draw_window(ED_Window *window);
-function void ed_draw_children(ED_Window *window, UI_Widget *root);
+function void ed_draw_children(ED_Panel *panel, UI_Widget *root);
 
 #endif //EDITOR_H

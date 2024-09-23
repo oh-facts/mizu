@@ -139,6 +139,7 @@ struct State
   s32 num_windows;
   
   ED_Window *game;
+  ED_Tab *free_tab;
   ED_Panel *free_panel;
   
 	// game
