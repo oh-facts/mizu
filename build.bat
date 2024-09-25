@@ -18,11 +18,11 @@ if "%cloc%" == "1" cloc --exclude-list-file=.clocignore .\code\
 if "%debug%" == "1" echo [debug] && set build_type=%debug_build%
 if "%release%" == "1" echo [release] && set build_type=%release_build%
 
-if "%platform%" == "1" echo [platform] && clang "%common_flags%" "%build_type%" -I./code/ -o out/platform.exe code/game/main.cpp -luser32 -lkernel32 -lgdi32 -lcomdlg32 -lopengl32 -ldata\bin\SDL3
+if "%platform%" == "1" echo [platform] && clang "%common_flags%" "%build_type%" -I./code/ -I./code/third_party/ -o out/platform.exe code/main.cpp -luser32 -lkernel32 -lgdi32 -lcomdlg32 -lopengl32 -ldata\bin\SDL3
 
 if %errorlevel% neq 0 echo platform compilation failed && exit /b
 
-if "%app%" == "1" echo [app] && del "out\yk.dll" && clang "%common_flags%" "%build_type%" -I./code/ code/game/game.cpp -shared -o out/yk.dll -lopengl32 -ldata\bin\SDL3
+if "%app%" == "1" echo [app] && del "out\yk.dll" && clang "%common_flags%" "%build_type%" -I./code/third_party/ -I./code/ code/engine.cpp -shared -o out/yk.dll -lopengl32 -ldata\bin\SDL3
 
 if %errorlevel% neq 0 echo app compilation failed && exit /b
    
