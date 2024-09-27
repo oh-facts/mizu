@@ -105,6 +105,8 @@ function R_Model upload_model(Arena *arena, GLTF_Model *model)
 
 #include <hot_reload.cpp>
 
+#include <game.cpp>
+
 #if defined(OS_WIN32)
 #define GAME_DLL "yk.dll"
 #define GAME_DLL_CLONED "yk_clone.dll"
@@ -140,7 +142,7 @@ struct State
 	ED_State *ed_state;
   OS_GfxState *os_gfx_state;
   
-	// engine
+	// needs to go
 	Atlas atlas;
 	R_Handle atlas_tex[256];
 };
@@ -152,10 +154,12 @@ extern "C"
   export_function void update_and_render(void *, f32 delta);
 }
 
+function ED_CUSTOM_TAB(game_update_and_render);
+
 function void update_and_render(void *memory, f32 delta)
 {
 	State *state = (State*)memory;
-	Arena *arena = state->arena;
+	//Arena *arena = state->arena;
 	Arena *trans = state->trans;
 	
 	if(state->hr.state == HotReloadState_Completed)
@@ -189,12 +193,15 @@ function void update_and_render(void *memory, f32 delta)
     ED_Window *game_win = ed_open_window(ED_WindowFlags_HasSurface | ED_WindowFlags_ChildrenSum, v2f{{480, 46}}, v2f{{960, 540}});
     ED_Panel *main_panel = ed_open_panel(game_win, Axis2_X, 1);
     
+    ed_open_tab(main_panel, ED_TabKind_ModelViewer);
+    
     ED_Tab *ts_viewer = ed_open_tab(main_panel, ED_TabKind_TileSetViewer);
     ED_Tab *insp = ed_open_tab(main_panel, ED_TabKind_Inspector);
     insp->hsva = {{1,0,1,1}};
     ts_viewer->inspector = insp;
     
-    ed_open_tab(main_panel, ED_TabKind_Game);
+    ED_Tab *game = ed_open_tab(main_panel, ED_TabKind_Game);
+    game->custom_draw = game_update_and_render;
     
     r_opengl_init();
     
@@ -308,9 +315,4 @@ function void update_and_render(void *memory, f32 delta)
 	END_TIMED_BLOCK(UPDATE_AND_RENDER);
 	
 	tcxt_process_debug_counters();
-}
-
-void update_game(R_Handle game_tex)
-{
-	
 }

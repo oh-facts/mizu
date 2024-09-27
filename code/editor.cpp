@@ -48,6 +48,8 @@ enum
 enum ED_TabKind
 {
 	ED_TabKind_Game,
+  ED_TabKind_ModelViewer,
+  
   ED_TabKind_TileSetViewer,
 	ED_TabKind_Inspector,
 	ED_TabKind_Debug,
@@ -57,6 +59,8 @@ enum ED_TabKind
 global char *tab_names[ED_TabKind_COUNT] =
 {
   "Game",
+  "Model viewer",
+  
   "tileset",
   "inspector",
   "debug"
@@ -64,6 +68,9 @@ global char *tab_names[ED_TabKind_COUNT] =
 
 struct ED_Window;
 struct ED_Panel;
+
+#define ED_CUSTOM_TAB(name) void name(R_Handle target, void *user_data)
+typedef ED_CUSTOM_TAB(ED_CustomTab);
 
 struct ED_Tab
 {
@@ -88,6 +95,8 @@ struct ED_Tab
 	v4f hsva;
   
   R_Handle target;
+  
+  ED_CustomTab *custom_draw;
 };
 
 struct ED_Panel
@@ -277,6 +286,12 @@ function ED_Tab *ed_open_tab(ED_Panel *panel, ED_TabKind kind)
   out->kind = kind;
   
   if(kind == ED_TabKind_Game)
+  {
+    v2f size = ed_size_of_panel(panel);
+    out->target = r_alloc_frame_buffer(size.x, size.y);
+  }
+  
+  if(kind == ED_TabKind_ModelViewer)
   {
     v2f size = ed_size_of_panel(panel);
     out->target = r_alloc_frame_buffer(size.x, size.y);
@@ -539,18 +554,29 @@ function void ed_update(Atlas *atlas, f32 delta)
                 default: INVALID_CODE_PATH();
                 case ED_TabKind_Game:
                 {
+                  //tab->custom_draw(tab->target, 0);
                   
-                  local_persist b32 done = 0;
-                  local_persist GLTF_Model model = {};
-                  local_persist R_Model rodel = {};
-                  local_persist Arena *arena = 0;
-                  if(!done)
+                  static v2f pos = {};
+                  f32 speed = 400;
+                  
+                  if(os_key_press(window->win, SDLK_A))
                   {
-                    arena = arena_create();
-                    model = gltf_load_mesh(arena, str8_lit("gltf_test/asuka/asuka.gltf"));
-                    rodel = upload_model(arena, &model);
-                    
-                    done = 1;
+                    pos.x += delta * speed;
+                  }
+                  
+                  if(os_key_press(window->win, SDLK_D))
+                  {
+                    pos.x -= delta * speed;
+                  }
+                  
+                  if(os_key_press(window->win, SDLK_S))
+                  {
+                    pos.y -= delta * speed;
+                  }
+                  
+                  if(os_key_press(window->win, SDLK_W))
+                  {
+                    pos.y += delta * speed;
                   }
                   
                   s32 tilemap[9][16] = 
@@ -568,10 +594,60 @@ function void ed_update(Atlas *atlas, f32 delta)
                   
                   d_push_target(tab->target);
                   
-                  for(u32 j = 0; j < rodel.num_meshes; j++)
+                  for(s32 row = 0; row < 9; row++)
                   {
-                    //d_state->top->stack_gen ++;
-                    //d_mesh(&rodel.meshes[j]);
+                    for(s32 col = 0; col < 16; col++)
+                    {
+                      s32 tile_id = tilemap[row][col];
+                      v4f color = {};
+                      if(tile_id == 0)
+                      {
+                        color = D_COLOR_RED;
+                      }
+                      else
+                      {
+                        color = D_COLOR_GREEN;
+                      }
+                      
+                      f32 size = 64;
+                      
+                      Rect dst = {};
+                      dst.tl.x = col * size - pos.x;
+                      dst.tl.y = row * size - pos.y;
+                      dst.br.x = dst.tl.x + size;
+                      dst.br.y = dst.tl.y + size;
+                      
+                      d_rect(dst, color);
+                    }
+                  }
+                  
+                  d_pop_target();
+                  
+                  ui_pref_width(window->cxt, 960)
+                    ui_pref_height(window->cxt, 540)
+                    ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                  {
+                    ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+                  }
+                  
+                }break;
+                
+                case ED_TabKind_ModelViewer:
+                {
+                  d_push_target(tab->target);
+                  
+                  
+                  local_persist b32 done = 0;
+                  local_persist GLTF_Model model = {};
+                  local_persist R_Model rodel = {};
+                  local_persist Arena *arena = 0;
+                  if(!done)
+                  {
+                    arena = arena_create();
+                    model = gltf_load_mesh(arena, str8_lit("gltf_test/asuka/asuka.gltf"));
+                    rodel = upload_model(arena, &model);
+                    
+                    done = 1;
                   }
                   
                   static v3f pos = {};
@@ -670,41 +746,13 @@ function void ed_update(Atlas *atlas, f32 delta)
                   glDisable(GL_DEPTH_TEST);
                   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
                   
-                  for(s32 row = 0; row < 9; row++)
-                  {
-                    for(s32 col = 0; col < 16; col++)
-                    {
-                      s32 tile_id = tilemap[row][col];
-                      v4f color = {};
-                      if(tile_id == 0)
-                      {
-                        color = D_COLOR_RED;
-                      }
-                      else
-                      {
-                        color = D_COLOR_GREEN;
-                      }
-                      
-                      f32 size = 64;
-                      
-                      Rect dst = {};
-                      dst.tl.x = col * size;
-                      dst.tl.y = row * size;
-                      dst.br.x = dst.tl.x + size;
-                      dst.br.y = dst.tl.y + size;
-                      
-                      //d_rect(dst, color);
-                    }
-                  }
-                  
-                  d_pop_target();
-                  
                   ui_pref_width(window->cxt, 960)
                     ui_pref_height(window->cxt, 540)
                     ui_size_kind(window->cxt, UI_SizeKind_Pixels)
                   {
-                    ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+                    ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "model image");
                   }
+                  d_pop_target();
                   
                 }break;
                 

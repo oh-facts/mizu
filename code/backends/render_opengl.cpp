@@ -529,7 +529,7 @@ function GLuint r_opengl_make_buffer(void *data, size_t size)
   GLuint buffer = 0;
   
   glCreateBuffers(1, &buffer);
-  glNamedBufferData(buffer, size, data, GL_STATIC_DRAW);
+  glNamedBufferData(buffer, size, data, GL_DYNAMIC_COPY);
   
   return buffer;
 }
@@ -705,6 +705,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
           else
           {
             glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
+            glClearNamedFramebufferfv(pass->rect_pass.target.u32_m[2], GL_COLOR, 0, color);
           }
           
           glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
