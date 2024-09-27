@@ -609,18 +609,25 @@ function void ed_update(Atlas *atlas, f32 delta)
                         color = D_COLOR_GREEN;
                       }
                       
-                      f32 size = 64;
+                      f32 size = 256;
+                      f32 padding = 3;
                       
                       Rect dst = {};
-                      dst.tl.x = col * size - pos.x;
-                      dst.tl.y = row * size - pos.y;
+                      dst.tl.x = col * (size + padding) + pos.x;
+                      dst.tl.y = row * (size + padding) + pos.y;
                       dst.br.x = dst.tl.x + size;
                       dst.br.y = dst.tl.y + size;
                       
-                      d_rect(dst, color);
+                      R_Rect *rect = d_rect(dst, color);
+                      //rect->radius = size / 2;
+                      rect->tex = a_handleFromPath(str8_lit("tree/trees.png"));
+                      rect->src = {{{0.333, 0}} , {{0.666, 1}}};
                     }
                   }
                   
+                  R_Rect *py = d_rect({420, 210, 540, 330}, D_COLOR_WHITE);
+                  py->tex = a_handleFromPath(str8_lit("impolo/impolo-east.png"));
+                  py->src = {0.666, 0, 0.999, 0.333};
                   d_pop_target();
                   
                   ui_pref_width(window->cxt, 960)
@@ -628,6 +635,11 @@ function void ed_update(Atlas *atlas, f32 delta)
                     ui_size_kind(window->cxt, UI_SizeKind_Pixels)
                   {
                     ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+                  }
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+                  {
+                    ui_labelf(window->cxt, "And then you wondered why the ground was missing");
                   }
                   
                 }break;
@@ -650,7 +662,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                     done = 1;
                   }
                   
-                  static v3f pos = {};
+                  static v3f pos = {{0, 0, -1}};
                   f32 speed = 3;
                   
                   m4f proj_view = m4f_make_perspective(90, 16.f / 9, 0.001, 1000);
@@ -752,6 +764,12 @@ function void ed_update(Atlas *atlas, f32 delta)
                   {
                     ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "model image");
                   }
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+                  {
+                    ui_labelf(window->cxt, "crapfest 3000");
+                  }
+                  
                   d_pop_target();
                   
                 }break;

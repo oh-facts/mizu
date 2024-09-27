@@ -714,36 +714,6 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
         
       }break;
       
-      case R_PASS_KIND_MESH:
-      {
-        R_Batch_list *batches = &pass->mesh_pass.mesh;
-				R_Batch *batch = batches->first;
-				for(u32 j = 0; j < batches->num; j++)
-				{
-					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH]);
-					
-          // upload vertex ssbo
-          glBindBufferBase(GL_SHADER_STORAGE_BUFFER, R_OPENGL_INST_BUFFER_MESH, pass->mesh_pass.vert);
-					
-          if(pass->mesh_pass.target.u64_m[0] == 0)
-          {
-            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
-          }
-          else
-          {
-            glBindFramebuffer(GL_FRAMEBUFFER, pass->mesh_pass.target.u32_m[2]);
-          }
-          
-          // bind index buffer
-          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pass->mesh_pass.index);
-          
-          glDrawElements(GL_TRIANGLES, pass->mesh_pass.num_indices, GL_UNSIGNED_INT, 0);
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-          
-          batch = batch->next;
-        }
-      }break;
-      
     }
   }
   
