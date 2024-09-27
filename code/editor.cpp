@@ -540,6 +540,19 @@ function void ed_update(Atlas *atlas, f32 delta)
                 case ED_TabKind_Game:
                 {
                   
+                  local_persist b32 done = 0;
+                  local_persist GLTF_Model model = {};
+                  local_persist R_Model rodel = {};
+                  local_persist Arena *arena = 0;
+                  if(!done)
+                  {
+                    arena = arena_create();
+                    model = gltf_load_mesh(arena, str8_lit("gltf_test/asuka/scene.gltf"));
+                    rodel = upload_model(arena, &model);
+                    
+                    done = 1;
+                  }
+                  
                   s32 tilemap[9][16] = 
                   {
                     {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
@@ -554,6 +567,89 @@ function void ed_update(Atlas *atlas, f32 delta)
                   };
                   
                   d_push_target(tab->target);
+                  
+                  for(u32 j = 0; j < rodel.num_meshes; j++)
+                  {
+                    //d_state->top->stack_gen ++;
+                    //d_mesh(&rodel.meshes[j]);
+                  }
+                  
+                  static v3f pos = {};
+                  f32 speed = 10;
+                  
+                  m4f cam = m4f_identity();
+                  //cam = m4f_translate(cam, {{0, 0, 1}});
+                  //cam = m4f_rot(cam, {{0, 0, 1}});
+                  
+                  m4f trans = m4f_make_trans(pos);
+                  m4f rot = m4f_make_rot_x(-DEG_TO_RAD(90));
+                  
+                  cam = rot * trans;
+                  
+                  if(os_key_press(window->win, SDLK_A))
+                  {
+                    pos.x += delta * speed;
+                  }
+                  
+                  if(os_key_press(window->win, SDLK_D))
+                  {
+                    pos.x -= delta * speed;
+                  }
+                  
+                  if(os_key_press(window->win, SDLK_S))
+                  {
+                    pos.z += delta * speed;
+                  }
+                  
+                  if(os_key_press(window->win, SDLK_W))
+                  {
+                    pos.z -= delta * speed;
+                  }
+                  /*
+                  if(os_key_press(window->win, SDLK_LSHIFT))
+                  {
+                    pos.y -= delta * speed;
+                  }
+                  
+                  if(os_key_press(window->win, SDLK_LCTRL))
+                  {
+                    pos.y -= delta * speed;
+                  }
+                  */
+                  
+                  glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH]);
+                  glBindFramebuffer(GL_FRAMEBUFFER, tab->target.u32_m[2]);
+                  
+                  f32 color[3] = {1,0,1};
+                  glClearNamedFramebufferfv(tab->target.u32_m[2], GL_COLOR, 0, color);
+                  
+                  for(u32 j = 0; j < rodel.num_meshes; j++)
+                  {
+                    R_Mesh* mesh = &rodel.meshes[j];
+                    
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mesh->vert);
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
+                    
+                    void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH], 0, sizeof(m4f), GL_MAP_WRITE_BIT | 
+                                                            GL_MAP_INVALIDATE_BUFFER_BIT);
+                    
+                    memcpy(ssbo_data, &cam, sizeof(m4f));
+                    glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
+                    
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index);         
+                    
+                    for (u64 k = 0; k < mesh->num_primitives; ++k) 
+                    {
+                      R_Primitive* primitive = &mesh->primitives[k];
+                      
+                      glDrawElements(GL_TRIANGLES, primitive->count, GL_UNSIGNED_INT, (void*)(primitive->start * sizeof(u32)));
+                    }
+                    
+                    //glDrawArrays(GL_TRIANGLES, );
+                    
+                  }
+                  
+                  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
                   
                   for(s32 row = 0; row < 9; row++)
                   {
@@ -578,7 +674,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                       dst.br.x = dst.tl.x + size;
                       dst.br.y = dst.tl.y + size;
                       
-                      d_rect(dst, color);
+                      //d_rect(dst, color);
                     }
                   }
                   

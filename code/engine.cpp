@@ -64,9 +64,40 @@
 
 #include <ui.cpp>
 
-#include <editor.cpp>
-
 #include <backends/render_opengl.cpp>
+
+function R_Model upload_model(Arena *arena, GLTF_Model *model)
+{
+  R_Model rendel = {};
+  
+  rendel.num_meshes = model->num_meshes;
+  rendel.meshes = push_array(arena, R_Mesh, model->num_meshes);
+  
+  for(u32 i = 0; i < rendel.num_meshes; i++)
+  {
+    R_Mesh *r_mesh = rendel.meshes + i;
+    GLTF_Mesh *mesh = model->meshes + i;
+    
+    r_mesh->vert = r_opengl_make_buffer(mesh->vertices, sizeof(GLTF_Vertex) * mesh->num_vertices);
+    r_mesh->index = r_opengl_make_buffer(mesh->indices, sizeof(u32) * mesh->num_indices);
+    
+    r_mesh->num_primitives = mesh->num_primitives;
+    r_mesh->primitives = push_array(arena, R_Primitive, mesh->num_primitives);
+    r_mesh->num_indices = mesh->num_indices;
+    
+    for(u32 j = 0; j < mesh->num_primitives; j++)
+    {
+      R_Primitive *r_prim = r_mesh->primitives + j;
+      GLTF_Primitive *prim = mesh->primitives + j;
+      
+      *r_prim = *((R_Primitive*)prim);
+    }
+  }
+  
+  return rendel;
+}
+
+#include <editor.cpp>
 
 #include <hot_reload.cpp>
 
@@ -120,7 +151,7 @@ extern "C"
 function void update_and_render(void *memory, f32 delta)
 {
 	State *state = (State*)memory;
-	//Arena *arena = state->arena;
+	Arena *arena = state->arena;
 	Arena *trans = state->trans;
 	
 	if(state->hr.state == HotReloadState_Completed)
@@ -229,8 +260,6 @@ function void update_and_render(void *memory, f32 delta)
 	d_push_bucket(draw);
 	d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
-  //gltf_load_mesh(temp.arena, str8_lit("gltf_test/asuka/scene.gltf"));
-  
   ed_update(&state->atlas, delta);
   
   for(s32 i = 0; i < ed_state->num_windows; i++)

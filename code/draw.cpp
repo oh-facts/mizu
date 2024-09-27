@@ -149,11 +149,27 @@ function R_Rect *d_rect(Rect dst, v4f color)
   return out;
 }
 
+function R_MeshInst *d_mesh(R_Mesh *mesh)
+{
+	D_Bucket *bucket = d_state->top;
+	
+  R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_MESH);
+	
+  R_MeshInst *out = r_push_batch(d_state->arena, &pass->mesh_pass.mesh, R_MeshInst);
+	out->model = m4f_identity();
+  pass->mesh_pass.vert = mesh->vert;
+  pass->mesh_pass.index = mesh->index;
+  pass->mesh_pass.num_indices = mesh->num_indices;
+  
+  bucket->last_stack_gen = bucket->stack_gen;
+  return out;
+}
+
 function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 {
 	D_Bucket *bucket = d_state->top;
   
-  text_extent ex = ui_text_spacing_stats(p->atlas->glyphs, text, p->scale);
+  Rect ex = ui_text_spacing_stats(p->atlas->glyphs, text, p->scale);
 	
 	v2f text_pos = pos;
 	text_pos.y += ex.tl.y;

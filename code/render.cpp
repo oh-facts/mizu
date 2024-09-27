@@ -104,6 +104,33 @@ struct R_Rect
   f32 pad[2];
 };
 
+struct R_MeshInst
+{
+  m4f model;
+};
+
+struct R_Primitive
+{
+  u32 start;
+  u32 count;
+};
+
+struct R_Mesh
+{
+  R_Primitive *primitives;
+  u64 num_primitives;
+  
+  GLuint index;
+  GLuint vert;
+  u32 num_indices;
+};
+
+struct R_Model
+{
+  R_Mesh *meshes;
+  u64 num_meshes;
+};
+
 struct R_Batch
 {
 	R_Batch *next;
@@ -128,10 +155,22 @@ struct R_Rect_pass
   R_Handle target;
 };
 
+struct R_Mesh_pass
+{
+  R_Batch_list mesh;
+  R_Handle target;
+  m4f proj_view;
+  
+  GLuint index;
+  u32 num_indices;
+  GLuint vert;
+};
+
 enum R_PASS_KIND
 {
 	R_PASS_KIND_UI,
-	R_PASS_KIND_COUNT,
+	R_PASS_KIND_MESH,
+  R_PASS_KIND_COUNT,
 };
 
 struct R_Pass
@@ -141,7 +180,8 @@ struct R_Pass
 	union
 	{
 		R_Rect_pass rect_pass;
-	};
+    R_Mesh_pass mesh_pass;
+  };
 	
 };
 
@@ -215,8 +255,6 @@ function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND k
 	R_Pass *pass = &node->pass;
 	return pass;
 }
-
-// remove alloc frame buffer. Instead make submit take a render target that has tl and br.
 
 // backend hooks
 function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);

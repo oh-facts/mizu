@@ -4,19 +4,23 @@
 enum R_OPENGL_INST_BUFFER
 {
 	R_OPENGL_INST_BUFFER_UI,
-	R_OPENGL_INST_BUFFER_COUNT,
+	R_OPENGL_INST_BUFFER_MESH,
+	
+  R_OPENGL_INST_BUFFER_COUNT,
 };
 
 enum R_OPENGL_SHADER_PROG
 {
 	R_OPENGL_SHADER_PROG_UI,
-	R_OPENGL_SHADER_PROG_COUNT,
+	R_OPENGL_SHADER_PROG_MESH,
+	
+  R_OPENGL_SHADER_PROG_COUNT,
 };
 
 struct R_Opengl_state
 {
 	Arena *arena;
-	//R_Opengl_window windows[10];
+	
   GLuint shader_prog[R_OPENGL_SHADER_PROG_COUNT];
 	GLuint inst_buffer[R_OPENGL_INST_BUFFER_COUNT];
 };
@@ -226,6 +230,51 @@ FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
 )"
 ;
 
+// mesh shader
+
+global char *r_vs_mesh_src =
+R"(
+#version 450 core
+
+struct Vertex 
+{
+    vec3 pos;
+    float pad;
+};
+
+layout (std430, binding = 0) buffer ssbo {
+    Vertex vertices[];
+};
+
+layout (std430, binding = 1) buffer ssbo1 {
+    mat4 proj_view;
+};
+
+void main()
+{
+    Vertex vtx = vertices[gl_VertexID];
+
+gl_Position = vec4(vtx.pos, 1) *  proj_view;
+}
+
+)"
+;
+
+global char* r_fs_mesh_src = 
+R"(
+	#version 450 core
+	#extension GL_ARB_bindless_texture: require
+
+out vec4 FragColor;
+
+void main() 
+{
+FragColor = vec4(1, 1, 1, 1);
+}
+
+)"
+;
+
 /*
  
 vec4 linear_to_srgb(vec4 linearCol) {
@@ -262,50 +311,6 @@ if (tex.x < border_thickness || tex.x > (1 - border_thickness) || tex.y < border
 
 
 // ============= //
-
-global char *r_vs_mesh_src =
-R"(
-#version 450 core
-
-layout (std430, binding = 0) buffer ssbo {
-    vec4 screen_size;
-    TextObject objects[];
-};
-
-void main()
-{
-    
-    gl_Position = vec4(norm_pos, 0.5, 1.0);
-}
-
-)"
-;
-
-global char* r_fs_mesh_src = 
-R"(
-	#version 450 core
-	#extension GL_ARB_bindless_texture: require
-
-out vec4 FragColor;
-
-void main()
-{
-		vec4 tex_col = texture(sampler2D(texId), tex);
-
-#if 0
-		if (tex_col.a < 0.01f && fade.a < 0.01f)
-		{
-				discard;
-		}
-#endif
-
-//FragColor =  tint * tex_col * fade;
-//FragColor =  srgb_to_linear(tint * tex_col);
-//FragColor = vec4(hsvToRgb(fade.xyz), 1);
-FragColor = fade * tex_col;
-}
-)"
-;
 
 function void APIENTRY glDebugOutput(GLenum source, 
                                      GLenum type, 
@@ -476,6 +481,14 @@ function GLuint r_opengl_make_shader_program(char *vertexShaderSource, char *fra
 	return shader_prog;
 }
 
+enum R_BufferKind
+{
+  R_BufferKind_Null,
+  R_BufferKind_SSBO,
+  R_BufferKind_Index,
+  R_BufferKind_COUNT
+};
+
 function GLuint r_opengl_make_buffer(size_t size)
 {
 	GLuint ssbo = 0;
@@ -487,6 +500,16 @@ function GLuint r_opengl_make_buffer(size_t size)
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
 	
 	return ssbo;
+}
+
+function GLuint r_opengl_make_buffer(void *data, size_t size)
+{
+  GLuint buffer = 0;
+  
+  glCreateBuffers(1, &buffer);
+  glNamedBufferData(buffer, size, data, GL_STATIC_DRAW);
+  
+  return buffer;
 }
 
 function void r_opengl_init()
@@ -502,9 +525,12 @@ function void r_opengl_init()
 	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
 #endif
   
-	
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_make_shader_program(r_vs_ui_src, r_fs_ui_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_make_buffer(Megabytes(8));
+  
+  r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH] = r_opengl_make_shader_program(r_vs_mesh_src, r_fs_mesh_src);
+  r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH] = r_opengl_make_buffer(Megabytes(8));
+  
 }
 
 function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
@@ -651,41 +677,73 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
           glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
 					batch = batch->next;
 				}
-			}break;
-		}
-	}
-	
+        
+      }break;
+      
+      case R_PASS_KIND_MESH:
+      {
+        R_Batch_list *batches = &pass->mesh_pass.mesh;
+				R_Batch *batch = batches->first;
+				for(u32 j = 0; j < batches->num; j++)
+				{
+					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH]);
+					
+          // upload vertex ssbo
+          glBindBufferBase(GL_SHADER_STORAGE_BUFFER, R_OPENGL_INST_BUFFER_MESH, pass->mesh_pass.vert);
+					
+          if(pass->mesh_pass.target.u64_m[0] == 0)
+          {
+            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+          }
+          else
+          {
+            glBindFramebuffer(GL_FRAMEBUFFER, pass->mesh_pass.target.u32_m[2]);
+          }
+          
+          // bind index buffer
+          glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pass->mesh_pass.index);
+          
+          glDrawElements(GL_TRIANGLES, pass->mesh_pass.num_indices, GL_UNSIGNED_INT, 0);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+          
+          batch = batch->next;
+        }
+      }break;
+      
+    }
+  }
+  
   SDL_GL_SwapWindow(win->raw);
-	
-	/*
-		struct
-		{
-			u64 id;
-			s32 w;
-			s32 h;
-		}fb_ssbo;
-		
-		fb_ssbo.id = fb.u64_m[0];
-		fb_ssbo.w = fb.u32_m[3];
-		fb_ssbo.h = fb.u32_m[4];
-		
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
-		void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB], 0, sizeof(fb_ssbo), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-		glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
-		
-		memcpy(ssbo_data, &fb_ssbo, sizeof(fb_ssbo));
-		
-		glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB]);
-		
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices);
-	*/
+  
+  /*
+    struct
+    {
+      u64 id;
+      s32 w;
+      s32 h;
+    }fb_ssbo;
+    
+    fb_ssbo.id = fb.u64_m[0];
+    fb_ssbo.w = fb.u32_m[3];
+    fb_ssbo.h = fb.u32_m[4];
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
+    void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB], 0, sizeof(fb_ssbo), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+    glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
+    
+    memcpy(ssbo_data, &fb_ssbo, sizeof(fb_ssbo));
+    
+    glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB]);
+    
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices);
+  */
 }
 
 function v2s r_tex_size_from_handle(R_Handle handle)
 {
-	v2s out = {};
-	out.x = handle.u32_m[3];
-	out.y = handle.u32_m[4];
-	return out;
+  v2s out = {};
+  out.x = handle.u32_m[3];
+  out.y = handle.u32_m[4];
+  return out;
 }

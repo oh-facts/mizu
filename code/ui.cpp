@@ -502,7 +502,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	widget->hover_color = cxt->hover_color_stack.top->v;
   widget->press_color = cxt->press_color_stack.top->v;
   
-	text_extent extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, FONT_SIZE);
+  Rect extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, FONT_SIZE);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
 	
