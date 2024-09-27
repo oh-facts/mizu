@@ -481,6 +481,24 @@ function m4f m4f_make_scale(v3f v)
   };
 }
 
+#undef near
+#undef far
+
+function m4f m4f_make_perspective(f32 fov, f32 aspect, f32 near, f32 far)
+{
+  f32 tan_half_fov = tan(fov / 2.0f);
+  f32 z_range = near - far;
+  
+  return (m4f){
+    {
+      {1.0f / (aspect * tan_half_fov), 0, 0, 0},
+      {0, 1.0f / tan_half_fov, 0, 0},
+      {0, 0, (far + near) / z_range, 2 * far * near / z_range},
+      {0, 0, -1, 0}
+    }
+  };
+}
+
 function m4f m4f_make_scale(f32 s)
 {
   return (m4f){

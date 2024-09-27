@@ -1,14 +1,20 @@
 /* date = September 18th 2024 11:48 pm */
+
 struct GLTF_Vertex
 {
   v3f pos;
-  f32 pad;
+  f32 uv_x;
+  v3f normal;
+  f32 uv_y;
+  v4f color;
 };
 
 struct GLTF_Primitive
 {
   u32 start;
   u32 count;
+  
+  Str8 base_tex;
 };
 
 struct GLTF_Mesh
@@ -38,6 +44,8 @@ struct GLTF_It
   u64 mesh_index;
   GLTF_Model *model;
   cgltf_data *data;
+  Str8 abs_path;
+  Str8 dir;
 };
 
 function void gltf_traverse_node(GLTF_It *it, cgltf_node *node)
@@ -86,6 +94,12 @@ function void gltf_traverse_node(GLTF_It *it, cgltf_node *node)
       
       GLTF_Primitive *p = mesh->primitives + i;
       
+      char *thing = node_prim->material->pbr_metallic_roughness.base_color_texture.texture->image->uri;
+      
+      Str8 uri_str =  str8((u8*)thing, strlen(thing));
+      p->base_tex = str8_join(it->arena, it->dir, uri_str);
+      push_array(it->arena, u8, 1);
+      
       cgltf_accessor *index_attrib = node_prim->indices;
       
       p->start = init_index;
@@ -110,6 +124,7 @@ function void gltf_traverse_node(GLTF_It *it, cgltf_node *node)
         
         if(attrib->type == cgltf_attribute_type_position)
         {
+          init_vtx = 0;
           cgltf_accessor *vert_attrib = attrib->data;
           
           for(u32 k = 0; k < vert_attrib->count; k++)
@@ -119,6 +134,58 @@ function void gltf_traverse_node(GLTF_It *it, cgltf_node *node)
           
           init_vtx += vert_attrib->count;
         }
+        
+        // NOTE(mizu): stop cheezing init vtx;
+        
+        if(attrib->type == cgltf_attribute_type_normal)
+        {
+          init_vtx = 0;
+          cgltf_accessor *norm_attrib = attrib->data;
+          
+          for(u32 k = 0; k < norm_attrib->count; k++)
+          {
+            cgltf_accessor_read_float(norm_attrib, k, mesh->vertices[k + init_vtx].normal.e, sizeof(f32));
+          }
+          init_vtx += norm_attrib->count;
+        }
+        
+        if(attrib->type == cgltf_attribute_type_color)
+        {
+          init_vtx = 0;
+          
+          cgltf_accessor *color_attrib = attrib->data;
+          for (u32 k = 0; k < color_attrib->count; k++)
+          {
+            cgltf_accessor_read_float(color_attrib, k, mesh->vertices[k + init_vtx].color.e, sizeof(f32));
+            
+            //printf("%f %f %f %f\n", mesh->vertices[k + init_vtx].color.e[0], mesh->vertices[k + init_vtx].color.e[1], mesh->vertices[k + init_vtx].color.e[2], mesh->vertices[k + init_vtx].color.e[3]);
+            
+            
+          }
+          init_vtx += color_attrib->count;
+        }
+        
+        if(attrib->type == cgltf_attribute_type_texcoord)
+        {
+          cgltf_accessor *tex_attrib = attrib->data;
+          
+          // TODO(mizu):  difference b/w attrib index 0 and 1
+          if (attrib->index == 0)
+          {
+            init_vtx = 0;
+            
+            for(u32 k = 0; k < tex_attrib->count; k++)
+            {
+              f32 tex[2] = {};
+              
+              cgltf_accessor_read_float(tex_attrib, k, tex, sizeof(f32));
+              mesh->vertices[k + init_vtx].uv_x = tex[0];
+              mesh->vertices[k + init_vtx].uv_y = 1 - tex[1];
+            }
+            init_vtx += tex_attrib->count;
+          }
+        }
+        
       }
       
       
@@ -171,32 +238,42 @@ function GLTF_Model gltf_load_mesh(Arena *arena, Str8 filepath)
 {
   GLTF_Model out = {};
   Arena_temp temp = scratch_begin(0, 0);
-  Str8 abs_path = str8_join(temp.arena, a_state->asset_dir, filepath);
-  //Str8 abs_path = str8_lit("C:\\dev\\game\\data\\assets\\gltf_test\\duck\\Duck.gltf");
+  
+  GLTF_It it = {};
+  
+  //it.abs_path = str8_lit("C:\\dev\\game\\data\\assets\\gltf_test\\duck\\Duck.gltf");
+  
+  it.abs_path = str8_join(temp.arena, a_state->asset_dir, filepath);
+  push_array(temp.arena, u8, 1);
+  
+  it.dir = str8_join(temp.arena, it.abs_path, str8_lit("/../"));
+  
   
   cgltf_options options = {};
   cgltf_data *data = 0;
   
-  if(cgltf_parse_file(&options, (char*)abs_path.c, &data) == cgltf_result_success)
+  if(cgltf_parse_file(&options, (char*)it.abs_path.c, &data) == cgltf_result_success)
   {
-    if(cgltf_load_buffers(&options, data, (char*)abs_path.c) == cgltf_result_success)
+    if(cgltf_load_buffers(&options, data, (char*)it.abs_path.c) == cgltf_result_success)
     {
       // load textures
-      out.num_textures = data->textures_count;
-      out.textures = push_array(arena, Str8, data->textures_count);
       
-      for(u32 i = 0; i < data->textures_count; i++)
-      {
-        Str8 uri_str = str8((u8*)data->textures[i].image->uri, strlen(data->textures[i].image->uri));
-        
-        out.textures[i] = str8_join(arena, abs_path, uri_str);
-      }
+      /*
+            out.num_textures = data->textures_count;
+            out.textures = push_array(arena, Str8, data->textures_count);
+            
+            for(u32 i = 0; i < data->textures_count; i++)
+            {
+              Str8 uri_str = str8((u8*)data->textures[i].image->uri, strlen(data->textures[i].image->uri));
+              
+              out.textures[i] = str8_join(arena, abs_path, uri_str);
+            }
+            */
       
       // load meshes
       out.num_meshes = data->meshes_count;
       out.meshes = push_array(arena, GLTF_Mesh, out.num_meshes);
       
-      GLTF_It it = {};
       it.model = &out;
       it.arena = arena;
       it.data = data;

@@ -113,6 +113,8 @@ struct R_Primitive
 {
   u32 start;
   u32 count;
+  
+  R_Handle tex;
 };
 
 struct R_Mesh

@@ -90,7 +90,11 @@ function R_Model upload_model(Arena *arena, GLTF_Model *model)
       R_Primitive *r_prim = r_mesh->primitives + j;
       GLTF_Primitive *prim = mesh->primitives + j;
       
-      *r_prim = *((R_Primitive*)prim);
+      r_prim->start = prim->start;
+      r_prim->count = prim->count;
+      
+      Bitmap bmp = bitmap(prim->base_tex);
+      r_prim->tex = r_alloc_texture(bmp.data, bmp.w, bmp.h, bmp.n, &tiled_params);
     }
   }
   

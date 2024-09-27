@@ -239,7 +239,10 @@ R"(
 struct Vertex 
 {
     vec3 pos;
-    float pad;
+    float uv_x;
+vec3 norm;
+float uv_y;
+vec4 color;
 };
 
 layout (std430, binding = 0) buffer ssbo {
@@ -248,13 +251,25 @@ layout (std430, binding = 0) buffer ssbo {
 
 layout (std430, binding = 1) buffer ssbo1 {
     mat4 proj_view;
+mat4 model;
+uvec2 sprite_id;
+uvec2 pad;
 };
 
+out vec3 a_norm;
+out vec2 a_tex;
+flat out uvec2 a_sprite_id;
+out vec4 a_color;
 void main()
 {
     Vertex vtx = vertices[gl_VertexID];
+a_norm = vtx.norm;
+a_tex.x = vtx.uv_x;
+a_tex.y = vtx.uv_y;
+a_sprite_id = sprite_id;
+a_color = vtx.color;
 
-gl_Position = vec4(vtx.pos, 1) *  proj_view;
+gl_Position = vec4(vtx.pos, 1) *  model * proj_view;
 }
 
 )"
@@ -266,10 +281,17 @@ R"(
 	#extension GL_ARB_bindless_texture: require
 
 out vec4 FragColor;
-
+in vec3 a_norm;
+ in vec2 a_tex;
+flat in uvec2 a_sprite_id;
+in vec4 a_color;
 void main() 
 {
-FragColor = vec4(1, 1, 1, 1);
+vec4 tex_col = texture(sampler2D(a_sprite_id), a_tex);
+
+//FragColor = a_color;
+FragColor = tex_col;
+//FragColor = vec4(a_tex.x, a_tex.y, 0, 1);
 }
 
 )"
@@ -595,6 +617,7 @@ function R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 	GLuint fbo;
 	glCreateFramebuffers(1, &fbo);
 	
+  // color attachment
 	GLuint tex;
 	glCreateTextures(GL_TEXTURE_2D, 1, &tex);
 	glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -604,6 +627,16 @@ function R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 	glTextureStorage2D(tex, 1, GL_RGB8, w, h);
 	glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, tex, 0);
 	
+  // depth attachment
+  GLuint depthTex;
+  glCreateTextures(GL_TEXTURE_2D, 1, &depthTex);
+  glTextureParameteri(depthTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTextureParameteri(depthTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTextureParameteri(depthTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTextureParameteri(depthTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTextureStorage2D(depthTex, 1, GL_DEPTH_COMPONENT24, w, h);
+  glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, depthTex, 0);
+  
 	auto status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
 	
 	if(status != GL_FRAMEBUFFER_COMPLETE)
