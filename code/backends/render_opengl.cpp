@@ -5,6 +5,7 @@ enum R_OPENGL_INST_BUFFER
 {
 	R_OPENGL_INST_BUFFER_UI,
 	R_OPENGL_INST_BUFFER_MESH,
+	R_OPENGL_INST_BUFFER_SPRITE,
 	
   R_OPENGL_INST_BUFFER_COUNT,
 };
@@ -13,6 +14,7 @@ enum R_OPENGL_SHADER_PROG
 {
 	R_OPENGL_SHADER_PROG_UI,
 	R_OPENGL_SHADER_PROG_MESH,
+	R_OPENGL_SHADER_PROG_SPRITE,
 	
   R_OPENGL_SHADER_PROG_COUNT,
 };
@@ -136,7 +138,8 @@ float pad[2];
 
 layout (std430, binding = 0) buffer ssbo {
     vec4 screen_size;
-    TextObject objects[];
+    mat4 proj;
+TextObject objects[];
 };
 
 out vec4 border_color;
@@ -183,13 +186,162 @@ radius = obj.radius;
 tex = vertex.uv;
     vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
     norm_pos.y =  - norm_pos.y;
-gl_Position = vec4(norm_pos, 0.5, 1.0);
+gl_Position = vec4(norm_pos, 0.5, 1.0) * proj;
 }
 
 )"
 ;
 
 global char* r_fs_ui_src = 
+R"(
+	#version 450 core
+	#extension GL_ARB_bindless_texture: require
+
+in vec4 border_color;
+ in vec4 fade;
+in vec2 tex;
+flat in uvec2 texId;
+flat in vec2 tex_size;
+flat in float border_thickness;
+flat in vec2 half_size;
+flat in float radius;
+in vec2 norm_tex;
+
+out vec4 FragColor;
+
+float RectSDF(vec2 p, vec2 b, float r)
+{
+    vec2 d = abs(p) - b + vec2(r);
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;   
+}
+
+void main() 
+{
+vec4 tex_col = texture(sampler2D(texId), tex);
+
+vec2 pos = half_size * 2 * norm_tex;
+        
+float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
+  float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
+  
+  vec4 v4FromColor = border_color;
+  vec4 v4ToColor = (fDist < 0.0) ? fade * tex_col : vec4(0);
+FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
+}
+
+
+)"
+;
+
+// sprite shader
+
+global char *r_vs_sprite_src =
+R"(
+#version 450 core
+
+#define Corner_00 0
+#define Corner_01 1
+#define Corner_10 2
+#define Corner_11 3
+#define Corner_COUNT 4
+
+struct R_Handle
+{
+uvec2 sprite_id;
+uint pad1;
+uint w;
+uint h;
+uint pad2;
+uvec2 pad3;
+};
+
+struct Rect
+{
+    vec2 tl;
+    vec2 br;
+};
+
+struct Vertex 
+{
+    vec2 pos;
+    vec2 uv;
+vec4 fade;
+};
+
+struct TextObject
+{
+    Rect src;
+    Rect dst;
+    vec4 border_color;
+vec4 fade[Corner_COUNT];
+    R_Handle handle;
+float border_thickness;
+float radius;
+float pad[2];
+};
+
+layout (std430, binding = 0) buffer ssbo {
+    vec4 screen_size;
+    mat4 proj;
+TextObject objects[];
+};
+
+out vec4 border_color;
+out vec4 fade;
+out vec2 tex;
+flat out uvec2 texId;
+flat out vec2 tex_size;
+flat out float border_thickness;
+flat out vec2 half_size;
+flat out float radius;
+out vec2 norm_tex;
+
+void main()
+{
+    TextObject obj = objects[gl_InstanceID];
+
+vec2 base_uv[] = {
+{0, 1},
+        {1, 1},
+        {1, 0},
+        {0, 0},
+    };
+
+norm_tex = base_uv[gl_VertexID];
+
+    Vertex vertices[] = {
+        {{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}, obj.fade[Corner_00]},
+        {{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}, obj.fade[Corner_10]},
+        {{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}, obj.fade[Corner_11]},
+        {{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_01]},
+    };
+
+ half_size = vec2((obj.dst.br.x - obj.dst.tl.x) * 0.5, (obj.dst.br.y - obj.dst.tl.y) * 0.5);
+
+    Vertex vertex = vertices[gl_VertexID];
+
+    texId = obj.handle.sprite_id;
+tex_size.x = obj.handle.w;
+    tex_size.y = obj.handle.h;
+  border_color = obj.border_color;
+    fade = vertex.fade;
+border_thickness = obj.border_thickness;
+radius = obj.radius;
+tex = vertex.uv;
+    
+// if we use screen size to normalize, we are basically saying fuck you to the
+// projection / view matrix. camera is doing this math specifically for us
+// for ui its ok since everything is wrt the screen, but for the game world, its not
+vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
+    norm_pos.y =  - norm_pos.y;
+norm_pos = vertex.pos;
+gl_Position = vec4(norm_pos, 0.5, 1.0) * proj;
+}
+
+)"
+;
+
+global char* r_fs_sprite_src = 
 R"(
 	#version 450 core
 	#extension GL_ARB_bindless_texture: require
@@ -553,6 +705,8 @@ function void r_opengl_init()
   r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH] = r_opengl_make_shader_program(r_vs_mesh_src, r_fs_mesh_src);
   r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH] = r_opengl_make_buffer(Megabytes(8));
   
+  r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE] = r_opengl_make_shader_program(r_vs_sprite_src, r_fs_sprite_src);
+  r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE] = r_opengl_make_buffer(Megabytes(8));
 }
 
 function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
@@ -665,11 +819,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 	f32 color[3] = {1,0,1};
 	glClearNamedFramebufferfv(0, GL_COLOR, 0, color);
 	
-	v4f win_size_float = {};
-	win_size_float.x = win->w;
-	win_size_float.y = win->h;
-	
-	glViewport(0, 0, win_size_float.x, win_size_float.y);
+  // TODO(mizu): use render target size, not window size 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
@@ -686,34 +836,90 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 				R_Batch *batch = batches->first;
 				for(u32 j = 0; j < batches->num; j++)
 				{
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, R_OPENGL_INST_BUFFER_UI, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
-					
-					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
-																									GL_MAP_INVALIDATE_BUFFER_BIT);
-					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI]);
-					
-					memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
-					
-					memcpy((u8*)ssbo_data + sizeof(win_size_float), batch->base, batch->count * sizeof(R_Rect));
-					
-					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
-					
+          v4f win_size_float = {};
+          
           if(pass->rect_pass.target.u64_m[0] == 0)
           {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            win_size_float.x = win->w;
+            win_size_float.y = win->h;
           }
           else
           {
             glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
             glClearNamedFramebufferfv(pass->rect_pass.target.u32_m[2], GL_COLOR, 0, color);
+            win_size_float.x = pass->rect_pass.target.u32_m[3];
+            win_size_float.y = pass->rect_pass.target.u32_m[4];
           }
           
+          glViewport(0, 0, win_size_float.x, win_size_float.y);
+          
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
+          
+					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
+																									GL_MAP_INVALIDATE_BUFFER_BIT);
+					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI]);
+					
+          m4f mat = pass->rect_pass.proj_view;
+          //m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});
+          
+					memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
+					memcpy((u8*)ssbo_data + sizeof(win_size_float), &mat, sizeof(m4f));
+					memcpy((u8*)ssbo_data + sizeof(win_size_float) + sizeof(m4f), batch->base, batch->count * sizeof(R_Rect));
+					
+					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
+					
           glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
 					batch = batch->next;
 				}
         
       }break;
       
+      case R_PASS_KIND_SPRITE:
+      {
+        R_Batch_list *batches = &pass->sprite_pass.sprites;
+				R_Batch *batch = batches->first;
+				for(u32 j = 0; j < batches->num; j++)
+				{
+          v4f win_size_float = {};
+          
+          if(pass->sprite_pass.target.u64_m[0] == 0)
+          {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            win_size_float.x = win->w;
+            win_size_float.y = win->h;
+          }
+          else
+          {
+            glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
+            glClearNamedFramebufferfv(pass->sprite_pass.target.u32_m[2], GL_COLOR, 0, color);
+            win_size_float.x = pass->sprite_pass.target.u32_m[3];
+            win_size_float.y = pass->sprite_pass.target.u32_m[4];
+          }
+          
+          glViewport(0, 0, win_size_float.x, win_size_float.y);
+          
+          glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE]);
+					
+					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
+																									GL_MAP_INVALIDATE_BUFFER_BIT);
+					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE]);
+					
+          m4f mat = pass->sprite_pass.proj_view;
+          
+          //m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});
+          
+          memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
+					memcpy((u8*)ssbo_data + sizeof(win_size_float), &mat, sizeof(m4f));
+					memcpy((u8*)ssbo_data + sizeof(win_size_float) + sizeof(m4f), batch->base, batch->count * sizeof(R_Sprite));
+					
+					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE]);
+					
+          glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
+					batch = batch->next;
+				}
+        
+      }break;
     }
   }
   

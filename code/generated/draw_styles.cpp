@@ -1,5 +1,7 @@
 // Draw Cmd Style Structs
 
+//2024-09-28 21:11:04
+
 struct D_Proj_view_node
 {
 	D_Proj_view_node *next;
@@ -31,6 +33,7 @@ function void d_push_proj_view(m4f v)
 	if(bucket->proj_view_top)
 	{
 		node->next = bucket->proj_view_top;
+		bucket->proj_view_top = node;
 	}
 	else
 	{
@@ -55,6 +58,7 @@ function void d_push_target(R_Handle v)
 	if(bucket->target_top)
 	{
 		node->next = bucket->target_top;
+		bucket->target_top = node;
 	}
 	else
 	{
@@ -79,6 +83,7 @@ function void d_push_viewport(Rect v)
 	if(bucket->viewport_top)
 	{
 		node->next = bucket->viewport_top;
+		bucket->viewport_top = node;
 	}
 	else
 	{

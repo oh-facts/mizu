@@ -1,6 +1,7 @@
 #include <engine.cpp>
 
-int main(int argc, char** argv)
+// Modern C++ codebase
+auto main(int argc, char** argv) -> int
 {
 	OS_Api os_api = os_get_api();
 	os_api_init(&os_api);

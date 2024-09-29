@@ -416,7 +416,8 @@ function void ed_update(Atlas *atlas, f32 delta)
 		
 		window->bucket = d_bucket();
 		d_push_bucket(window->bucket);
-		
+		d_push_proj_view(m4f_identity());
+    
 		ui_begin(window->cxt, window->win, atlas);
 		
 		ui_set_next_child_layout_axis(window->cxt, Axis2_X);
@@ -554,30 +555,48 @@ function void ed_update(Atlas *atlas, f32 delta)
                 default: INVALID_CODE_PATH();
                 case ED_TabKind_Game:
                 {
-                  //tab->custom_draw(tab->target, 0);
-                  
                   static v2f pos = {};
-                  f32 speed = 400;
+                  
+                  f32 speed = 300;
                   
                   if(os_key_press(window->win, SDLK_A))
-                  {
-                    pos.x += delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_D))
                   {
                     pos.x -= delta * speed;
                   }
                   
+                  if(os_key_press(window->win, SDLK_D))
+                  {
+                    pos.x += delta * speed;
+                  }
+                  
                   if(os_key_press(window->win, SDLK_S))
                   {
-                    pos.y -= delta * speed;
+                    pos.y += delta * speed;
                   }
                   
                   if(os_key_press(window->win, SDLK_W))
                   {
-                    pos.y += delta * speed;
+                    pos.y -= delta * speed;
                   }
+                  
+                  static Camera cam = {};
+                  cam.target = WORLD_FRONT;
+                  cam.up = WORLD_UP;
+                  cam.zoom = 600.f;
+                  cam.proj = CAMERA_PROJ_ORTHO;
+                  cam.speed = 400;
+                  cam.input_rot.x = 0;
+                  cam.input_rot.y = 0;
+                  cam.pos = v3f{{pos.x, -pos.y, -1}};
+                  cam.aspect = tab->target.u32_m[3] * 1.f / tab->target.u32_m[4];
+                  
+                  m4f_ortho_proj world_proj_inv = cam_get_proj_inv(&cam);
+                  
+                  m4f world_proj = world_proj_inv.fwd;
+                  
+                  m4f world_view = cam_get_view(&cam);
+                  
+                  m4f world_proj_view = world_proj * world_view * m4f_make_scale({{1, -1, 1}});
                   
                   s32 tilemap[9][16] = 
                   {
@@ -593,6 +612,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                   };
                   
                   d_push_target(tab->target);
+                  d_push_proj_view(world_proj_view);
                   
                   for(s32 row = 0; row < 9; row++)
                   {
@@ -610,24 +630,28 @@ function void ed_update(Atlas *atlas, f32 delta)
                       }
                       
                       f32 size = 256;
-                      f32 padding = 3;
+                      f32 padding = 0;
                       
                       Rect dst = {};
-                      dst.tl.x = col * (size + padding) + pos.x;
-                      dst.tl.y = row * (size + padding) + pos.y;
+                      dst.tl.x = col * (size + padding);
+                      dst.tl.y = row * (size + padding);
                       dst.br.x = dst.tl.x + size;
                       dst.br.y = dst.tl.y + size;
                       
-                      R_Rect *rect = d_rect(dst, color);
-                      //rect->radius = size / 2;
-                      rect->tex = a_handleFromPath(str8_lit("tree/trees.png"));
-                      rect->src = {{{0.333, 0}} , {{0.666, 1}}};
+                      R_Sprite *sprite = d_sprite(dst, color);
+                      
+                      sprite->radius = size / 2;
+                      //sprite->tex = a_handleFromPath(str8_lit("tree/trees.png"));
+                      //sprite->src = {{{0.333, 0}} , {{0.666, 1}}};
                     }
                   }
                   
-                  R_Rect *py = d_rect({420, 210, 540, 330}, D_COLOR_WHITE);
+                  R_Sprite *py = d_sprite(rect(pos, {{256, 256}}), D_COLOR_WHITE);
                   py->tex = a_handleFromPath(str8_lit("impolo/impolo-east.png"));
-                  py->src = {0.666, 0, 0.999, 0.333};
+                  
+                  py->src = {{{0.666, 0}}, {{0.999, 0.333}}};
+                  
+                  d_pop_proj_view();
                   d_pop_target();
                   
                   ui_pref_width(window->cxt, 960)
@@ -644,10 +668,10 @@ function void ed_update(Atlas *atlas, f32 delta)
                   
                 }break;
                 
+                // sometimes I get bored so I try to learn 3d
                 case ED_TabKind_ModelViewer:
                 {
                   d_push_target(tab->target);
-                  
                   
                   local_persist b32 done = 0;
                   local_persist GLTF_Model model = {};
@@ -709,8 +733,6 @@ function void ed_update(Atlas *atlas, f32 delta)
                   
                   glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH]);
                   glBindFramebuffer(GL_FRAMEBUFFER, tab->target.u32_m[2]);
-                  
-                  // TODO(mizu): work on depth testing
                   
                   glEnable(GL_DEPTH_TEST);
                   glDepthFunc(GL_LESS);
@@ -790,7 +812,6 @@ function void ed_update(Atlas *atlas, f32 delta)
                     {str8_lit("grass/grass_tile.png"), 3, 3}
                   };
                   
-                  
                   for(s32 i = 0; i < 2; i++)
                   {
                     ui_row(window->cxt)
@@ -858,6 +879,39 @@ function void ed_update(Atlas *atlas, f32 delta)
                     }
                   }
                 }break;
+                
+                case ED_TabKind_Debug:
+                {
+                  tab->update_timer += delta;
+                  if(tab->update_timer > 1.f)
+                  {
+                    tab->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
+                    tab->ft = delta;
+                    tab->update_timer = 0;
+                  }
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+                  {
+                    if(ui_labelf(window->cxt, "cc : %.f K", tab->cc).active)
+                    {
+                      printf("pressed\n");
+                    }
+                    
+                    ui_labelf(window->cxt, "ft : %.fms", tab->ft * 1000);
+                    ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
+                    ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
+                    ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
+                  }
+                  
+                  R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
+                  
+                  ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+                    ui_pref_size(window->cxt, 100)
+                  {
+                    ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
+                  }
+                }break;
+                
               }
             }
           }
@@ -870,6 +924,8 @@ function void ed_update(Atlas *atlas, f32 delta)
     ui_layout(dad);
     ed_draw_window(window);
     ui_end(window->cxt);
+    
+    d_pop_proj_view();
     d_pop_bucket();
     
   }

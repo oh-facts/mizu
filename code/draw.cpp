@@ -116,6 +116,10 @@ function R_Pass *d_push_pass(Arena *arena, D_Bucket *bucket, R_PASS_KIND kind)
     {
       pass->rect_pass.target = bucket->target_top->v;
     }
+    if(bucket->proj_view_top)
+    {
+      pass->rect_pass.proj_view = bucket->proj_view_top->v;
+    }
   }
 	else
 	{
@@ -135,6 +139,30 @@ function R_Rect *d_rect(Rect dst, v4f color)
 	
   out->dst = dst;
 	out->src = rect(0, 0, 1, 1);
+	out->fade[Corner_00] = color;
+	out->fade[Corner_01] = color;
+	out->fade[Corner_10] = color;
+	out->fade[Corner_11] = color;
+	out->tex = d_state->white_square;
+	
+  // NOTE(mizu): figure out why there is a 1px ghost outline even when thickness is 0
+  out->border_color = color;
+	out->radius = {};
+  out->border_thickness = {};
+  bucket->last_stack_gen = bucket->stack_gen;
+  return out;
+}
+
+function R_Sprite *d_sprite(Rect dst, v4f color)
+{
+	D_Bucket *bucket = d_state->top;
+	
+  R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_SPRITE);
+	
+  R_Sprite *out = r_push_batch(d_state->arena, &pass->sprite_pass.sprites, R_Sprite);
+	
+  out->dst = dst;
+  out->src = rect(0, 0, 1, 1);
 	out->fade[Corner_00] = color;
 	out->fade[Corner_01] = color;
 	out->fade[Corner_10] = color;
@@ -205,7 +233,6 @@ function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
     rect->border_color = p->color;
     rect->radius = 0;
     rect->border_thickness = -2;
-    //pass->rect_pass.proj_view = bucket->proj_view_top->v;
 	}
   
   bucket->last_stack_gen = bucket->stack_gen;

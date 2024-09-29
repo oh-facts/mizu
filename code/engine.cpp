@@ -194,6 +194,7 @@ function void update_and_render(void *memory, f32 delta)
     ED_Panel *main_panel = ed_open_panel(game_win, Axis2_X, 1);
     
     ed_open_tab(main_panel, ED_TabKind_ModelViewer);
+    ed_open_tab(main_panel, ED_TabKind_Debug);
     
     ED_Tab *ts_viewer = ed_open_tab(main_panel, ED_TabKind_TileSetViewer);
     ED_Tab *insp = ed_open_tab(main_panel, ED_TabKind_Inspector);
@@ -258,18 +259,14 @@ function void update_and_render(void *memory, f32 delta)
 		arena_temp_end(&temp);
 	}
 	
+  total_res = state->res;
+  total_cmt = state->cmt;
+  
 	BEGIN_TIMED_BLOCK(UPDATE_AND_RENDER);
 	Arena_temp temp = arena_temp_begin(trans);
 	
 	os_poll_events();
 	d_begin(&state->atlas, state->atlas_tex);
-	
-  f32 aspect = 16 / 9.f;
-  f32 zoom = 1;
-  
-  D_Bucket *draw = d_bucket();
-	d_push_bucket(draw);
-	d_push_proj_view(m4f_ortho(-aspect * zoom, aspect * zoom, -zoom, zoom, -1.001, 1000).fwd);
 	
   ed_update(&state->atlas, delta);
   
@@ -279,9 +276,7 @@ function void update_and_render(void *memory, f32 delta)
 		r_submit(window->win, &window->bucket->list);
 	}
 	
-  d_pop_proj_view();
-	d_pop_bucket();
-	d_end();
+  d_end();
 	
 	/*
 		if(os_key_press(&state->events, state->win, OS_Key_F))

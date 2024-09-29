@@ -28,4 +28,4 @@ if %errorlevel% neq 0 echo app compilation failed && exit /b
    
 if "%run%" == "1" start cmd /c ".\out\platform.exe && echo [run]"
 
-if "%meta%" == "1" clang code\draw\draw_gen.cpp -o out\draw_gen.exe && out\draw_gen.exe > code\draw\draw_styles.cpp
+if "%meta%" == "1" clang code\meta\draw_gen.cpp -o out\draw_gen.exe && out\draw_gen.exe > code\generated\draw_styles.cpp

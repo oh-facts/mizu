@@ -104,6 +104,19 @@ struct R_Rect
   f32 pad[2];
 };
 
+struct R_Sprite
+{
+  Rect src;
+	Rect dst;
+	
+	v4f border_color;
+	v4f fade[Corner_COUNT];
+	R_Handle tex;
+  f32 border_thickness;
+  f32 radius;
+  f32 pad[2];
+};
+
 struct R_MeshInst
 {
   m4f model;
@@ -153,7 +166,14 @@ struct R_Batch_list
 struct R_Rect_pass
 {
 	R_Batch_list rects;
-  //m4f proj_view;
+  m4f proj_view;
+  R_Handle target;
+};
+
+struct R_Sprite_pass
+{
+  R_Batch_list sprites;
+  m4f proj_view;
   R_Handle target;
 };
 
@@ -172,6 +192,7 @@ enum R_PASS_KIND
 {
 	R_PASS_KIND_UI,
 	R_PASS_KIND_MESH,
+  R_PASS_KIND_SPRITE,
   R_PASS_KIND_COUNT,
 };
 
@@ -183,8 +204,8 @@ struct R_Pass
 	{
 		R_Rect_pass rect_pass;
     R_Mesh_pass mesh_pass;
+    R_Sprite_pass sprite_pass;
   };
-	
 };
 
 struct R_Pass_node

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 
 #define Num_Styles 3
 
@@ -20,6 +21,16 @@ int main()
 {
 	printf("// Draw Cmd Style Structs\n\n");
 	
+  time_t t;
+  struct tm tm_info;
+  char buffer[26];
+  
+  time(&t);
+  localtime_s(&tm_info, &t);
+  
+  strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", &tm_info);
+  printf("//%s\n\n", buffer);
+  
   for(int i = 0; i < Num_Styles; i++)
 	{
 		printf("struct D_%s_node\n{\n", styles[i].Name);
@@ -41,6 +52,7 @@ int main()
     
     printf("\tif(bucket->%s_top)\n\t{\n", styles[i].name);
     printf("\t\tnode->next = bucket->%s_top;\n", styles[i].name);
+    printf("\t\tbucket->%s_top = node;\n", styles[i].name);
     printf("\t}\n");
     printf("\telse\n\t{\n");
     printf("\t\tbucket->%s_top = node;\n", styles[i].name);
