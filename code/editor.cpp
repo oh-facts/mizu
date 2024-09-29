@@ -557,7 +557,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                 {
                   static v2f pos = {};
                   
-                  f32 speed = 300;
+                  f32 speed = 600;
                   
                   if(os_key_press(window->win, SDLK_A))
                   {
@@ -620,13 +620,19 @@ function void ed_update(Atlas *atlas, f32 delta)
                     {
                       s32 tile_id = tilemap[row][col];
                       v4f color = {};
+                      R_Handle tex = {};
+                      Rect src = rect(0, 0, 1, 1);
+                      
                       if(tile_id == 0)
                       {
                         color = D_COLOR_RED;
+                        tex = a_get_alpha_bg_tex();
                       }
                       else
                       {
-                        color = D_COLOR_GREEN;
+                        color = D_COLOR_WHITE;
+                        tex = a_handleFromPath(str8_lit("tree/trees.png"));
+                        src = {{{0.333, 0}} , {{0.666, 1}}};
                       }
                       
                       f32 size = 256;
@@ -641,8 +647,8 @@ function void ed_update(Atlas *atlas, f32 delta)
                       R_Sprite *sprite = d_sprite(dst, color);
                       
                       sprite->radius = size / 2;
-                      //sprite->tex = a_handleFromPath(str8_lit("tree/trees.png"));
-                      //sprite->src = {{{0.333, 0}} , {{0.666, 1}}};
+                      sprite->tex = tex;
+                      sprite->src = src;
                     }
                   }
                   
