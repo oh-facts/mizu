@@ -1335,11 +1335,10 @@ function Glyph *make_bmp_font(u8* path, char *codepoints, u32 num_cp, Arena* are
 	stbtt_InitFont(&font, (u8*)file_data, stbtt_GetFontOffsetForIndex((u8*)file_data,0));
 	
 	Glyph *out = push_array(arena, Glyph, num_cp);
-	
 	for(u32 i = 0; i < num_cp; i++)
 	{
 		s32 w,h,xoff,yoff;
-		f32 size = stbtt_ScaleForPixelHeight(&font, 256);
+		f32 size = stbtt_ScaleForPixelHeight(&font, 64);
 		
 		u8* bmp = stbtt_GetCodepointBitmap(&font, 0, size, codepoints[i] ,&w,&h, &xoff, &yoff);
 		
@@ -1371,9 +1370,9 @@ function Glyph *make_bmp_font(u8* path, char *codepoints, u32 num_cp, Arena* are
 				u8 alpha = *src++;
 				
 				*dest++ = ((alpha <<24) |
-									 (alpha <<16) |
-									 (alpha << 8) |
-									 (alpha ));
+									 (0xFF <<16) |
+									 (0xFF << 8) |
+									 (0xFF));
 			}
 			dest_row += 4 * w;
 			src_row -= w;

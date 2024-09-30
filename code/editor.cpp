@@ -157,7 +157,10 @@ function void ed_draw_spritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
   ED_Panel *panel = tab->parent;
   ED_Window *window = panel->parent;
   
-  ui_press_color(window->cxt, D_COLOR_RED)
+	ui_radius(window->cxt, 5)
+		ui_border_thickness(window->cxt, 5)
+		ui_border_color(window->cxt, (v4f{{0, 0, 0, 0.3}}))
+		ui_press_color(window->cxt, D_COLOR_RED)
     ui_hover_color(window->cxt, D_COLOR_BLUE)
     ui_col(window->cxt)
   {
@@ -444,14 +447,13 @@ function void ed_update(Atlas *atlas, f32 delta)
           ui_named_rowf(window->cxt, "%d editor title bar")
 					{
             window->menu_bar = window->cxt->parent_stack.top->v;
-            
+            R_Handle titlebar_img = a_handleFromPath(str8_lit("editor/xp_titlebar.png"));
+						
             // hide button
             ui_pref_size(window->cxt, 32)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
-              R_Handle hide_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
-              
-              if(ui_imagef(window->cxt, hide_img, rect(0, 0, 0.25, 1), ED_THEME_TEXT, "hide img %d", i).active)
+              if(ui_imagef(window->cxt, titlebar_img, rect(0, 0, 0.25, 1), ED_THEME_IMG, "hide img %d", i).active)
               {
                 window->flags ^= ED_WindowFlags_Hidden;
               }
@@ -465,7 +467,7 @@ function void ed_update(Atlas *atlas, f32 delta)
             {
               UI_Widget *menu_bar = window->cxt->parent_stack.top->v;
               
-              if(ui_signal(menu_bar, window->cxt->mpos).active)
+              if(ui_signal(window->cxt, menu_bar).active)
               {
                 window->flags ^= ED_WindowFlags_Grabbed;
               }
@@ -478,9 +480,10 @@ function void ed_update(Atlas *atlas, f32 delta)
                   ui_spacer(window->cxt);
                 }
                 
+                // window title
                 ui_size_kind(window->cxt, UI_SizeKind_TextContent)
                 {
-                  ui_label(window->cxt, str8_lit("window"));
+                  ui_label(window->cxt, str8_lit("Mizu Mizu Game Engine 1 million"));
                 }
                 
               }
@@ -492,19 +495,17 @@ function void ed_update(Atlas *atlas, f32 delta)
             ui_pref_size(window->cxt, 32)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
-              R_Handle menu_button_img = a_handleFromPath(str8_lit("editor/titlebar.png"));
-              
-              if(ui_imagef(window->cxt, menu_button_img, rect(0.25, 0, 0.5, 1), ED_THEME_TEXT, "minimize img %d", i).active)
+              if(ui_imagef(window->cxt, titlebar_img, rect(0.25, 0, 0.5, 1), ED_THEME_IMG, "minimize img %d", i).active)
               {
                 window->flags ^= ED_WindowFlags_Minimized;
               }
               
-              if(ui_imagef(window->cxt, menu_button_img, rect(0.5, 0, 0.75, 1), ED_THEME_TEXT, "maximize img %d", i).active)
+              if(ui_imagef(window->cxt, titlebar_img, rect(0.5, 0, 0.75, 1), ED_THEME_IMG, "maximize img %d", i).active)
               {
                 window->flags ^= ED_WindowFlags_Maximized;
               }
               
-              if(ui_imagef(window->cxt, menu_button_img, rect(0.75, 0, 1, 1), ED_THEME_TEXT, "close img %d", i).active)
+              if(ui_imagef(window->cxt, titlebar_img, rect(0.75, 0, 1, 1), ED_THEME_IMG, "close img %d", i).active)
               {
                 window->win->close_requested = 1;
               }
@@ -555,7 +556,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                 default: INVALID_CODE_PATH();
                 case ED_TabKind_Game:
                 {
-                  static v2f pos = {};
+                  static v2f pos = {{1402, 825}};
                   
                   f32 speed = 600;
                   
@@ -669,7 +670,9 @@ function void ed_update(Atlas *atlas, f32 delta)
                   
                   ui_size_kind(window->cxt, UI_SizeKind_TextContent)
                   {
-                    ui_labelf(window->cxt, "And then you wondered why the ground was missing");
+                    ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
+                    ui_labelf(window->cxt, "Except for you, you can stay");
+                    ui_labelf(window->cxt, "[%.f %.f]", pos.x, pos.y);
                   }
                   
                 }break;
@@ -861,12 +864,14 @@ function void ed_update(Atlas *atlas, f32 delta)
                         ui_pref_size(window->cxt, 360)
                       {
                         ui_sat_picker(window->cxt, tab->hsva.x, &tab->hsva.y, &tab->hsva.z, str8_lit("sat picker thing"));
+                        
+                        ui_pref_height(window->cxt, 10)
+                        {
+                          ui_spacer(window->cxt);
+                        }
+                        
                         ui_pref_height(window->cxt, 40)
                         {
-                          ui_pref_height(window->cxt, 10)
-                          {
-                            ui_spacer(window->cxt);
-                          }
                           ui_hue_picker(window->cxt, &tab->hsva.x, str8_lit("hue picker thing"));
                           
                           ui_alpha_picker(window->cxt, tab->hsva.xyz, &tab->hsva.w, str8_lit("alpha picker thing"));

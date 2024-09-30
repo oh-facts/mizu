@@ -1,29 +1,29 @@
 struct OS_Window
 {
-  b32 close_requested;
-  
-  // read only
-  const char *title;
-  SDL_Window *raw;
-  SDL_GLContext gl_cxt;
-  s32 w;
-  s32 h;
-  b32 fullscreen;
-  v2f mpos;
-  v2f mpos_old;
-  b32 mdown[8];
-  b32 mdown_old[8];
-  b32 keys[256];
-  b32 keys_old[256];
+	b32 close_requested;
+	
+	// read only
+	const char *title;
+	SDL_Window *raw;
+	SDL_GLContext gl_cxt;
+	s32 w;
+	s32 h;
+	b32 fullscreen;
+	v2f mpos;
+	v2f mpos_old;
+	b32 mdown[8];
+	b32 mdown_old[8];
+	b32 keys[256];
+	b32 keys_old[256];
 };
 
 #define OS_MAX_WINDOWS 10
 
 struct OS_GfxState
 {
-  Arena *arena;
-  OS_Window windows[OS_MAX_WINDOWS];
-  u32 window_num;
+	Arena *arena;
+	OS_Window windows[OS_MAX_WINDOWS];
+	u32 window_num;
 };
 
 global OS_GfxState *os_gfx_state;
@@ -31,7 +31,7 @@ global OS_GfxState *os_gfx_state;
 function void os_init()
 {
 	Arena *arena = arena_create();
-  os_gfx_state = push_struct(arena, OS_GfxState);
+	os_gfx_state = push_struct(arena, OS_GfxState);
 	os_gfx_state->arena = arena;
 }
 

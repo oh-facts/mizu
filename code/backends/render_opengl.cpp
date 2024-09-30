@@ -833,32 +833,35 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 			case R_PASS_KIND_UI:
 			{
 				R_Batch_list *batches = &pass->rect_pass.rects;
+				
+				v4f win_size_float = {};
+				
+				if(pass->rect_pass.target.u64_m[0] == 0)
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+					win_size_float.x = win->w;
+					win_size_float.y = win->h;
+				}
+				else
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
+					glClearNamedFramebufferfv(pass->rect_pass.target.u32_m[2], GL_COLOR, 0, color);
+					win_size_float.x = pass->rect_pass.target.u32_m[3];
+					win_size_float.y = pass->rect_pass.target.u32_m[4];
+				}
+				
+				glViewport(0, 0, win_size_float.x, win_size_float.y);
+				
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
+				
 				R_Batch *batch = batches->first;
+				
+				glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI]);
+				
 				for(u32 j = 0; j < batches->num; j++)
 				{
-          v4f win_size_float = {};
-          
-          if(pass->rect_pass.target.u64_m[0] == 0)
-          {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            win_size_float.x = win->w;
-            win_size_float.y = win->h;
-          }
-          else
-          {
-            glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
-            glClearNamedFramebufferfv(pass->rect_pass.target.u32_m[2], GL_COLOR, 0, color);
-            win_size_float.x = pass->rect_pass.target.u32_m[3];
-            win_size_float.y = pass->rect_pass.target.u32_m[4];
-          }
-          
-          glViewport(0, 0, win_size_float.x, win_size_float.y);
-          
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
-          
-					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
+          void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
 																									GL_MAP_INVALIDATE_BUFFER_BIT);
-					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI]);
 					
           m4f mat = pass->rect_pass.proj_view;
           //m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});
@@ -878,35 +881,39 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
       case R_PASS_KIND_SPRITE:
       {
         R_Batch_list *batches = &pass->sprite_pass.sprites;
+				
+				v4f win_size_float = {};
+				
+				if(pass->sprite_pass.target.u64_m[0] == 0)
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+					win_size_float.x = win->w;
+					win_size_float.y = win->h;
+				}
+				else
+				{
+					glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
+					glClearNamedFramebufferfv(pass->sprite_pass.target.u32_m[2], GL_COLOR, 0, color);
+					win_size_float.x = pass->sprite_pass.target.u32_m[3];
+					win_size_float.y = pass->sprite_pass.target.u32_m[4];
+				}
+				
+				glViewport(0, 0, win_size_float.x, win_size_float.y);
+				
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE]);
+				
+				glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE]);
+				
+				m4f mat = pass->sprite_pass.proj_view;
+				
 				R_Batch *batch = batches->first;
+				
 				for(u32 j = 0; j < batches->num; j++)
 				{
-          v4f win_size_float = {};
           
-          if(pass->sprite_pass.target.u64_m[0] == 0)
-          {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            win_size_float.x = win->w;
-            win_size_float.y = win->h;
-          }
-          else
-          {
-            glBindFramebuffer(GL_FRAMEBUFFER, pass->rect_pass.target.u32_m[2]);
-            glClearNamedFramebufferfv(pass->sprite_pass.target.u32_m[2], GL_COLOR, 0, color);
-            win_size_float.x = pass->sprite_pass.target.u32_m[3];
-            win_size_float.y = pass->sprite_pass.target.u32_m[4];
-          }
-          
-          glViewport(0, 0, win_size_float.x, win_size_float.y);
-          
-          glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE]);
-					
 					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
 																									GL_MAP_INVALIDATE_BUFFER_BIT);
-					glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE]);
 					
-          m4f mat = pass->sprite_pass.proj_view;
-          
           //m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});
           
           memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));

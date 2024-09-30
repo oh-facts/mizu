@@ -1,3 +1,5 @@
+// TODO(mizu): Major: widget focus and metaprogram implicit parameter stacks.
+// Minor : Refactor pass. Transitions.
 #define UI_DeferLoop(begin, end) for(int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
 
 enum Axis2
@@ -10,8 +12,8 @@ enum Axis2
 
 enum UI_AlignKind
 {
-  UI_AlignKind_Left,
-  UI_AlignKind_Right,
+	UI_AlignKind_Left,
+	UI_AlignKind_Right,
 };
 
 enum UI_SizeKind
@@ -75,11 +77,16 @@ struct UI_Widget
 	R_Handle img;
 	Str8 text;
 	UI_Size pref_size[Axis2_COUNT];
+	
 	v4f color;
 	v4f bg_color;
 	v4f hover_color;
   v4f press_color;
-  
+  v4f border_color;
+	
+	f32 border_thickness;
+	f32 radius;
+	
   Axis2 child_layout_axis;
 	UI_AlignKind alignKind;
   v2f fixed_position;
@@ -111,6 +118,7 @@ ui_make_style_struct(Color, v4f)
 ui_make_style_struct(Pref_width, f32)
 ui_make_style_struct(Pref_height, f32)
 ui_make_style_struct(Fixed_pos, v2f)
+ui_make_style_struct(float_value, f32)
 
 ui_make_style_struct(AlignKind_x, UI_AlignKind)
 ui_make_style_struct(Axis2, Axis2)
@@ -142,9 +150,6 @@ struct UI_Context
 	
 	OS_Window *win;
 	
-	v2f mpos;
-	b32 mclick;
-	
 	u64 hash_table_size;
 	UI_Hash_slot *hash_slots;
 	
@@ -158,6 +163,9 @@ struct UI_Context
 	ui_make_style_struct_stack(Color, bg_color);
   ui_make_style_struct_stack(Color, hover_color);
 	ui_make_style_struct_stack(Color, press_color);
+	ui_make_style_struct_stack(Color, border_color);
+	ui_make_style_struct_stack(float_value, border_thickness);
+	ui_make_style_struct_stack(float_value, radius);
 	
   ui_make_style_struct_stack(Pref_width, pref_width);
 	ui_make_style_struct_stack(Pref_height, pref_height);
@@ -170,7 +178,7 @@ struct UI_Context
   u32 num;
 };
 
-function UI_Signal ui_signal(UI_Widget *widget, v2f mpos)
+function UI_Signal ui_signal(UI_Context *cxt, UI_Widget *widget)
 {
 	UI_Signal out = {};
 	
@@ -182,6 +190,7 @@ function UI_Signal ui_signal(UI_Widget *widget, v2f mpos)
 	br.x = tl.x + widget->size.x;
 	br.y = tl.y + widget->size.y;
 	
+	v2f mpos = cxt->win->mpos;
 	if(mpos.x > tl.x && mpos.x < br.x && mpos.y > tl.y && mpos.y < br.y)
 	{
 		out.hot = true;
@@ -226,7 +235,7 @@ UI_##Name##_node *node = cxt->name##_stack.free;\
 if(node)\
 {\
 cxt->name##_stack.free = cxt->name##_stack.free->next;\
-memset(node, 0, sizeof(*node));\
+*node = {};\
 }\
 else\
 {\
@@ -256,6 +265,15 @@ ui_make_free_node(Color, hover_color)
 
 ui_make_alloc_node(Color, press_color)
 ui_make_free_node(Color, press_color)
+
+ui_make_alloc_node(Color, border_color);
+ui_make_free_node(Color, border_color);
+
+ui_make_alloc_node(float_value, border_thickness);
+ui_make_free_node(float_value, border_thickness);
+
+ui_make_alloc_node(float_value, radius);
+ui_make_free_node(float_value, radius);
 
 ui_make_alloc_node(Pref_width, pref_width)
 ui_make_free_node(Pref_width, pref_width)
@@ -325,6 +343,15 @@ ui_make_pop_style(Color, hover_color)
 ui_make_push_style(Color, press_color, v4f)
 ui_make_pop_style(Color, press_color)
 
+ui_make_push_style(Color, border_color, v4f);
+ui_make_pop_style(Color, border_color);
+
+ui_make_push_style(float_value, border_thickness, f32);
+ui_make_pop_style(float_value, border_thickness);
+
+ui_make_push_style(float_value, radius, f32);
+ui_make_pop_style(float_value, radius);
+
 ui_make_push_style(Pref_width, pref_width, f32)
 ui_make_pop_style(Pref_width, pref_width)
 
@@ -370,6 +397,9 @@ function UI_Context *ui_alloc_cxt()
 	ui_push_bg_color(cxt, D_COLOR_WHITE);
 	ui_push_hover_color(cxt, D_COLOR_WHITE);
   ui_push_press_color(cxt, D_COLOR_WHITE);
+  ui_push_border_color(cxt, (v4f{{}}));
+  ui_push_border_thickness(cxt, 0);
+  ui_push_radius(cxt, 0);
   
   ui_push_pref_width(cxt, 0);
 	ui_push_pref_height(cxt, 0);
@@ -434,7 +464,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		
 		if(widget)
 		{
-			if(widget->hot && cxt->mclick)
+			if(widget->hot && os_mouse_pressed(cxt->win, SDL_BUTTON_LEFT))
 			{
 				widget->toggle = !widget->toggle;
 				widget->active = 1;
@@ -468,7 +498,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 			{
 				cxt->hash_slots[slot].last = cxt->hash_slots[slot].first = widget;
 			}
-			//		cxt->hash_slots[slot].first = widget;
+			//cxt->hash_slots[slot].first = widget;
 			widget->last_frame_touched_index = cxt->frames;
 			widget->id = cxt->num++;
 		}
@@ -501,6 +531,9 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	widget->bg_color = cxt->bg_color_stack.top->v;
 	widget->hover_color = cxt->hover_color_stack.top->v;
   widget->press_color = cxt->press_color_stack.top->v;
+  widget->border_color = cxt->border_color_stack.top->v;
+	widget->border_thickness = cxt->border_thickness_stack.top->v;
+  widget->radius = cxt->radius_stack.top->v;
   
   Rect extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, FONT_SIZE);
 	
@@ -571,7 +604,7 @@ function UI_Signal ui_begin_named_rowf(UI_Context *cxt, char *fmt, ...)
 	ui_push_parent(cxt, widget);
 	arena_temp_end(&temp);
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -601,7 +634,7 @@ function UI_Signal ui_begin_named_colf(UI_Context *cxt, char *fmt, ...)
 	ui_push_parent(cxt, widget);
 	arena_temp_end(&temp);
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -621,7 +654,7 @@ function UI_Signal ui_label(UI_Context *cxt, Str8 text)
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	widget->flags = UI_Flags_has_text;
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -766,9 +799,10 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, S
 	
 	if(widget->hot && os_mouse_held(cxt->win, SDL_BUTTON_LEFT))
 	{
+		v2f mpos = cxt->win->mpos;
 		f32 _sat, _val;
-		_sat = (cxt->mpos.x - widget->pos.x) / widget->size.x;
-		_val = 1 - (cxt->mpos.y - widget->pos.y) / widget->size.y;
+		_sat = (mpos.x - widget->pos.x) / widget->size.x;
+		_val = 1 - (mpos.y - widget->pos.y) / widget->size.y;
 		
 		_sat = ClampTop(_sat, 1);
 		_sat = ClampBot(_sat, 0);
@@ -780,7 +814,7 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, S
 		*val = _val;
 	}
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -878,15 +912,17 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 	
 	if(widget->hot && os_mouse_held(cxt->win, SDL_BUTTON_LEFT))
 	{
+		v2f mpos = cxt->win->mpos;
+		
 		f32 _alpha;
-		_alpha = (cxt->mpos.x - widget->pos.x) / widget->size.x;
+		_alpha = (mpos.x - widget->pos.x) / widget->size.x;
 		_alpha = ClampTop(_alpha, 1);
 		_alpha = ClampBot(_alpha, 0);
 		
 		*alpha = _alpha;
 	}
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -974,15 +1010,17 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
 	
 	if(widget->hot && os_mouse_held(cxt->win, SDL_BUTTON_LEFT))
 	{
+		v2f mpos = cxt->win->mpos;
+		
 		f32 _hue;
-		_hue = ((cxt->mpos.x - widget->pos.x) / widget->size.x) * 360;
+		_hue = ((mpos.x - widget->pos.x) / widget->size.x) * 360;
 		_hue = ClampTop(_hue, 360);
 		_hue = ClampBot(_hue, 0);
 		
 		*hue = _hue;
 	}
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -1022,9 +1060,9 @@ function UI_CUSTOM_DRAW(ui_image_draw)
 	R_Rect *img = d_rect(rect(widget->pos, widget->size), color);
   img->src = draw_data->src;
   img->tex = draw_data->img;
-  img->border_thickness = 5;
-  img->border_color = ED_THEME_BG_DARKER;
-  img->radius = 5;
+  img->border_thickness = widget->border_thickness;
+  img->border_color = widget->border_color;
+  img->radius = widget->radius;
 }
 
 function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, Str8 text)
@@ -1040,7 +1078,7 @@ function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, 
 	widget->custom_draw = ui_image_draw;
 	widget->custom_draw_data = draw_data;
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -1064,7 +1102,7 @@ function UI_Signal ui_named_spacer(UI_Context *cxt, Str8 text)
 {
 	UI_Widget *widget = ui_make_widget(cxt, text);
 	
-	UI_Signal out = ui_signal(widget, cxt->mpos);
+	UI_Signal out = ui_signal(cxt, widget);
 	
 	return out;
 }
@@ -1100,6 +1138,12 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 #define ui_bg_color(cxt, v) UI_DeferLoop(ui_push_bg_color(cxt, v), ui_pop_bg_color(cxt))
 #define ui_hover_color(cxt, v) UI_DeferLoop(ui_push_hover_color(cxt, v), ui_pop_hover_color(cxt))
 #define ui_press_color(cxt, v) UI_DeferLoop(ui_push_press_color(cxt, v), ui_pop_press_color(cxt))
+
+#define ui_border_color(cxt, v) UI_DeferLoop(ui_push_border_color(cxt, v), ui_pop_border_color(cxt))
+
+#define ui_border_thickness(cxt, v) UI_DeferLoop(ui_push_border_thickness(cxt, v), ui_pop_border_thickness(cxt))
+
+#define ui_radius(cxt, v) UI_DeferLoop(ui_push_radius(cxt, v), ui_pop_radius(cxt))
 
 #define ui_size_kind_x(cxt, v) UI_DeferLoop(ui_push_size_kind_x(cxt, v), ui_pop_size_kind_x(cxt))
 
@@ -1264,10 +1308,6 @@ function void ui_begin(UI_Context *cxt, OS_Window *win, Atlas *atlas)
 {
 	cxt->atlas = atlas;
 	cxt->win = win;
-	
-	cxt->mpos = win->mpos;
-	
-	cxt->mclick = os_mouse_pressed(win, SDL_BUTTON_LEFT);
 	
 	cxt->frame_arena->used = ARENA_HEADER_SIZE;
 	

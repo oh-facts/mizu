@@ -8,12 +8,12 @@
 
 ## Table of Contents
 
-1. [About](#about)
-2. [Build](#build)
-   - [Windows](#windows)
-   - [Linux / Mac](#linux--mac)
-3. [Contributions](#contributions)
-4. [Project Structure](#project-structure)
+- [Table of Contents](#table-of-contents)
+- [About](#about)
+- [Build](#build)
+  - [Windows](#windows)
+- [Contributions](#contributions)
+- [Project Structure](#project-structure)
 ## About
 Hi, this is my game engine. Nice to meet you. Goodnight.
 
@@ -30,7 +30,9 @@ Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`
 ```
 ./build.bat release platform app
 ```
-### Linux / Mac
+-0 
+              `   `                 +-***+*----------------------------                                     -----------------
+              ### Linux / Mac
 **SDL3** needs to be installed. Also, this doesn't compile on linux/mac yet. I am fixing the compiler errors one by one. I get bored sometimes. Give it a crack if you want. Its all platform related.
 `clang` and `gcc` are also valid args. 
 ```

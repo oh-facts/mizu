@@ -4,8 +4,9 @@
 #define ED_THEME_BG_DARKER v4f{{0, 0, 0, 0.2}}
 
 #define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
+#define ED_THEME_IMG D_COLOR_WHITE
 
-#define FONT_SIZE 0.01
+#define FONT_SIZE 0.013986
 
 #define STB_SPRINTF_IMPLEMENTATION
 #include "third_party/stb/stb_sprintf.h"

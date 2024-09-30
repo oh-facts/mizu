@@ -1,52 +1,20 @@
 #include <stdio.h>
 
-enum Type
-{
-	Type_UI_Widget,
-	Type_v4f,
-	Type_f32,
-	Type_v2f,
-	Type_Axis2,
-	Type_SizeKind,
-	Type_COUNT
-};
-
-enum Name
-{
-	Name_Parent,
-	Name_Color,
-	Name_PrefWidth,
-	Name_PrefHeight,
-};
-
-const char *Type_strings[Type_COUNT] = 
-{
-	"UI_Widget",
-	"v4f",
-	"f32",
-	"v2f",
-	"Axis2",
-	"SizeKind",
-};
-
 struct Style
 {
-	const char *name;
-	Type type;
+	const char *Name;
+	const char *Type;
 };
 
-#define Num_Styles 8
-
-Style styles[Num_Styles] = 
-{
-	{"Parent", Type_UI_Widget},
-	{"Color", Type_v4f},
-	{"Pref_width", Type_f32},
-	{"Pref_height", Type_f32},
-	{"Fixed_pos", Type_v2f},
-	{"Axis2", Type_Axis2},
-	{"SizeKind_x", Type_SizeKind},
-	{"SizeKind_y", Type_SizeKind},
+#define num_styles 
+static Style styles[num_styles] =
+{ 
+	{"Parent", "UI_Widget"},
+	{"Color", "v4f"},
+	{"Pref_width", "f32"},
+	{"Pref_height", "f32"},
+	{"Pref_height", "f32"},
+	
 };
 
 int main()
