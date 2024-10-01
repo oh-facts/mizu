@@ -1,4 +1,3 @@
-
 // TODO(mizu): If a window is focussed, other windows come to the top too. Also, add a minimize and maximize and close button. And work on making the panels better to interact with.
 
 // Also fix the focus stealing thing where if a window is being interacted with
@@ -450,7 +449,8 @@ function void ed_update(Atlas *atlas, f32 delta)
             R_Handle titlebar_img = a_handleFromPath(str8_lit("editor/xp_titlebar.png"));
 						
             // hide button
-            ui_pref_size(window->cxt, 32)
+            ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
+							ui_pref_size(window->cxt, 32)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
               if(ui_imagef(window->cxt, titlebar_img, rect(0, 0, 0.25, 1), ED_THEME_IMG, "hide img %d", i).active)
@@ -487,12 +487,11 @@ function void ed_update(Atlas *atlas, f32 delta)
                 }
                 
               }
-              
-              
             }
             
-            // minimize, maximize, close
-            ui_pref_size(window->cxt, 32)
+            // minimize, maximize, close 
+            ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
+							ui_pref_size(window->cxt, 32)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
               if(ui_imagef(window->cxt, titlebar_img, rect(0.25, 0, 0.5, 1), ED_THEME_IMG, "minimize img %d", i).active)
@@ -510,8 +509,6 @@ function void ed_update(Atlas *atlas, f32 delta)
                 window->win->close_requested = 1;
               }
             }
-            
-            os_mouse_released(window->win, SDL_BUTTON_LEFT);
             
             if(os_mouse_held(window->win, SDL_BUTTON_LEFT) && (window->flags & ED_WindowFlags_Grabbed))
             {
@@ -615,7 +612,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                   d_push_target(tab->target);
                   d_push_proj_view(world_proj_view);
                   
-                  for(s32 row = 0; row < 9; row++)
+									for(s32 row = 0; row < 9; row++)
                   {
                     for(s32 col = 0; col < 16; col++)
                     {
@@ -653,6 +650,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                     }
                   }
                   
+									
                   R_Sprite *py = d_sprite(rect(pos, {{256, 256}}), D_COLOR_WHITE);
                   py->tex = a_handleFromPath(str8_lit("impolo/impolo-east.png"));
                   

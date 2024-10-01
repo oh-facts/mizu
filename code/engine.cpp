@@ -254,9 +254,6 @@ function void update_and_render(void *memory, f32 delta)
 			state->atlas.glyphs[c].y0 = temp_font[i].y0;
 			state->atlas.glyphs[c].y1 = temp_font[i].y1;
 		}
-		
-    //os_window_close(temp_win);
-    
 		arena_temp_end(&temp);
 	}
 	
@@ -279,34 +276,12 @@ function void update_and_render(void *memory, f32 delta)
 	
   d_end();
 	
-	/*
-		if(os_key_press(&state->events, state->win, OS_Key_F))
-	{
-		printf("Toggle Fullscreen\n");
-	}
-	
-		if(os_key_press(&state->events, OS_Key_Q))
-		{
-			os_window_close(state->win);
-		}
-		*/
-  
   if(os_key_press(ed_state->main_window->win, SDLK_R) || get_file_last_modified_time((char*)state->hr.path.c) > state->hr.reloaded_time)
   {
     state->hr.state = HotReloadState_Requested;
   }
   
 	arena_temp_end(&temp);
-	
-  for(s32 i = 0; i < ed_state->num_windows; i++)
-	{
-    OS_Window *window = ed_state->windows[i].win;
-		
-    for(s32 j = 0; j < 8; j++)
-    {
-      window->mdown_old[j] = window->mdown[j];
-    }
-  }
 	
 	END_TIMED_BLOCK(UPDATE_AND_RENDER);
 	

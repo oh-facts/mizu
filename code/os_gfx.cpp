@@ -88,6 +88,16 @@ function b32 os_key_press(OS_Window *win, u32 key)
 
 function void os_poll_events()
 {
+	for(s32 i = 0; i < os_gfx_state->window_num; i++)
+	{
+    OS_Window *window = os_gfx_state->windows + i;
+		
+    for(s32 j = 0; j < 8; j++)
+    {
+      window->mdown_old[j] = window->mdown[j];
+    }
+  }
+	
 	SDL_Event sdl_event;
 	while (SDL_PollEvent(&sdl_event)) 
 	{

@@ -268,7 +268,7 @@ struct Vertex
 vec4 fade;
 };
 
-struct TextObject
+struct Sprite
 {
     Rect src;
     Rect dst;
@@ -277,13 +277,15 @@ vec4 fade[Corner_COUNT];
     R_Handle handle;
 float border_thickness;
 float radius;
-float pad[2];
+vec2 basis;
+float pad[3];
+float depth; // epic crash
 };
 
 layout (std430, binding = 0) buffer ssbo {
     vec4 screen_size;
     mat4 proj;
-TextObject objects[];
+Sprite objects[];
 };
 
 out vec4 border_color;
@@ -298,7 +300,7 @@ out vec2 norm_tex;
 
 void main()
 {
-    TextObject obj = objects[gl_InstanceID];
+    Sprite obj = objects[gl_InstanceID];
 
 vec2 base_uv[] = {
 {0, 1},
@@ -910,8 +912,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 				
 				for(u32 j = 0; j < batches->num; j++)
 				{
-          
-					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
+          void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Sprite), GL_MAP_WRITE_BIT | 
 																									GL_MAP_INVALIDATE_BUFFER_BIT);
 					
           //m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});

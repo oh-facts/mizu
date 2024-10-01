@@ -98,23 +98,29 @@ struct R_Rect
 	
 	v4f border_color;
 	v4f fade[Corner_COUNT];
+	
 	R_Handle tex;
-  f32 border_thickness;
+  
+	f32 border_thickness;
   f32 radius;
   f32 pad[2];
 };
 
 struct R_Sprite
 {
-  Rect src;
+	Rect src; // 2 * v2f
 	Rect dst;
 	
 	v4f border_color;
-	v4f fade[Corner_COUNT];
-	R_Handle tex;
-  f32 border_thickness;
-  f32 radius;
-  f32 pad[2];
+	v4f fade[Corner_COUNT]; // 4 corners
+	R_Handle tex; // 8 * u32
+	
+	f32 border_thickness;
+	f32 radius;
+	v2f basis;
+	
+	f32 pad[3];
+	f32 depth; //causes epic crash
 };
 
 struct R_MeshInst
