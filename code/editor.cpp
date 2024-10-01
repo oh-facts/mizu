@@ -44,6 +44,13 @@ enum
   ED_WindowFlags_Tab = 1 << 8,
 };
 
+typedef int ED_TabFlags;
+
+enum
+{
+  ED_TabFlags_Custom = 1 << 0,
+};
+
 enum ED_TabKind
 {
 	ED_TabKind_Game,
@@ -67,8 +74,9 @@ global char *tab_names[ED_TabKind_COUNT] =
 
 struct ED_Window;
 struct ED_Panel;
+struct ED_Tab;
 
-#define ED_CUSTOM_TAB(name) void name(R_Handle target, void *user_data)
+#define ED_CUSTOM_TAB(name) void name(ED_Window *window, ED_Tab *tab, f32 delta, void *user_data)
 typedef ED_CUSTOM_TAB(ED_CustomTab);
 
 struct ED_Tab
@@ -96,6 +104,7 @@ struct ED_Tab
   R_Handle target;
   
   ED_CustomTab *custom_draw;
+	void *custom_drawData;
 };
 
 struct ED_Panel
@@ -481,7 +490,8 @@ function void ed_update(Atlas *atlas, f32 delta)
                 }
                 
                 // window title
-                ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+                ui_text_color(window->cxt, D_COLOR_WHITE)
+									ui_size_kind(window->cxt, UI_SizeKind_TextContent)
                 {
                   ui_label(window->cxt, str8_lit("Mizu Mizu Game Engine 1 million"));
                 }
@@ -553,112 +563,10 @@ function void ed_update(Atlas *atlas, f32 delta)
                 default: INVALID_CODE_PATH();
                 case ED_TabKind_Game:
                 {
-                  static v2f pos = {{1402, 825}};
-                  
-                  f32 speed = 600;
-                  
-                  if(os_key_press(window->win, SDLK_A))
-                  {
-                    pos.x -= delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_D))
-                  {
-                    pos.x += delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_S))
-                  {
-                    pos.y += delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_W))
-                  {
-                    pos.y -= delta * speed;
-                  }
-                  
-                  static Camera cam = {};
-                  cam.target = WORLD_FRONT;
-                  cam.up = WORLD_UP;
-                  cam.zoom = 600.f;
-                  cam.proj = CAMERA_PROJ_ORTHO;
-                  cam.speed = 400;
-                  cam.input_rot.x = 0;
-                  cam.input_rot.y = 0;
-                  cam.pos = v3f{{pos.x, -pos.y, -1}};
-                  cam.aspect = tab->target.u32_m[3] * 1.f / tab->target.u32_m[4];
-                  
-                  m4f_ortho_proj world_proj_inv = cam_get_proj_inv(&cam);
-                  
-                  m4f world_proj = world_proj_inv.fwd;
-                  
-                  m4f world_view = cam_get_view(&cam);
-                  
-                  m4f world_proj_view = world_proj * world_view * m4f_make_scale({{1, -1, 1}});
-                  
-                  s32 tilemap[9][16] = 
-                  {
-                    {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
-                    {1, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-                    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-                    {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-                    {1, 1, 0, 1,  1, 0, 0, 0,  1, 1, 1, 0,  0, 0, 0, 0},
-                    {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
-                    {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
-                    {1, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1},
-                    {1, 0, 1, 0,  1, 0, 1, 0,  0, 0, 1, 0,  1, 0, 0, 1},
-                  };
-                  
-                  d_push_target(tab->target);
-                  d_push_proj_view(world_proj_view);
-                  
-									for(s32 row = 0; row < 9; row++)
-                  {
-                    for(s32 col = 0; col < 16; col++)
-                    {
-                      s32 tile_id = tilemap[row][col];
-                      v4f color = {};
-                      R_Handle tex = {};
-                      Rect src = rect(0, 0, 1, 1);
-                      
-                      if(tile_id == 0)
-                      {
-                        color = D_COLOR_RED;
-                        tex = a_get_alpha_bg_tex();
-                      }
-                      else
-                      {
-                        color = D_COLOR_WHITE;
-                        tex = a_handleFromPath(str8_lit("tree/trees.png"));
-                        src = {{{0.333, 0}} , {{0.666, 1}}};
-                      }
-                      
-                      f32 size = 256;
-                      f32 padding = 0;
-                      
-                      Rect dst = {};
-                      dst.tl.x = col * (size + padding);
-                      dst.tl.y = row * (size + padding);
-                      dst.br.x = dst.tl.x + size;
-                      dst.br.y = dst.tl.y + size;
-                      
-                      R_Sprite *sprite = d_sprite(dst, color);
-                      
-                      sprite->radius = size / 2;
-                      sprite->tex = tex;
-                      sprite->src = src;
-                    }
-                  }
-                  
+									d_push_target(tab->target);
+									tab->custom_draw(window, tab, delta, tab->custom_drawData);
+									d_pop_target();
 									
-                  R_Sprite *py = d_sprite(rect(pos, {{256, 256}}), D_COLOR_WHITE);
-                  py->tex = a_handleFromPath(str8_lit("impolo/impolo-east.png"));
-                  
-                  py->src = {{{0.666, 0}}, {{0.999, 0.333}}};
-                  
-                  d_pop_proj_view();
-                  d_pop_target();
-                  
                   ui_pref_width(window->cxt, 960)
                     ui_pref_height(window->cxt, 540)
                     ui_size_kind(window->cxt, UI_SizeKind_Pixels)
@@ -670,7 +578,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                   {
                     ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
                     ui_labelf(window->cxt, "Except for you, you can stay");
-                    ui_labelf(window->cxt, "[%.f %.f]", pos.x, pos.y);
+                    //ui_labelf(window->cxt, "[%.f %.f]", pos.x, pos.y);
                   }
                   
                 }break;

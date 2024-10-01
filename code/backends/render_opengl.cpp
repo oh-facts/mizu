@@ -337,7 +337,7 @@ tex = vertex.uv;
 vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
     norm_pos.y =  - norm_pos.y;
 norm_pos = vertex.pos;
-gl_Position = vec4(norm_pos, 0.5, 1.0) * proj;
+gl_Position = vec4(norm_pos, 0, 1) * proj;
 }
 
 )"
@@ -373,10 +373,17 @@ vec4 tex_col = texture(sampler2D(texId), tex);
 vec2 pos = half_size * 2 * norm_tex;
         
 float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
-  float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
+  
+if(tex_col.a < 0.1 || fDist > 1)
+{
+discard;
+}
+
+float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
   
   vec4 v4FromColor = border_color;
   vec4 v4ToColor = (fDist < 0.0) ? fade * tex_col : vec4(0);
+
 FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
 }
 
@@ -906,17 +913,24 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 				
 				glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE]);
 				
+				f32 clear_value = 0;
+				glClearNamedFramebufferfv(pass->sprite_pass.target.u32_m[2], GL_DEPTH, 0, &clear_value);
+				
 				m4f mat = pass->sprite_pass.proj_view;
+				//m4f mat = m4f_identity();
+				//m4f mat = m4f_make_scale({{0.05, 0.05, 0.05}});
 				
 				R_Batch *batch = batches->first;
 				
 				for(u32 j = 0; j < batches->num; j++)
 				{
-          void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Sprite), GL_MAP_WRITE_BIT | 
+					R_Sprite *first = (R_Sprite*)batch->base;
+					
+					qsort(first, batch->count, sizeof(R_Sprite), r_sprite_sort);
+					
+					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Sprite), GL_MAP_WRITE_BIT | 
 																									GL_MAP_INVALIDATE_BUFFER_BIT);
 					
-          //m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});
-          
           memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
 					memcpy((u8*)ssbo_data + sizeof(win_size_float), &mat, sizeof(m4f));
 					memcpy((u8*)ssbo_data + sizeof(win_size_float) + sizeof(m4f), batch->base, batch->count * sizeof(R_Sprite));

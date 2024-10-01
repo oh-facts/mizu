@@ -1,9 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#define ED_THEME_BG v4f{{0.14, 0.282, 0.286, 1}}
+#define ED_THEME_BG v4f{{0.643, 0, 0.357, 1}}
 #define ED_THEME_BG_DARKER v4f{{0, 0, 0, 0.2}}
 
-#define ED_THEME_TEXT v4f{{0.81, 0.46, 0.13, 1}}
+#define ED_THEME_TEXT v4f{{1, 0.576, 0.141, 1}}
 #define ED_THEME_IMG D_COLOR_WHITE
 
 #define FONT_SIZE 0.013986
@@ -103,10 +103,9 @@ function R_Model upload_model(Arena *arena, GLTF_Model *model)
 }
 
 #include <editor.cpp>
+#include <game.cpp>
 
 #include <hot_reload.cpp>
-
-#include <game.cpp>
 
 #if defined(OS_WIN32)
 #define GAME_DLL "yk.dll"
@@ -155,8 +154,6 @@ extern "C"
   export_function void update_and_render(void *, f32 delta);
 }
 
-function ED_CUSTOM_TAB(game_update_and_render);
-
 function void update_and_render(void *memory, f32 delta)
 {
 	State *state = (State*)memory;
@@ -204,8 +201,8 @@ function void update_and_render(void *memory, f32 delta)
     
     ED_Tab *game = ed_open_tab(main_panel, ED_TabKind_Game);
     game->custom_draw = game_update_and_render;
-    
-    r_opengl_init();
+    game->custom_drawData = push_struct(state->arena, Game);
+		r_opengl_init();
     
     d_init();
 		a_init();

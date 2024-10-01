@@ -64,6 +64,7 @@ TRAP();\
 #define function static
 #define global static
 #define local_persist static
+#define read_only static const
 
 #if defined OS_WIN32
 #define export_function __declspec(dllexport)

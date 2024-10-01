@@ -8,6 +8,7 @@ function b32 is_pow_of_2(size_t addr)
 	return (addr & (addr-1)) == 0;
 }
 
+typedef struct Arena Arena;
 struct Arena
 {
 	Arena *next;
@@ -28,6 +29,7 @@ struct Arena
 #define ClampTop(A,X) Min(A,X)
 #define ClampBot(X,B) Max(X,B)
 
+typedef struct Arena_temp Arena_temp;
 struct Arena_temp
 {
 	Arena *arena;
@@ -122,6 +124,7 @@ function Arena *arena_create()
 #define PI (3.1415926535897f)
 #define DEG_TO_RAD(deg) (deg * PI / 180.f)
 
+typedef union v2s v2s;
 union v2s
 {
   s32 e[2];
@@ -132,6 +135,7 @@ union v2s
   };
 };
 
+typedef union v2f v2f;
 union v2f
 {
   f32 e[2];
@@ -142,6 +146,7 @@ union v2f
   };
 };
 
+typedef union v3f v3f;
 union v3f
 {
   f32 e[3];
@@ -158,6 +163,7 @@ union v3f
   };
 };
 
+typedef union v4f v4f;
 union v4f
 {
   f32 e[4];
@@ -178,11 +184,13 @@ union v4f
 	
 };
 
+typedef union m4f m4f;
 union m4f
 {
   f32 e[4][4];
 };
 
+typedef struct m4f_ortho_proj m4f_ortho_proj;
 struct m4f_ortho_proj
 {
   m4f fwd;
@@ -199,6 +207,11 @@ function f32 v2f_dist_sq(v2f a, v2f b)
 {
   f32 out = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
   return out;
+}
+
+function b32 v2s_equals(v2s a, v2s b)
+{
+  return a.x == b.x && a.y == b.y;
 }
 
 function b32 operator==(v2s a, v2s b)

@@ -120,8 +120,24 @@ struct R_Sprite
 	v2f basis;
 	
 	f32 pad[3];
-	f32 depth; //causes epic crash
+	s32 layer; //causes epic crash
 };
+
+int r_sprite_sort(const void* a, const void* b) 
+{
+	R_Sprite *first = (R_Sprite*)a;
+	R_Sprite *sec = (R_Sprite*)b;
+	
+	if (first->layer != sec->layer) 
+	{
+		return (first->layer > sec->layer) - (first->layer < sec->layer);
+	}
+	
+	f32 pos_1 = first->dst.tl.y - first->basis.y;
+	f32 pos_2 = sec->dst.tl.y - sec->basis.y;
+	
+	return (pos_1 > pos_2) - (pos_1 < pos_2);
+}
 
 struct R_MeshInst
 {
