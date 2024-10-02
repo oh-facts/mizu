@@ -62,15 +62,15 @@ function void d_init()
 	d_state->white_square = r_alloc_texture(white_square, 1, 1, 4, &tiled_params);
 }
 
-function void d_begin(Atlas *atlas, R_Handle *atlas_tex)
+function void d_begin()
 {
 	d_state->temp = arena_temp_begin(d_state->arena);
 	d_state->default_text_params =
 	(D_Text_params){
 		(v4f){{1,1,1,1}},
 		FONT_SIZE,
-		atlas,
-		atlas_tex
+		&font->atlas,
+		font->atlas_tex
 	};
 }
 

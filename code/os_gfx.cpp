@@ -147,7 +147,7 @@ function void os_poll_events()
 			
 			case SDL_EVENT_WINDOW_MOUSE_ENTER:
 			{
-				//SDL_RaiseWindow(win->raw);
+				SDL_RaiseWindow(win->raw);
 			}break;
 			
 			case SDL_EVENT_MOUSE_MOTION:

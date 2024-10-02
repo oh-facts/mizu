@@ -154,7 +154,6 @@ struct UI_Context
 	UI_Hash_slot *hash_slots;
 	
 	u64 frames;
-	Atlas *atlas;
 	
 	UI_Widget *widget_free_list;
 	
@@ -535,7 +534,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	widget->border_thickness = cxt->border_thickness_stack.top->v;
   widget->radius = cxt->radius_stack.top->v;
   
-  Rect extent = ui_text_spacing_stats(cxt->atlas->glyphs, text, FONT_SIZE);
+  Rect extent = ui_text_spacing_stats(font->atlas.glyphs, text, FONT_SIZE);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
 	
@@ -1304,9 +1303,8 @@ function void ui_layout(UI_Widget *root)
 	//printf("\n");
 }
 
-function void ui_begin(UI_Context *cxt, OS_Window *win, Atlas *atlas)
+function void ui_begin(UI_Context *cxt, OS_Window *win)
 {
-	cxt->atlas = atlas;
 	cxt->win = win;
 	
 	cxt->frame_arena->used = ARENA_HEADER_SIZE;

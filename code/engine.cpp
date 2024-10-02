@@ -61,8 +61,18 @@
 #include <render.cpp>
 #include <asset_cache.cpp>
 #include <gltf_loader.cpp>
-#include <draw.cpp>
 
+// TODO(mizu): NEEDS TO GO. I want to spend time on the game, so I will do this later
+// The goal is to make it part of asset cache, so I can do text("cascadia", "hi")
+struct Font
+{
+	Atlas atlas;
+	R_Handle atlas_tex[256];
+};
+
+global Font *font;
+
+#include <draw.cpp>
 #include <ui.cpp>
 
 #include <backends/render_opengl.cpp>
@@ -141,10 +151,7 @@ struct State
 	A_State *a_state;
 	ED_State *ed_state;
   OS_GfxState *os_gfx_state;
-  
-	// needs to go
-	Atlas atlas;
-	R_Handle atlas_tex[256];
+	Font *font;
 };
 
 typedef void (*update_and_render_fn)(void *, f32 delta);
@@ -173,7 +180,8 @@ function void update_and_render(void *memory, f32 delta)
 		a_state = state->a_state;
 		ed_state = state->ed_state;
     os_gfx_state = state->os_gfx_state;
-    
+    font = state->font;
+		
 		state->hr.state = HotReloadState_Null;
 	}
 	
@@ -188,7 +196,7 @@ function void update_and_render(void *memory, f32 delta)
 		os_init();
     state->os_gfx_state = os_gfx_state;
     
-    ED_Window *game_win = ed_open_window(ED_WindowFlags_HasSurface | ED_WindowFlags_ChildrenSum, v2f{{480, 46}}, v2f{{960, 540}});
+    ED_Window *game_win = ed_open_window(ED_WindowFlags_HasSurface | ED_WindowFlags_ChildrenSum, v2f{{251,50}}, v2f{{960, 540}});
     ED_Panel *main_panel = ed_open_panel(game_win, Axis2_X, 1);
     
     ed_open_tab(main_panel, ED_TabKind_ModelViewer);
@@ -199,12 +207,13 @@ function void update_and_render(void *memory, f32 delta)
     insp->hsva = {{1,0,1,1}};
     ts_viewer->inspector = insp;
     
-    ED_Tab *game = ed_open_tab(main_panel, ED_TabKind_Game);
+    ED_Tab *game = ed_open_tab(main_panel, ED_TabKind_Custom);
     game->custom_draw = game_update_and_render;
     game->custom_drawData = push_struct(state->arena, Game);
+		
 		r_opengl_init();
-    
-    d_init();
+		
+		d_init();
 		a_init();
 		
 		state->tcxt = tcxt;
@@ -212,7 +221,7 @@ function void update_and_render(void *memory, f32 delta)
 		state->r_opengl_state = r_opengl_state;
 		state->a_state = a_state;
 		state->ed_state = ed_state;
-    
+		
 		char codepoints[] =
 		{
 			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 
@@ -232,6 +241,8 @@ function void update_and_render(void *memory, f32 delta)
 		
 		Arena_temp temp = arena_temp_begin(state->trans);
 		
+		state->font = push_struct(state->arena, Font);
+		
 		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/assets/fonts/arial.ttf"));
 		Glyph *temp_font = make_bmp_font(font_path.c, codepoints, ARRAY_LEN(codepoints), state->trans);
 		
@@ -241,16 +252,19 @@ function void update_and_render(void *memory, f32 delta)
 			
 			if(c != '\n' && c != ' ')
 			{
-				state->atlas_tex[c] = r_alloc_texture(temp_font[i].bmp, temp_font[i].w, temp_font[i].h, 1, &font_params);
+				state->font->atlas_tex[c] = r_alloc_texture(temp_font[i].bmp, temp_font[i].w, temp_font[i].h, 1, &font_params);
 			}
 			
-			state->atlas.glyphs[c].bearing = temp_font[i].bearing;
-			state->atlas.glyphs[c].advance = temp_font[i].advance;
-			state->atlas.glyphs[c].x0 = temp_font[i].x0;
-			state->atlas.glyphs[c].x1 = temp_font[i].x1;
-			state->atlas.glyphs[c].y0 = temp_font[i].y0;
-			state->atlas.glyphs[c].y1 = temp_font[i].y1;
+			state->font->atlas.glyphs[c].bearing = temp_font[i].bearing;
+			state->font->atlas.glyphs[c].advance = temp_font[i].advance;
+			state->font->atlas.glyphs[c].x0 = temp_font[i].x0;
+			state->font->atlas.glyphs[c].x1 = temp_font[i].x1;
+			state->font->atlas.glyphs[c].y0 = temp_font[i].y0;
+			state->font->atlas.glyphs[c].y1 = temp_font[i].y1;
 		}
+		
+		font = state->font;
+		
 		arena_temp_end(&temp);
 	}
 	
@@ -261,9 +275,9 @@ function void update_and_render(void *memory, f32 delta)
 	Arena_temp temp = arena_temp_begin(trans);
 	
 	os_poll_events();
-	d_begin(&state->atlas, state->atlas_tex);
+	d_begin();
 	
-  ed_update(&state->atlas, delta);
+  ed_update(delta);
   
   for(s32 i = 0; i < ed_state->num_windows; i++)
 	{

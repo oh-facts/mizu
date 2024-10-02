@@ -53,7 +53,7 @@ enum
 
 enum ED_TabKind
 {
-	ED_TabKind_Game,
+	ED_TabKind_Custom,
   ED_TabKind_ModelViewer,
   
   ED_TabKind_TileSetViewer,
@@ -64,7 +64,7 @@ enum ED_TabKind
 
 global char *tab_names[ED_TabKind_COUNT] =
 {
-  "Game",
+  "Custom",
   "Model viewer",
   
   "tileset",
@@ -236,7 +236,8 @@ function ED_Window *ed_open_window(ED_WindowFlags flags, v2f pos, v2f size)
   out->size = size;
   out->pos = pos;
   out->cxt = ui_alloc_cxt();
-  out->win = os_window_open("alfia", out->size.x, out->size.y);
+  
+	out->win = os_window_open("alfia", out->size.x, out->size.y);
   
   os_set_window_pos(out->win, out->pos);
   
@@ -278,7 +279,7 @@ function ED_Panel *ed_open_panel(ED_Window *window, Axis2 axis, f32 pct_of_paren
   return out;
 }
 
-function ED_Tab *ed_open_tab(ED_Panel *panel, ED_TabKind kind)
+function ED_Tab *ed_open_tab(ED_Panel *panel, ED_TabKind kind, v2f size = {{960, 540}})
 {
   ED_Tab *out = push_struct(ed_state->arena, ED_Tab);
   *out = {};
@@ -296,15 +297,14 @@ function ED_Tab *ed_open_tab(ED_Panel *panel, ED_TabKind kind)
   out->parent = panel;
   out->kind = kind;
   
-  if(kind == ED_TabKind_Game)
+	//v2f size = ed_size_of_panel(panel);
+  if(kind == ED_TabKind_Custom)
   {
-    v2f size = ed_size_of_panel(panel);
     out->target = r_alloc_frame_buffer(size.x, size.y);
   }
   
   if(kind == ED_TabKind_ModelViewer)
   {
-    v2f size = ed_size_of_panel(panel);
     out->target = r_alloc_frame_buffer(size.x, size.y);
   }
   
@@ -419,7 +419,7 @@ function void ed_draw_window(ED_Window *window)
   ed_draw_panel(window, parent);
 }
 
-function void ed_update(Atlas *atlas, f32 delta)
+function void ed_update(f32 delta)
 {
 	for(u32 i = 0; i < ed_state->num_windows; i++)
 	{
@@ -429,7 +429,7 @@ function void ed_update(Atlas *atlas, f32 delta)
 		d_push_bucket(window->bucket);
 		d_push_proj_view(m4f_identity());
     
-		ui_begin(window->cxt, window->win, atlas);
+		ui_begin(window->cxt, window->win);
 		
 		ui_set_next_child_layout_axis(window->cxt, Axis2_X);
 		UI_Widget *dad = ui_make_widget(window->cxt, str8_lit(""));
@@ -548,7 +548,7 @@ function void ed_update(Atlas *atlas, f32 delta)
                 {
                   if(ui_label(window->cxt, tab->name).active)
                   {
-                    panel->active_tab = tab;
+										panel->active_tab = tab;
                   }
                   ui_pref_width(window->cxt, 10)
                     ui_size_kind(window->cxt, UI_SizeKind_Pixels)
@@ -561,289 +561,278 @@ function void ed_update(Atlas *atlas, f32 delta)
               switch(tab->kind)
               {
                 default: INVALID_CODE_PATH();
-                case ED_TabKind_Game:
+                case ED_TabKind_Custom:
                 {
-									d_push_target(tab->target);
 									tab->custom_draw(window, tab, delta, tab->custom_drawData);
+								}break;
+								
+								// sometimes I get bored so I try to learn 3d
+								case ED_TabKind_ModelViewer:
+								{
+									d_push_target(tab->target);
+									
+									local_persist b32 done = 0;
+									local_persist GLTF_Model model = {};
+									local_persist R_Model rodel = {};
+									local_persist Arena *arena = 0;
+									if(!done)
+									{
+										arena = arena_create();
+										model = gltf_load_mesh(arena, str8_lit("gltf_test/asuka/asuka.gltf"));
+										rodel = upload_model(arena, &model);
+										
+										done = 1;
+									}
+									
+									static v3f pos = {{0, 0, -1}};
+									f32 speed = 3;
+									
+									m4f proj_view = m4f_make_perspective(90, 16.f / 9, 0.001, 1000);
+									
+									m4f cam = m4f_identity();
+									//cam = m4f_translate(cam, {{0, 0, 1}});
+									//cam = m4f_rot(cam, {{0, 0, 1}});
+									
+									m4f trans = m4f_make_trans(pos);
+									m4f rot = m4f_make_rot_x(DEG_TO_RAD(0));
+									//m4f rot_z = m4f_make_rot_y(DEG_TO_RAD(90));
+									cam = rot * trans;
+									cam = proj_view * cam;
+									
+									if(os_key_press(window->win, SDLK_A))
+									{
+										pos.x += delta * speed;
+									}
+									
+									if(os_key_press(window->win, SDLK_D))
+									{
+										pos.x -= delta * speed;
+									}
+									
+									if(os_key_press(window->win, SDLK_S))
+									{
+										pos.z -= delta * speed;
+									}
+									
+									if(os_key_press(window->win, SDLK_W))
+									{
+										pos.z += delta * speed;
+									}
+									
+									if(os_key_press(window->win, SDLK_Q))
+									{
+										pos.y -= delta * speed;
+									}
+									
+									if(os_key_press(window->win, SDLK_E))
+									{
+										pos.y += delta * speed;
+									}
+									
+									glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH]);
+									glBindFramebuffer(GL_FRAMEBUFFER, tab->target.u32_m[2]);
+									
+									glEnable(GL_DEPTH_TEST);
+									glDepthFunc(GL_LESS);
+									
+									f32 color[3] = {1,0,1};
+									f32 clear_value = 1;
+									
+									glClearNamedFramebufferfv(tab->target.u32_m[2], GL_COLOR, 0, color);
+									glClearNamedFramebufferfv(tab->target.u32_m[2], GL_DEPTH, 0, &clear_value);
+									
+									static f32 rotty = 0;
+									rotty += delta * 5;
+									
+									m4f model_mat = m4f_identity();
+									model_mat = m4f_make_trans({{0, -0.8, 0}}) * m4f_make_rot_x(DEG_TO_RAD(90)) * m4f_make_rot_z(rotty);
+									
+									for(u32 j = 0; j < rodel.num_meshes; j++)
+									{
+										R_Mesh* mesh = &rodel.meshes[j];
+										
+										glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mesh->vert);
+										glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
+										
+										glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index);         
+										
+										for (u64 k = 0; k < mesh->num_primitives; ++k) 
+										{
+											R_Primitive* primitive = &mesh->primitives[k];
+											
+											void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH], 0, sizeof(m4f) * 2 + sizeof(u64) * 2, GL_MAP_WRITE_BIT | 
+																															GL_MAP_INVALIDATE_BUFFER_BIT);
+											
+											u64 tex_id = primitive->tex.u64_m[0];
+											
+											memcpy(ssbo_data, &cam, sizeof(m4f));
+											memcpy((u8*)ssbo_data + sizeof(m4f), &model_mat, sizeof(m4f));
+											memcpy((u8*)ssbo_data + sizeof(m4f) + sizeof(m4f), &tex_id, sizeof(u64));
+											
+											glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
+											
+											glDrawElements(GL_TRIANGLES, primitive->count, GL_UNSIGNED_INT, (void*)(primitive->start * sizeof(u32)));
+										}
+									}
+									
+									glDisable(GL_DEPTH_TEST);
+									glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+									
+									ui_pref_width(window->cxt, 960)
+										ui_pref_height(window->cxt, 540)
+										ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+									{
+										ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "model image");
+									}
+									
+									ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+									{
+										ui_labelf(window->cxt, "crapfest 3000");
+									}
+									
 									d_pop_target();
 									
-                  ui_pref_width(window->cxt, 960)
-                    ui_pref_height(window->cxt, 540)
-                    ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-                  {
-                    ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
-                  }
-                  
-                  ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-                  {
-                    ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
-                    ui_labelf(window->cxt, "Except for you, you can stay");
-                    //ui_labelf(window->cxt, "[%.f %.f]", pos.x, pos.y);
-                  }
-                  
-                }break;
-                
-                // sometimes I get bored so I try to learn 3d
-                case ED_TabKind_ModelViewer:
-                {
-                  d_push_target(tab->target);
-                  
-                  local_persist b32 done = 0;
-                  local_persist GLTF_Model model = {};
-                  local_persist R_Model rodel = {};
-                  local_persist Arena *arena = 0;
-                  if(!done)
-                  {
-                    arena = arena_create();
-                    model = gltf_load_mesh(arena, str8_lit("gltf_test/asuka/asuka.gltf"));
-                    rodel = upload_model(arena, &model);
-                    
-                    done = 1;
-                  }
-                  
-                  static v3f pos = {{0, 0, -1}};
-                  f32 speed = 3;
-                  
-                  m4f proj_view = m4f_make_perspective(90, 16.f / 9, 0.001, 1000);
-                  
-                  m4f cam = m4f_identity();
-                  //cam = m4f_translate(cam, {{0, 0, 1}});
-                  //cam = m4f_rot(cam, {{0, 0, 1}});
-                  
-                  m4f trans = m4f_make_trans(pos);
-                  m4f rot = m4f_make_rot_x(DEG_TO_RAD(0));
-                  //m4f rot_z = m4f_make_rot_y(DEG_TO_RAD(90));
-                  cam = rot * trans;
-                  cam = proj_view * cam;
-                  
-                  if(os_key_press(window->win, SDLK_A))
-                  {
-                    pos.x += delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_D))
-                  {
-                    pos.x -= delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_S))
-                  {
-                    pos.z -= delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_W))
-                  {
-                    pos.z += delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_Q))
-                  {
-                    pos.y -= delta * speed;
-                  }
-                  
-                  if(os_key_press(window->win, SDLK_E))
-                  {
-                    pos.y += delta * speed;
-                  }
-                  
-                  glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH]);
-                  glBindFramebuffer(GL_FRAMEBUFFER, tab->target.u32_m[2]);
-                  
-                  glEnable(GL_DEPTH_TEST);
-                  glDepthFunc(GL_LESS);
-                  
-                  f32 color[3] = {1,0,1};
-                  f32 clear_value = 1;
-                  
-                  glClearNamedFramebufferfv(tab->target.u32_m[2], GL_COLOR, 0, color);
-                  glClearNamedFramebufferfv(tab->target.u32_m[2], GL_DEPTH, 0, &clear_value);
-                  
-                  static f32 rotty = 0;
-                  rotty += delta * 5;
-                  
-                  m4f model_mat = m4f_identity();
-                  model_mat = m4f_make_trans({{0, -0.8, 0}}) * m4f_make_rot_x(DEG_TO_RAD(90)) * m4f_make_rot_z(rotty);
-                  
-                  for(u32 j = 0; j < rodel.num_meshes; j++)
-                  {
-                    R_Mesh* mesh = &rodel.meshes[j];
-                    
-                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mesh->vert);
-                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
-                    
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index);         
-                    
-                    for (u64 k = 0; k < mesh->num_primitives; ++k) 
-                    {
-                      R_Primitive* primitive = &mesh->primitives[k];
-                      
-                      void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH], 0, sizeof(m4f) * 2 + sizeof(u64) * 2, GL_MAP_WRITE_BIT | 
-                                                              GL_MAP_INVALIDATE_BUFFER_BIT);
-                      
-                      u64 tex_id = primitive->tex.u64_m[0];
-                      
-                      memcpy(ssbo_data, &cam, sizeof(m4f));
-                      memcpy((u8*)ssbo_data + sizeof(m4f), &model_mat, sizeof(m4f));
-                      memcpy((u8*)ssbo_data + sizeof(m4f) + sizeof(m4f), &tex_id, sizeof(u64));
-                      
-                      glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
-                      
-                      glDrawElements(GL_TRIANGLES, primitive->count, GL_UNSIGNED_INT, (void*)(primitive->start * sizeof(u32)));
-                    }
-                  }
-                  
-                  glDisable(GL_DEPTH_TEST);
-                  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-                  
-                  ui_pref_width(window->cxt, 960)
-                    ui_pref_height(window->cxt, 540)
-                    ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-                  {
-                    ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "model image");
-                  }
-                  
-                  ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-                  {
-                    ui_labelf(window->cxt, "crapfest 3000");
-                  }
-                  
-                  d_pop_target();
-                  
-                }break;
-                
-                case ED_TabKind_TileSetViewer:
-                {
-                  struct spritesheet
-                  {
-                    Str8 path;
-                    s32 x;
-                    s32 y;
-                  };
-                  
-                  local_persist spritesheet sheets[] = {
-                    {str8_lit("fox/fox.png"), 3, 2},
-                    {str8_lit("impolo/impolo-east.png"), 3, 3},
-                    {str8_lit("tree/trees.png"), 3, 1},
-                    {str8_lit("grass/grass_tile.png"), 3, 3}
-                  };
-                  
-                  for(s32 i = 0; i < 2; i++)
-                  {
-                    ui_row(window->cxt)
-                    {
-                      for(s32 j = 0; j < 2; j++)
-                      {
-                        s32 index = i*2 + j;
-                        ed_draw_spritesheet(tab, sheets[index].x, sheets[index].y, sheets[index].path);
-                        
-                        ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-                          ui_pref_width(window->cxt, 45)
-                        {
-                          ui_spacer(window->cxt);
-                        }
-                      }
-                      
-                    }
-                  }
-                }break;
-                
-                case ED_TabKind_Inspector:
-                {
-                  if(tab->selected_tile.len > 0)
-                  {
-                    ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-                    {
-                      ui_labelf(window->cxt, "%.*s", str8_varg(tab->selected_tile));
-                      
-                      ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-                        ui_pref_size(window->cxt, 100)
-                      {
-                        R_Handle img = a_handleFromPath(tab->selected_tile);
-                        
-                        tab->selected_slot = ui_image(window->cxt, img, tab->selected_tile_rect, hsva_to_rgba(tab->hsva), str8_lit("inspector window image")).widget;
-                      }
-                      
-                      ui_labelf(window->cxt, "[%.2f, %.2f]", rect_tl_varg(tab->selected_tile_rect));
-                      ui_labelf(window->cxt, "[%.2f, %.2f]", rect_br_varg(tab->selected_tile_rect));
-                      
-                      ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-                        ui_pref_size(window->cxt, 360)
-                      {
-                        ui_sat_picker(window->cxt, tab->hsva.x, &tab->hsva.y, &tab->hsva.z, str8_lit("sat picker thing"));
-                        
-                        ui_pref_height(window->cxt, 10)
-                        {
-                          ui_spacer(window->cxt);
-                        }
-                        
-                        ui_pref_height(window->cxt, 40)
-                        {
-                          ui_hue_picker(window->cxt, &tab->hsva.x, str8_lit("hue picker thing"));
-                          
-                          ui_alpha_picker(window->cxt, tab->hsva.xyz, &tab->hsva.w, str8_lit("alpha picker thing"));
-                        }
-                      }
-                      
-                      s32 hue = tab->hsva.x;
-                      s32 sat = tab->hsva.y * 100;
-                      s32 val = tab->hsva.z * 100;
-                      
-                      ui_labelf(window->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
-                      
-                      v4f rgba = hsva_to_rgba(tab->hsva);
-                      
-                      ui_labelf(window->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
-                    }
-                  }
-                }break;
-                
-                case ED_TabKind_Debug:
-                {
-                  tab->update_timer += delta;
-                  if(tab->update_timer > 1.f)
-                  {
-                    tab->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
-                    tab->ft = delta;
-                    tab->update_timer = 0;
-                  }
-                  
-                  ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-                  {
-                    if(ui_labelf(window->cxt, "cc : %.f K", tab->cc).active)
-                    {
-                      printf("pressed\n");
-                    }
-                    
-                    ui_labelf(window->cxt, "ft : %.fms", tab->ft * 1000);
-                    ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
-                    ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
-                    ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
-                  }
-                  
-                  R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
-                  
-                  ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-                    ui_pref_size(window->cxt, 100)
-                  {
-                    ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
-                  }
-                }break;
-                
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    SDL_GetGlobalMouseState(&window->old_pos.x, &window->old_pos.y);
-    
-    ui_layout(dad);
-    ed_draw_window(window);
-    ui_end(window->cxt);
-    
-    d_pop_proj_view();
-    d_pop_bucket();
-    
-  }
+								}break;
+								
+								case ED_TabKind_TileSetViewer:
+								{
+									struct spritesheet
+									{
+										Str8 path;
+										s32 x;
+										s32 y;
+									};
+									
+									local_persist spritesheet sheets[] = {
+										{str8_lit("fox/fox.png"), 3, 2},
+										{str8_lit("impolo/impolo-east.png"), 3, 3},
+										{str8_lit("tree/trees.png"), 3, 1},
+										{str8_lit("grass/grass_tile.png"), 3, 3}
+									};
+									
+									for(s32 i = 0; i < 2; i++)
+									{
+										ui_row(window->cxt)
+										{
+											for(s32 j = 0; j < 2; j++)
+											{
+												s32 index = i*2 + j;
+												ed_draw_spritesheet(tab, sheets[index].x, sheets[index].y, sheets[index].path);
+												
+												ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+													ui_pref_width(window->cxt, 45)
+												{
+													ui_spacer(window->cxt);
+												}
+											}
+											
+										}
+									}
+								}break;
+								
+								case ED_TabKind_Inspector:
+								{
+									if(tab->selected_tile.len > 0)
+									{
+										ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+										{
+											ui_labelf(window->cxt, "%.*s", str8_varg(tab->selected_tile));
+											
+											ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+												ui_pref_size(window->cxt, 100)
+											{
+												R_Handle img = a_handleFromPath(tab->selected_tile);
+												
+												tab->selected_slot = ui_image(window->cxt, img, tab->selected_tile_rect, hsva_to_rgba(tab->hsva), str8_lit("inspector window image")).widget;
+											}
+											
+											ui_labelf(window->cxt, "[%.2f, %.2f]", rect_tl_varg(tab->selected_tile_rect));
+											ui_labelf(window->cxt, "[%.2f, %.2f]", rect_br_varg(tab->selected_tile_rect));
+											
+											ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+												ui_pref_size(window->cxt, 360)
+											{
+												ui_sat_picker(window->cxt, tab->hsva.x, &tab->hsva.y, &tab->hsva.z, str8_lit("sat picker thing"));
+												
+												ui_pref_height(window->cxt, 10)
+												{
+													ui_spacer(window->cxt);
+												}
+												
+												ui_pref_height(window->cxt, 40)
+												{
+													ui_hue_picker(window->cxt, &tab->hsva.x, str8_lit("hue picker thing"));
+													
+													ui_alpha_picker(window->cxt, tab->hsva.xyz, &tab->hsva.w, str8_lit("alpha picker thing"));
+												}
+											}
+											
+											s32 hue = tab->hsva.x;
+											s32 sat = tab->hsva.y * 100;
+											s32 val = tab->hsva.z * 100;
+											
+											ui_labelf(window->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
+											
+											v4f rgba = hsva_to_rgba(tab->hsva);
+											
+											ui_labelf(window->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
+										}
+									}
+								}break;
+								
+								case ED_TabKind_Debug:
+								{
+									tab->update_timer += delta;
+									if(tab->update_timer > 1.f)
+									{
+										tab->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
+										tab->ft = delta;
+										tab->update_timer = 0;
+									}
+									
+									ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+									{
+										if(ui_labelf(window->cxt, "cc : %.f K", tab->cc).active)
+										{
+											printf("pressed\n");
+										}
+										
+										ui_labelf(window->cxt, "ft : %.fms", tab->ft * 1000);
+										ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
+										ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
+										ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
+										
+										for(u32 i = 0; i < 2; i++)
+										{
+											ED_Window *w = ed_state->windows + i;
+											ui_labelf(window->cxt, "[%.f %.f]", w->pos.x, w->pos.y);
+										}
+									}
+									
+									R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
+									
+									ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+										ui_pref_size(window->cxt, 100)
+									{
+										ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
+									}
+								}break;
+								
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		SDL_GetGlobalMouseState(&window->old_pos.x, &window->old_pos.y);
+		
+		ui_layout(dad);
+		ed_draw_window(window);
+		ui_end(window->cxt);
+		
+		d_pop_proj_view();
+		d_pop_bucket();
+		
+	}
 }
