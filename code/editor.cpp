@@ -406,7 +406,7 @@ function void ed_draw_window(ED_Window *window)
   
   d_rect(rect({}, parent->size), window->color);
   
-  d_rect(rect(window->menu_bar->pos, window->menu_bar->size), D_COLOR_BLUE);
+  d_rect(rect(window->menu_bar->pos, window->menu_bar->size), {{0.902, 0.902, 0.902, 1}});
   
   if((window->flags & ED_WindowFlags_ChildrenSum) || (window->flags & ED_WindowFlags_Hidden))
   {
@@ -490,7 +490,7 @@ function void ed_update(f32 delta)
                 }
                 
                 // window title
-                ui_text_color(window->cxt, D_COLOR_WHITE)
+                ui_text_color(window->cxt, D_COLOR_BLACK)
 									ui_size_kind(window->cxt, UI_SizeKind_TextContent)
                 {
                   ui_label(window->cxt, str8_lit("Mizu Mizu Game Engine 1 million"));
@@ -500,11 +500,13 @@ function void ed_update(f32 delta)
             }
             
             // minimize, maximize, close 
-            ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
+            
+						ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
 							ui_pref_size(window->cxt, 32)
               ui_size_kind(window->cxt, UI_SizeKind_Pixels)
             {
-              if(ui_imagef(window->cxt, titlebar_img, rect(0.25, 0, 0.5, 1), ED_THEME_IMG, "minimize img %d", i).active)
+              
+							if(ui_imagef(window->cxt, titlebar_img, rect(0.25, 0, 0.5, 1), ED_THEME_IMG, "minimize img %d", i).active)
               {
                 window->flags ^= ED_WindowFlags_Minimized;
               }
@@ -518,6 +520,8 @@ function void ed_update(f32 delta)
               {
                 window->win->close_requested = 1;
               }
+							
+							
             }
             
             if(os_mouse_held(window->win, SDL_BUTTON_LEFT) && (window->flags & ED_WindowFlags_Grabbed))
@@ -834,5 +838,14 @@ function void ed_update(f32 delta)
 		d_pop_proj_view();
 		d_pop_bucket();
 		
+	}
+}
+
+function void ed_submit()
+{
+  for(s32 i = 0; i < ed_state->num_windows; i++)
+	{
+		ED_Window *window = ed_state->windows + i;
+		r_submit(window->win, &window->bucket->list);
 	}
 }

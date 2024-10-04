@@ -6,7 +6,15 @@
 #define ED_THEME_TEXT v4f{{1, 0.576, 0.141, 1}}
 #define ED_THEME_IMG D_COLOR_WHITE
 
-#define FONT_SIZE 0.013986
+// must be a way to map these to px sizes so I don't have to do this
+// good for arial
+//#define FONT_SIZE 0.013986
+
+// good for genesis
+//#define FONT_SIZE 0.025
+
+// good for delius
+#define FONT_SIZE 0.029
 
 #define STB_SPRINTF_IMPLEMENTATION
 #include "third_party/stb/stb_sprintf.h"
@@ -161,6 +169,10 @@ extern "C"
   export_function void update_and_render(void *, f32 delta);
 }
 
+// NOTE(mizu): Idea : pass arena. Keep State as global? That way I won't need to compile
+// main everytime. If State is 0, means need to reassign / possibly uninitialized
+// Also, font cache please. I will have an iffy one at first (works like tex cache. Unique tex for each glyph. Then I will do proper font packing.
+
 function void update_and_render(void *memory, f32 delta)
 {
 	State *state = (State*)memory;
@@ -196,11 +208,12 @@ function void update_and_render(void *memory, f32 delta)
 		os_init();
     state->os_gfx_state = os_gfx_state;
     
+		SDL_GL_SetSwapInterval(1);
     ED_Window *game_win = ed_open_window(ED_WindowFlags_HasSurface | ED_WindowFlags_ChildrenSum, v2f{{251,50}}, v2f{{960, 540}});
-    ED_Panel *main_panel = ed_open_panel(game_win, Axis2_X, 1);
+    
+		ED_Panel *main_panel = ed_open_panel(game_win, Axis2_X, 1);
     
     ed_open_tab(main_panel, ED_TabKind_ModelViewer);
-    ed_open_tab(main_panel, ED_TabKind_Debug);
     
     ED_Tab *ts_viewer = ed_open_tab(main_panel, ED_TabKind_TileSetViewer);
     ED_Tab *insp = ed_open_tab(main_panel, ED_TabKind_Inspector);
@@ -232,18 +245,18 @@ function void update_and_render(void *memory, f32 delta)
 			
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 			
-			'&', '.', '?', ',', '-', ':', '!', '%', '\\', '/',
+			'&', '.', '?', ',', '-', ':', '!', '%', '#',
 			
 			'(', ')', '[', ']', '{', '}',
 			
-			' ', '\n'
+			' ', '\n', '\\', '/'
 		};
 		
 		Arena_temp temp = arena_temp_begin(state->trans);
 		
 		state->font = push_struct(state->arena, Font);
 		
-		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/assets/fonts/arial.ttf"));
+		Str8 font_path = str8_join(state->trans, state->app_dir, str8_lit("../data/assets/fonts/delius.ttf"));
 		Glyph *temp_font = make_bmp_font(font_path.c, codepoints, ARRAY_LEN(codepoints), state->trans);
 		
 		for(u32 i = 0; i < ARRAY_LEN(codepoints); i ++)
@@ -278,12 +291,7 @@ function void update_and_render(void *memory, f32 delta)
 	d_begin();
 	
   ed_update(delta);
-  
-  for(s32 i = 0; i < ed_state->num_windows; i++)
-	{
-		ED_Window *window = ed_state->windows + i;
-		r_submit(window->win, &window->bucket->list);
-	}
+  ed_submit();
 	
   d_end();
 	

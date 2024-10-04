@@ -731,6 +731,9 @@ function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_par
 		GL_LINEAR,
 	};
 	
+	glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	
 	glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, filter_table[p->min]);
 	glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, filter_table[p->max]);
 	

@@ -30,6 +30,13 @@ global OS_GfxState *os_gfx_state;
 
 function void os_init()
 {
+  if(SDL_Init(SDL_INIT_VIDEO) < 0)
+	{
+		printf("%s\n\r", SDL_GetError());
+		printf("[Quitting Fatal]\n\r");
+		INVALID_CODE_PATH();
+	}
+	
 	Arena *arena = arena_create();
 	os_gfx_state = push_struct(arena, OS_GfxState);
 	os_gfx_state->arena = arena;
@@ -173,7 +180,6 @@ function void os_poll_events()
 			}break;
 		}
 	}
-	
 }
 
 function OS_Window *os_window_open(const char *title, s32 w, s32 h)
@@ -183,13 +189,6 @@ function OS_Window *os_window_open(const char *title, s32 w, s32 h)
   
   out->w = w;
 	out->h = h;
-	
-  if(SDL_Init(SDL_INIT_VIDEO) < 0)
-	{
-		printf("%s\n\r", SDL_GetError());
-		printf("[Quitting Fatal]\n\r");
-		INVALID_CODE_PATH();
-	}
 	
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
@@ -212,8 +211,6 @@ function OS_Window *os_window_open(const char *title, s32 w, s32 h)
     printf("[Quitting Fatal]\n\r");
     INVALID_CODE_PATH();
   }
-  
-  SDL_GL_SetSwapInterval(1);
   
 	out->title = title;
 	

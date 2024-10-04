@@ -48,6 +48,7 @@ struct Entity
 	f32 speed;
 	f32 health;
 	f32 max_health;
+	f32 damage;
 	
 	v4f tint;
 	
@@ -122,10 +123,12 @@ function void entity_free(EntityStore *store, EntityHandle handle)
 	}
 }
 
+struct Game;
+
 struct Lister
 {
 	b32 initialized;
-	EntityStore *e_store;
+	Game *game;
 };
 
 // TODO(mizu): Remove camera from base
@@ -144,12 +147,20 @@ struct Game
 	GameCam cam;
 	b32 initialized;
 	b32 start;
+	b32 paused;
+	
+	b32 draw_health;
+	b32 draw_collision;
+	
+	D_Bucket *bucket;
 };
 
 function ED_CUSTOM_TAB(lister_panel)
 {
 	Lister *lister = (Lister*)(user_data); 
-	EntityStore *store = lister->e_store;
+	
+	Game *game = lister->game;
+	EntityStore *store = &game->e_store;
 	
 	if(!lister->initialized)
 	{
@@ -179,14 +190,21 @@ function ED_CUSTOM_TAB(lister_panel)
 				ui_col(window->cxt)
 				ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 			{
-				ui_labelf(window->cxt, "%dposition: [%.f %.f]", i, entity->pos.x, entity->pos.y);
-				ui_labelf(window->cxt, "%dlayer: %d", i, entity->layer);
-				ui_labelf(window->cxt, "%dspeed: %.f", i, entity->speed);
-				ui_labelf(window->cxt, "%dhealth: %.f", i, entity->health);
+				ui_labelf(window->cxt, "position: [%.f, %.f] #%d", entity->pos.x, entity->pos.y, i);
+				ui_labelf(window->cxt, "layer: %d #%d", entity->layer, i);
+				ui_labelf(window->cxt, "speed: %.f #%d", entity->speed, i);
+				ui_labelf(window->cxt, "health: %.f #%d", entity->health, i);
+				ui_labelf(window->cxt, "art: %.*s #%d", str8_varg(art_paths[entity->art]), i);
 			}
 		}
-		
 	}
+	
+	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	{
+		game->draw_health = ui_labelf(window->cxt, "draw health").toggle;
+		game->draw_collision = ui_labelf(window->cxt, "draw collison").toggle;
+	}
+	
 }
 
 function ED_CUSTOM_TAB(game_update_and_render)
@@ -203,35 +221,35 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		ED_Window *test = ed_open_window(ED_WindowFlags_HasSurface, v2f{{1230, 50}}, v2f{{400,800}});
 		
 		ED_Panel *panel2 = ed_open_panel(test, Axis2_X, 1);
+		ed_open_tab(panel2, ED_TabKind_Debug);
+    
+		// lister tab
 		ED_Tab *tab = ed_open_tab(panel2, ED_TabKind_Custom, {{400, 800}});
 		tab->custom_draw = lister_panel;
 		
 		Lister *lister = push_struct(game->arena, Lister);
-		lister->e_store = store;
+		lister->game = game;
 		tab->custom_drawData = lister;
 	}
 	
 	b32 restart = 0;
 	
-	ui_hover_color(window->cxt, D_COLOR_BLUE)
-		ui_text_color(window->cxt, D_COLOR_BLUE)
+	ui_hover_color(window->cxt, (v4f{{0.8, 0.8, 0.8, 1}}))
 		ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 		ui_row(window->cxt)
 	{
-		
 		ui_pref_size(window->cxt, 60)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		{
-			R_Handle pause_play = a_handleFromPath(str8_lit("editor/pause_play.png"));
-			
-			ui_imagef(window->cxt, pause_play, rect(0.5, 0, 1, 1), D_COLOR_WHITE, "restart");
-			ui_pref_width(window->cxt, 10)
+			ui_pref_width(window->cxt, 480 - 64)
 			{
 				ui_spacer(window->cxt);
 			}
 			
-			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.5, 1), D_COLOR_WHITE, "pause").active;
+			R_Handle pause_play = a_handleFromPath(str8_lit("editor/pause_play.png"));
+			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.5, 1), D_COLOR_WHITE, "restart").active;
 			
+			game->paused = ui_imagef(window->cxt, pause_play, rect(0.5, 0, 1, 1), D_COLOR_WHITE, "paused").toggle;
 		}
 	}
 	
@@ -240,13 +258,18 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		game->start = 0;
 	}
 	
+	if(game->paused)
+	{
+		goto remove_me;
+	}
+	
 	if(!game->start)
 	{
 		game->e_store.num_entities = 0;
 		
 		game->start = 1;
 		Entity *py = entity_alloc(store, EntityFlags_Control);
-		py->pos = {{70, 70}};
+		py->pos = {{730, 417}};
 		py->size = {{64, 64}};
 		py->tint = D_COLOR_WHITE;
 		py->art = ArtKind_Impolo;
@@ -273,6 +296,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		fox->target = handleFromEntity(py);
 		fox->health = 300;
 		fox->name = str8_lit("fox");
+		fox->damage = 0;
 		
 		cam->target = handleFromEntity(py);
 		cam->cam.target = WORLD_FRONT;
@@ -283,6 +307,18 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		cam->cam.input_rot.x = 0;
 		cam->cam.input_rot.y = 0;
 		cam->cam.aspect = tab->target.u32_m[3] * 1.f / tab->target.u32_m[4];
+		
+		Entity *tree = entity_alloc(store, 0);
+		tree->pos = {{700, 400}};
+		tree->size = {{128, 128}};
+		tree->tint = D_COLOR_WHITE;
+		tree->art = ArtKind_Trees;
+		tree->n = 0;
+		tree->x = 3;
+		tree->y = 1;
+		tree->layer = 1;
+		tree->basis.y = -25;
+		tree->health = 100;
 	}
 	
 	// update camera
@@ -294,184 +330,176 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		}
 	}
 	
-	m4f_ortho_proj world_proj_inv = cam_get_proj_inv(&cam->cam);
-	
-	m4f world_proj = world_proj_inv.fwd;
-	
-	m4f world_view = cam_get_view(&cam->cam);
-	
-	m4f world_proj_view = world_proj * world_view * m4f_make_scale({{1, -1, 1}});
-	d_push_proj_view(world_proj_view);
-	
-	s32 tilemap[9][16] = 
 	{
-		{1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
-		{1, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-		{1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-		{1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-		{1, 1, 0, 1,  1, 0, 0, 0,  1, 1, 1, 0,  0, 0, 0, 0},
-		{1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
-		{1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
-		{1, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1},
-		{1, 0, 1, 0,  1, 0, 1, 0,  0, 0, 1, 0,  1, 0, 0, 1},
-	};
-	
-	d_push_target(tab->target);
-	
-	for(s32 row = 0; row < 9; row++)
-	{
-		for(s32 col = 0; col < 16; col++)
+		m4f_ortho_proj world_proj_inv = cam_get_proj_inv(&cam->cam);
+		
+		m4f world_proj = world_proj_inv.fwd;
+		
+		m4f world_view = cam_get_view(&cam->cam);
+		
+		m4f world_proj_view = world_proj * world_view * m4f_make_scale({{1, -1, 1}});
+		d_push_proj_view(world_proj_view);
+		
+		s32 tilemap[9][16] = 
 		{
-			s32 tile_id = tilemap[row][col];
-			v4f color = {};
-			R_Handle tex = {};
-			Rect src = rect(0, 0, 1, 1);
-			s32 layer = 0;
-			f32 basis = 0;
-			f32 offset_y = 0;
-			
-			if(tile_id == 0)
+			{1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
+			{1, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 1},
+			{1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
+			{1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
+			{1, 1, 0, 1,  1, 0, 0, 0,  1, 1, 1, 0,  0, 0, 0, 0},
+			{1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
+			{1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
+			{1, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1},
+			{1, 0, 1, 0,  1, 0, 1, 0,  0, 0, 1, 0,  1, 0, 0, 1},
+		};
+		
+		d_push_target(tab->target);
+		
+		for(s32 row = 0; row < 9; row++)
+		{
+			for(s32 col = 0; col < 16; col++)
 			{
-				read_only v4f colors[] = 
-				{
-					D_COLOR_WHITE,
-					D_COLOR_RED,
-					D_COLOR_GREEN,
-					D_COLOR_BLUE,
-					D_COLOR_CYAN,
-					D_COLOR_MAGENTA,
-					D_COLOR_YELLOW
-				};
+				s32 tile_id = tilemap[row][col];
 				
-				color = colors[(row + col) % 7];
-				tex = a_get_alpha_bg_tex();
-			}
-			else
-			{
-				color = D_COLOR_WHITE;
-				tex = a_handleFromPath(str8_lit("tree/trees.png"));
-				src = {{{0.333, 0}} , {{0.666, 1}}};
-				layer = 1;
-				basis = -25;
-				offset_y = -64;
-			}
-			
-			// 82, 140 for the tree
-			f32 padding = 75;
-			
-			Rect dst = {};
-			dst.tl.x = col * padding;
-			dst.tl.y = row * padding + offset_y;
-			dst.br.x = dst.tl.x + 128;
-			dst.br.y = dst.tl.y + 128;
-			
-			R_Sprite *sprite = d_sprite(dst, color);
-			sprite->basis.y = basis;
-			sprite->layer = layer;
-			sprite->radius = 64;
-			sprite->tex = tex;
-			sprite->src = src;
-		}
-	}
-	
-	for(s32 i = 0; i < store->num_entities; i++)
-	{
-		Entity *e = store->entities + i;
-		
-		if(e->health < 0)
-		{
-			e->flags |= EntityFlags_Dead;
-		}
-		
-		if((e->flags & EntityFlags_Control) && !(e->flags & EntityFlags_Dead))
-		{
-			if(os_key_press(window->win, SDLK_A))
-			{
-				e->pos.x -= delta * e->speed;
-			}
-			
-			if(os_key_press(window->win, SDLK_D))
-			{
-				e->pos.x += delta * e->speed;
-			}
-			
-			if(os_key_press(window->win, SDLK_S))
-			{
-				e->pos.y += delta * e->speed;
-			}
-			
-			if(os_key_press(window->win, SDLK_W))
-			{
-				e->pos.y -= delta * e->speed;
-			}
-		}
-		
-		if(e->flags & EntityFlags_Follow)
-		{
-			Entity *target = entityFromHandle(e->target);
-			if(target)
-			{
-				v2f dir = target->pos - e->pos;
-				f32 dist = sqrt(dir.x * dir.x + dir.y * dir.y);
-				
-				if(dist > 10)
+				if(tile_id == 0)
 				{
-					dir = dir / dist;
-					e->pos += dir * e->speed * delta;
+					v4f color = {};
+					
+					read_only v4f colors[] = 
+					{
+						D_COLOR_WHITE,
+						D_COLOR_GREEN,
+						D_COLOR_BLUE,
+						D_COLOR_CYAN,
+						D_COLOR_MAGENTA,
+						D_COLOR_YELLOW
+					};
+					
+					color = colors[(row + col) % 6];
+					
+					Rect dst = {};
+					dst.tl.x = col * 64;
+					dst.tl.y = row * 64;
+					dst.br.x = dst.tl.x + 128;
+					dst.br.y = dst.tl.y + 128;
+					
+					R_Sprite *sprite = d_sprite(dst, color);
+					sprite->layer = 0;
+					sprite->radius = 64;
+					sprite->tex = a_get_alpha_bg_tex();
+				}
+			}
+		}
+		
+		for(s32 i = 0; i < store->num_entities; i++)
+		{
+			Entity *e = store->entities + i;
+			
+			if(e->health < 0)
+			{
+				e->flags |= EntityFlags_Dead;
+			}
+			
+			if((e->flags & EntityFlags_Control) && !(e->flags & EntityFlags_Dead))
+			{
+				if(os_key_press(window->win, SDLK_A))
+				{
+					e->pos.x -= delta * e->speed;
+				}
+				
+				if(os_key_press(window->win, SDLK_D))
+				{
+					e->pos.x += delta * e->speed;
+				}
+				
+				if(os_key_press(window->win, SDLK_S))
+				{
+					e->pos.y += delta * e->speed;
+				}
+				
+				if(os_key_press(window->win, SDLK_W))
+				{
+					e->pos.y -= delta * e->speed;
+				}
+			}
+			
+			if(e->flags & EntityFlags_Follow)
+			{
+				Entity *target = entityFromHandle(e->target);
+				if(target)
+				{
+					v2f dir = target->pos - e->pos;
+					f32 dist = sqrt(dir.x * dir.x + dir.y * dir.y);
+					
+					if(dist > 30)
+					{
+						dir = dir / dist;
+						e->pos += dir * e->speed * delta;
+					}
+					else
+					{
+						target->health -= delta * e->damage;
+					}
+				}
+			}
+			
+			// collider visualizer
+			if(game->draw_collision)
+			{
+				R_Sprite *sprite = d_sprite(rect(e->old_pos - e->size/4, e->size / 2), {{1, 0, 0, 0.2}});
+				sprite->layer = 1;
+			}
+			
+			// art
+			{
+				R_Sprite *sprite = d_sprite(rect(e->old_pos - e->size/2, e->size), e->tint);
+				
+				if(e->art == ArtKind_Null)
+				{
+					sprite->tex = a_get_checker_tex();
 				}
 				else
 				{
-					target->health--;
+					sprite->tex = a_handleFromPath(art_paths[e->art]);
+				}
+				
+				sprite->basis.y = e->basis.y;
+				sprite->layer = e->layer;
+				
+				s32 frame_col = e->n % e->x;
+				s32 frame_row = e->n / e->x;
+				
+				Rect src = {};
+				
+				src.tl.x = (f32)frame_col / (f32)e->x;
+				src.tl.y = (f32)frame_row / (f32)e->y;
+				src.br.x = (f32)(frame_col + 1) / (f32)e->x;
+				src.br.y = (f32)(frame_row + 1) / (f32)e->y;
+				
+				sprite->src = src;
+			}
+			
+			// health 
+			if(game->draw_health)
+			{
+				v2f pos = e->old_pos;
+				pos.y += e->size.y / 2;
+				pos.x -= 15;
+				s32 count = (e->health + 99) / 100;
+				for(s32 j = 0; j < count; j++)
+				{
+					R_Sprite *health = d_sprite(rect(pos + v2f{.x = j * 10.f}, {{10, 5}}), D_COLOR_RED);
+					health->layer = 2;
 				}
 			}
+			e->old_pos = e->pos;
 		}
 		
-		// art
-		{
-			R_Sprite *sprite = d_sprite(rect(e->old_pos - e->size/2, e->size), e->tint);
-			
-			if(e->art == ArtKind_Null)
-			{
-				sprite->tex = a_get_checker_tex();
-			}
-			else
-			{
-				sprite->tex = a_handleFromPath(art_paths[e->art]);
-			}
-			
-			sprite->basis.y = e->basis.y;
-			sprite->layer = e->layer;
-			
-			s32 frame_col = e->n % e->x;
-			s32 frame_row = e->n / e->x;
-			
-			Rect src = {};
-			
-			src.tl.x = (f32)frame_col / (f32)e->x;
-			src.tl.y = (f32)frame_row / (f32)e->y;
-			src.br.x = (f32)(frame_col + 1) / (f32)e->x;
-			src.br.y = (f32)(frame_row + 1) / (f32)e->y;
-			
-			sprite->src = src;
-		}
-		
-		// health 
-		{
-			v2f pos = e->old_pos;
-			pos.y += e->size.y / 2;
-			pos.x -= 15;
-			s32 count = (e->health + 99) / 100;
-			for(s32 j = 0; j < count; j++)
-			{
-				R_Sprite *health = d_sprite(rect(pos + v2f{.x = j * 10.f}, {{10, 5}}), D_COLOR_RED);
-				health->layer = 2;
-			}
-		}
-		e->old_pos = e->pos;
+		d_pop_target();
+		d_pop_proj_view();
 	}
 	
-	d_pop_target();
-	d_pop_proj_view();
+	remove_me:
 	
 	v2s size = r_tex_size_from_handle(tab->target);
 	
@@ -486,7 +514,5 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	{
 		ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
 		ui_labelf(window->cxt, "Except for you, you can stay");
-		//ui_labelf(window->cxt, "[%.f %.f]", pos.x, pos.y);
 	}
-	
 }
