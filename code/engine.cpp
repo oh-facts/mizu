@@ -121,6 +121,7 @@ function R_Model upload_model(Arena *arena, GLTF_Model *model)
 }
 
 #include <editor.cpp>
+
 #include <game.cpp>
 
 #include <hot_reload.cpp>

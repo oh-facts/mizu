@@ -770,21 +770,6 @@ function m4f operator*(m4f a, m4f b)
   return out;
 }
 
-// work on an orthographic camera.
-// then work on a proper 3d perspective camera.
-// then work on making game 3d. 
-
-enum CAMERA_PROJ
-{
-  CAMERA_PROJ_UN,
-  CAMERA_PROJ_PERS,
-  CAMERA_PROJ_ORTHO,
-  CAMERA_PROJ_COUNT
-};
-
-#define WORLD_UP (v3f){{0,1,0}}
-#define WORLD_FRONT (v3f){{0,0,-1}}
-
 union quat
 {
   struct
@@ -810,21 +795,6 @@ function quat operator*(quat x, quat y)
   };
 }
 
-struct Camera
-{
-  v3f pos;
-  v3f target;
-  v3f up;
-  f32 pitch;
-  f32 yaw;
-  f32 zoom;
-  v3f mv;
-  v3f input_rot;
-  f32 speed;
-  f32 aspect;
-  CAMERA_PROJ proj;
-};
-
 function m4f quat_to_matrix(quat q) 
 {
   f32 xx = q.i * q.i;
@@ -845,101 +815,6 @@ function m4f quat_to_matrix(quat q)
       {0,                 0,                 0,                 1}
     }
   };
-}
-
-function m4f_ortho_proj cam_get_proj_inv(Camera *cam)
-{
-  f32 z = cam->zoom;
-  f32 za = z * cam->aspect;
-  
-  m4f_ortho_proj out = m4f_ortho(-za, za, -z, z, 0.001, 1000);
-  return out;
-}
-
-function m4f cam_get_proj(Camera *cam)
-{
-  switch(cam->proj)
-  {
-    case CAMERA_PROJ_ORTHO:
-    {
-      f32 z = cam->zoom;
-      f32 za = z * cam->aspect;
-      
-      m4f out = m4f_ortho(-za, za, -z, z, 0.001, 1000).fwd;
-      return out;
-      
-    }break;
-    case CAMERA_PROJ_PERS:
-    {
-      quat rot_x = {
-        .r = cosf(cam->input_rot.x / 2), 
-        .i = sinf(cam->input_rot.x / 2)
-      };
-      quat rot_y = {
-        .r = cosf(cam->input_rot.y / 2),
-        .j = sinf(cam->input_rot.y / 2),
-      };
-      
-      
-      quat rotation = rot_x * rot_y;
-      
-      
-      m4f rotation_matrix = quat_to_matrix(rotation);
-      
-      m4f persp = m4f_make_perspective(90, 16.f/9, 0.001,1000);
-      
-      return persp * rotation_matrix;
-      
-    }break;
-    default:
-    {
-      INVALID_CODE_PATH();
-    }
-  }
-  
-  INVALID_CODE_PATH();
-  return m4f_identity();
-}
-
-function m4f cam_get_view(Camera *cam)
-{
-  return m4f_look_at(cam->pos, cam->pos + cam->target, cam->up);
-}
-
-function void cam_update(Camera *cam, f32 delta)
-{
-  switch(cam->proj)
-  {
-    case CAMERA_PROJ_ORTHO:
-    {
-      cam->pos += cam->mv * cam->speed * delta;
-      
-    }break;
-    case CAMERA_PROJ_PERS:
-    {
-      quat rot_x = {
-        .r = cosf(cam->input_rot.x / 2), 
-        .i = sinf(cam->input_rot.x / 2)
-      };
-      quat rot_y = {
-        .r = cosf(cam->input_rot.y / 2),
-        .j = sinf(cam->input_rot.y / 2),
-      };
-      
-      
-      quat rotation = rot_x * rot_y;
-      
-      
-      m4f rotation_matrix = quat_to_matrix(rotation);
-      
-      cam->pos += (rotation_matrix * (v4f){.xyz = cam->mv * cam->speed * delta}).xyz;
-      
-    }break;
-    default:
-    {
-      INVALID_CODE_PATH();
-    }
-  }
 }
 
 #define str8_varg(S) (int)((S).len), ((S).c)

@@ -106,33 +106,7 @@ struct UI_Widget
 	b32 toggle;
 };
 
-#define ui_make_style_struct(Name, Type) \
-struct UI_##Name##_node \
-{ \
-UI_##Name##_node *next; \
-Type v;\
-};
-
-ui_make_style_struct(Parent, UI_Widget *)
-ui_make_style_struct(Color, v4f)
-ui_make_style_struct(Pref_width, f32)
-ui_make_style_struct(Pref_height, f32)
-ui_make_style_struct(Fixed_pos, v2f)
-ui_make_style_struct(float_value, f32)
-
-ui_make_style_struct(AlignKind_x, UI_AlignKind)
-ui_make_style_struct(Axis2, Axis2)
-
-ui_make_style_struct(SizeKind_x, UI_SizeKind)
-ui_make_style_struct(SizeKind_y, UI_SizeKind)
-
-#define ui_make_style_struct_stack(Name, name) \
-struct \
-{\
-UI_##Name##_node *top;\
-UI_##Name##_node *free;\
-b32 auto_pop;\
-}name##_stack;
+#include <generated/ui_styles.h>
 
 struct UI_Hash_slot
 {
@@ -157,25 +131,12 @@ struct UI_Context
 	
 	UI_Widget *widget_free_list;
 	
-	ui_make_style_struct_stack(Parent, parent);
-	ui_make_style_struct_stack(Color, text_color);
-	ui_make_style_struct_stack(Color, bg_color);
-  ui_make_style_struct_stack(Color, hover_color);
-	ui_make_style_struct_stack(Color, press_color);
-	ui_make_style_struct_stack(Color, border_color);
-	ui_make_style_struct_stack(float_value, border_thickness);
-	ui_make_style_struct_stack(float_value, radius);
+	UI_STYLE_STACKS;
 	
-  ui_make_style_struct_stack(Pref_width, pref_width);
-	ui_make_style_struct_stack(Pref_height, pref_height);
-	ui_make_style_struct_stack(Fixed_pos, fixed_pos);
-	ui_make_style_struct_stack(Axis2, child_layout_axis);
-	ui_make_style_struct_stack(SizeKind_x, size_kind_x);
-	ui_make_style_struct_stack(SizeKind_y, size_kind_y);
-	ui_make_style_struct_stack(AlignKind_x, align_kind_x);
-  
-  u32 num;
+	u32 num;
 };
+
+#include <generated/ui_styles.cpp>
 
 function UI_Signal ui_signal(UI_Context *cxt, UI_Widget *widget)
 {
@@ -226,153 +187,6 @@ function void ui_free_widget(UI_Context *cxt, UI_Widget *node)
 	node->next = cxt->widget_free_list;
 	cxt->widget_free_list = node;
 }
-
-#define ui_make_alloc_node(Name, name) \
-function UI_##Name##_node *ui_alloc_##name##_node(UI_Context *cxt) \
-{ \
-UI_##Name##_node *node = cxt->name##_stack.free;\
-if(node)\
-{\
-cxt->name##_stack.free = cxt->name##_stack.free->next;\
-*node = {};\
-}\
-else\
-{\
-node = push_struct(cxt->arena, UI_##Name##_node);\
-}\
-return node;\
-}
-
-#define ui_make_free_node(Name, name) \
-function void ui_free_##name##_node(UI_Context *cxt, UI_##Name##_node *node)\
-{\
-node->next = cxt->name##_stack.free;\
-cxt->name##_stack.free = node;\
-}
-
-ui_make_alloc_node(Parent, parent)
-ui_make_free_node(Parent, parent)
-
-ui_make_alloc_node(Color, text_color)
-ui_make_free_node(Color, text_color)
-
-ui_make_alloc_node(Color, bg_color)
-ui_make_free_node(Color, bg_color)
-
-ui_make_alloc_node(Color, hover_color)
-ui_make_free_node(Color, hover_color)
-
-ui_make_alloc_node(Color, press_color)
-ui_make_free_node(Color, press_color)
-
-ui_make_alloc_node(Color, border_color);
-ui_make_free_node(Color, border_color);
-
-ui_make_alloc_node(float_value, border_thickness);
-ui_make_free_node(float_value, border_thickness);
-
-ui_make_alloc_node(float_value, radius);
-ui_make_free_node(float_value, radius);
-
-ui_make_alloc_node(Pref_width, pref_width)
-ui_make_free_node(Pref_width, pref_width)
-
-ui_make_alloc_node(Pref_height, pref_height)
-ui_make_free_node(Pref_height, pref_height)
-
-ui_make_alloc_node(Fixed_pos, fixed_pos)
-ui_make_free_node(Fixed_pos, fixed_pos)
-
-ui_make_alloc_node(Axis2, child_layout_axis)
-ui_make_free_node(Axis2, child_layout_axis)
-
-ui_make_alloc_node(SizeKind_x, size_kind_x)
-ui_make_free_node(SizeKind_x, size_kind_x)
-
-ui_make_alloc_node(SizeKind_y, size_kind_y)
-ui_make_free_node(SizeKind_y, size_kind_y)
-
-ui_make_alloc_node(AlignKind_x, align_kind_x)
-ui_make_free_node(AlignKind_x, align_kind_x)
-
-#define ui_make_push_style(Name, name, Type) \
-function void ui_push_##name(UI_Context *cxt, Type val) { \
-UI_##Name##_node *node = ui_alloc_##name##_node(cxt);\
-node->v = val; \
-if (!cxt->name##_stack.top) { \
-cxt->name##_stack.top = node; \
-} else { \
-node->next = cxt->name##_stack.top; \
-cxt->name##_stack.top = node; \
-} \
-}
-
-#define ui_make_set_next_style(Name, name, Type) \
-function void ui_set_next_##name(UI_Context *cxt, Type val) { \
-UI_##Name##_node *node = ui_alloc_##name##_node(cxt); \
-node->v = val; \
-if (!cxt->name##_stack.top) { \
-cxt->name##_stack.top = node; \
-} else { \
-node->next = cxt->name##_stack.top; \
-cxt->name##_stack.top = node; \
-} \
-cxt->name##_stack.auto_pop = 1;\
-}
-
-#define ui_make_pop_style(Name, name) \
-function void ui_pop_##name(UI_Context *cxt) { \
-UI_##Name##_node *pop = cxt->name##_stack.top;\
-cxt->name##_stack.top = cxt->name##_stack.top->next;\
-ui_free_##name##_node(cxt, pop);\
-}
-
-ui_make_push_style(Parent, parent, UI_Widget*)
-ui_make_pop_style(Parent, parent)
-
-ui_make_push_style(Color, text_color, v4f)
-ui_make_pop_style(Color, text_color)
-
-ui_make_push_style(Color, bg_color, v4f)
-ui_make_pop_style(Color, bg_color)
-
-ui_make_push_style(Color, hover_color, v4f)
-ui_make_pop_style(Color, hover_color)
-
-ui_make_push_style(Color, press_color, v4f)
-ui_make_pop_style(Color, press_color)
-
-ui_make_push_style(Color, border_color, v4f);
-ui_make_pop_style(Color, border_color);
-
-ui_make_push_style(float_value, border_thickness, f32);
-ui_make_pop_style(float_value, border_thickness);
-
-ui_make_push_style(float_value, radius, f32);
-ui_make_pop_style(float_value, radius);
-
-ui_make_push_style(Pref_width, pref_width, f32)
-ui_make_pop_style(Pref_width, pref_width)
-
-ui_make_push_style(Pref_height, pref_height, f32)
-ui_make_pop_style(Pref_height, pref_height)
-
-ui_make_push_style(Fixed_pos, fixed_pos, v2f)
-ui_make_pop_style(Fixed_pos, fixed_pos)
-
-ui_make_push_style(Axis2, child_layout_axis, Axis2)
-ui_make_pop_style(Axis2, child_layout_axis)
-
-ui_make_set_next_style(Axis2, child_layout_axis, Axis2)
-
-ui_make_push_style(SizeKind_x, size_kind_x, UI_SizeKind)
-ui_make_pop_style(SizeKind_x, size_kind_x)
-
-ui_make_push_style(SizeKind_y, size_kind_y, UI_SizeKind)
-ui_make_pop_style(SizeKind_y, size_kind_y)
-
-ui_make_push_style(AlignKind_x, align_kind_x, UI_AlignKind)
-ui_make_pop_style(AlignKind_x, align_kind_x)
 
 #define ui_push_size_kind(cxt, kind) ui_push_size_kind_x(cxt, kind); \
 ui_push_size_kind_y(cxt, kind);

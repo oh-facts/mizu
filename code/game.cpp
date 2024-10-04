@@ -123,28 +123,58 @@ function void entity_free(EntityStore *store, EntityHandle handle)
 	}
 }
 
-struct Game;
+#define WORLD_UP (v3f){{0,1,0}}
+#define WORLD_FRONT (v3f){{0,0,-1}}
 
-struct Lister
+struct Camera
 {
-	b32 initialized;
-	Game *game;
+  v3f pos;
+  v3f target;
+  v3f up;
+  f32 pitch;
+  f32 yaw;
+  f32 zoom;
+  v3f mv;
+  v3f input_rot;
+  f32 speed;
+  f32 aspect;
+  
+	EntityHandle follow;
 };
 
-// TODO(mizu): Remove camera from base
-// use Camera whole here
-// GameCam.cam. is annoying
-struct GameCam
+function m4f_ortho_proj cam_get_proj_inv(Camera *cam)
 {
-	Camera cam;
-	EntityHandle target;
-};
+  f32 z = cam->zoom;
+  f32 za = z * cam->aspect;
+  
+  m4f_ortho_proj out = m4f_ortho(-za, za, -z, z, 0.001, 1000);
+  return out;
+}
+
+function m4f cam_get_proj(Camera *cam)
+{
+  f32 z = cam->zoom;
+	f32 za = z * cam->aspect;
+	
+	m4f out = m4f_ortho(-za, za, -z, z, 0.001, 1000).fwd;
+	return out;
+}
+
+function m4f cam_get_view(Camera *cam)
+{
+  return m4f_look_at(cam->pos, cam->pos + cam->target, cam->up);
+}
+
+function void cam_update(Camera *cam, f32 delta)
+{
+	cam->pos += cam->mv * cam->speed * delta;
+}
 
 struct Game
 {
 	Arena *arena;
 	EntityStore e_store;
-	GameCam cam;
+	Camera cam;
 	b32 initialized;
 	b32 start;
 	b32 paused;
@@ -153,6 +183,12 @@ struct Game
 	b32 draw_collision;
 	
 	D_Bucket *bucket;
+};
+
+struct Lister
+{
+	b32 initialized;
+	Game *game;
 };
 
 function ED_CUSTOM_TAB(lister_panel)
@@ -211,7 +247,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 {
 	Game *game = (Game*)(user_data); 
 	
-	GameCam *cam = &game->cam;
+	Camera *cam = &game->cam;
 	EntityStore *store = &game->e_store;
 	
 	if(!game->initialized)
@@ -298,15 +334,14 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		fox->name = str8_lit("fox");
 		fox->damage = 0;
 		
-		cam->target = handleFromEntity(py);
-		cam->cam.target = WORLD_FRONT;
-		cam->cam.up = WORLD_UP;
-		cam->cam.zoom = 135.f;
-		cam->cam.proj = CAMERA_PROJ_ORTHO;
-		cam->cam.speed = 400;
-		cam->cam.input_rot.x = 0;
-		cam->cam.input_rot.y = 0;
-		cam->cam.aspect = tab->target.u32_m[3] * 1.f / tab->target.u32_m[4];
+		cam->follow = handleFromEntity(py);
+		cam->target = WORLD_FRONT;
+		cam->up = WORLD_UP;
+		cam->zoom = 135.f;
+		cam->speed = 400;
+		cam->input_rot.x = 0;
+		cam->input_rot.y = 0;
+		cam->aspect = tab->target.u32_m[3] * 1.f / tab->target.u32_m[4];
 		
 		Entity *tree = entity_alloc(store, 0);
 		tree->pos = {{700, 400}};
@@ -319,23 +354,24 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		tree->layer = 1;
 		tree->basis.y = -25;
 		tree->health = 100;
+		tree->name = str8_lit("Treehouse");
 	}
 	
 	// update camera
 	{
-		Entity *target = entityFromHandle(cam->target);
+		Entity *target = entityFromHandle(cam->follow);
 		if(target)
 		{
-			cam->cam.pos = v3f{{target->pos.x, -target->pos.y, -1}};
+			cam->pos = v3f{{target->pos.x, -target->pos.y, -1}};
 		}
 	}
 	
 	{
-		m4f_ortho_proj world_proj_inv = cam_get_proj_inv(&cam->cam);
+		m4f_ortho_proj world_proj_inv = cam_get_proj_inv(cam);
 		
 		m4f world_proj = world_proj_inv.fwd;
 		
-		m4f world_view = cam_get_view(&cam->cam);
+		m4f world_view = cam_get_view(cam);
 		
 		m4f world_proj_view = world_proj * world_view * m4f_make_scale({{1, -1, 1}});
 		d_push_proj_view(world_proj_view);
