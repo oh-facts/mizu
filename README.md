@@ -28,11 +28,9 @@ Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`
 
 ### Windows
 ```
-./build.bat release platform app
+./build.bat meta debug platform app
 ```
--0 
-              `   `                 +-***+*----------------------------                                     -----------------
-              ### Linux / Mac
+### Linux / Mac
 **SDL3** needs to be installed. Also, this doesn't compile on linux/mac yet. I am fixing the compiler errors one by one. I get bored sometimes. Give it a crack if you want. Its all platform related.
 `clang` and `gcc` are also valid args. 
 ```
@@ -40,7 +38,8 @@ Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`
 ```
 
 ## Contributions
-Open issue and make pr. Off the top of my head, nothing comes to mind.
+Open issue and make pr for anything. Off the top of my head, nothing comes to mind. If you wan't, you can attempt a linux / mac port. Linux port will require making sure it compiles and updating `build.sh` to match the current
+`build.bat`. For a mac port, you'd likely have to make an opengl 3.3 backend for the renderer. This would be quite a bit of work since the 4.5 backend is about 900 loc.
 
 ## Project Structure
 - `asset_cache.cpp` : texture cache and asset system
