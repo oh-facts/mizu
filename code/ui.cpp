@@ -81,15 +81,15 @@ struct UI_Widget
 	v4f color;
 	v4f bg_color;
 	v4f hover_color;
-  v4f press_color;
-  v4f border_color;
+	v4f press_color;
+	v4f border_color;
 	
 	f32 border_thickness;
 	f32 radius;
 	
-  Axis2 child_layout_axis;
+	Axis2 child_layout_axis;
 	UI_AlignKind alignKind;
-  v2f fixed_position;
+	v2f fixed_position;
 	UI_WidgetCustomDrawFunctionType *custom_draw;
 	void *custom_draw_data;
 	
@@ -104,6 +104,8 @@ struct UI_Widget
 	b32 hot;
 	b32 active;
 	b32 toggle;
+	
+	f32 timer;
 };
 
 #include <generated/ui_styles.h>
@@ -209,12 +211,12 @@ function UI_Context *ui_alloc_cxt()
 	ui_push_text_color(cxt, D_COLOR_WHITE);
 	ui_push_bg_color(cxt, D_COLOR_WHITE);
 	ui_push_hover_color(cxt, D_COLOR_WHITE);
-  ui_push_press_color(cxt, D_COLOR_WHITE);
-  ui_push_border_color(cxt, (v4f{{}}));
-  ui_push_border_thickness(cxt, 0);
-  ui_push_radius(cxt, 0);
-  
-  ui_push_pref_width(cxt, 0);
+	ui_push_press_color(cxt, D_COLOR_WHITE);
+	ui_push_border_color(cxt, (v4f{{}}));
+	ui_push_border_thickness(cxt, 0);
+	ui_push_radius(cxt, 0);
+	
+	ui_push_pref_width(cxt, 0);
 	ui_push_pref_height(cxt, 0);
 	ui_push_fixed_pos(cxt, v2f{{0,0}});
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
@@ -275,17 +277,24 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	{
 		widget = ui_widget_from_hash(cxt, hash);
 		
+		// TODO(mizu): stop hardcoding time duration. use timer_max. Do something more descriptive
+		// later to handle other kinds of transitions. (cold->hot , hot->active, active->hot
+		// hot->cold, active->cold, etc.
+		
 		if(widget)
 		{
 			if(widget->hot && os_mouse_pressed(cxt->win, SDL_BUTTON_LEFT))
 			{
 				widget->toggle = !widget->toggle;
 				widget->active = 1;
+				widget->timer = 3;
 			}
 			else
 			{
 				widget->active = 0;
 			}
+			
+			widget->timer -= 0.1f;
 			
 			widget->prev = 0;
 			widget->last = 0;
@@ -339,16 +348,16 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		}
 	}
 	
-  widget->alignKind = cxt->align_kind_x_stack.top->v;
+	widget->alignKind = cxt->align_kind_x_stack.top->v;
 	widget->color = cxt->text_color_stack.top->v;
 	widget->bg_color = cxt->bg_color_stack.top->v;
 	widget->hover_color = cxt->hover_color_stack.top->v;
-  widget->press_color = cxt->press_color_stack.top->v;
-  widget->border_color = cxt->border_color_stack.top->v;
+	widget->press_color = cxt->press_color_stack.top->v;
+	widget->border_color = cxt->border_color_stack.top->v;
 	widget->border_thickness = cxt->border_thickness_stack.top->v;
-  widget->radius = cxt->radius_stack.top->v;
-  
-  Rect extent = ui_text_spacing_stats(font->atlas.glyphs, text, FONT_SIZE);
+	widget->radius = cxt->radius_stack.top->v;
+	
+	Rect extent = ui_text_spacing_stats(font->atlas.glyphs, text, FONT_SIZE);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
 	
@@ -557,9 +566,9 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		recty->fade[Corner_01] = v4f{{1, 1, 1, 1}};
 		recty->fade[Corner_10] = col;
 		recty->fade[Corner_11] = col;
-    recty->radius = 10;
-    
-  }
+		recty->radius = 10;
+		
+	}
 	
 	{
 		R_Rect *recty = d_rect(w_rect, {{0,0,0,0}});
@@ -568,8 +577,8 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		recty->fade[Corner_01] = v4f{{0, 0, 0, 1}};
 		recty->fade[Corner_10] = v4f{{0,0,0,0}};
 		recty->fade[Corner_11] = v4f{{0, 0, 0, 1}};
-    recty->radius = 10;
-  }
+		recty->radius = 10;
+	}
 	
 	// indicator
 	{
@@ -590,9 +599,9 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		}
 		
 		R_Rect *indi = d_rect(recty, {});
-    indi->radius = 5;
-    indi->border_color = color;
-    indi->border_thickness = 5;
+		indi->radius = 5;
+		indi->border_color = color;
+		indi->border_thickness = 5;
 	}
 	
 }
@@ -673,9 +682,9 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 	{
 		v2f dim = size_from_rect(w_rect);
 		R_Rect *checker = d_rect(w_rect, D_COLOR_WHITE);
-    checker->src = rect(0, 0, dim.x / 10, dim.y / 10);
-    checker->tex = a_get_alpha_bg_tex();
-  }
+		checker->src = rect(0, 0, dim.x / 10, dim.y / 10);
+		checker->tex = a_get_alpha_bg_tex();
+	}
 	
 	// alpha fade
 	{
@@ -702,11 +711,11 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 		
 		v4f color = D_COLOR_WHITE;
 		
-    
+		
 		R_Rect *indi = d_rect(recty, {});
-    indi->radius = 5;
-    indi->border_color = color;
-    indi->border_thickness = 5;
+		indi->radius = 5;
+		indi->border_color = color;
+		indi->border_thickness = 5;
 	}
 	
 }
@@ -775,8 +784,8 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		f32 hue2 = (i+1);
 		v3f rgb = hsv_to_rgb(v3f{{hue, 1, 1}});
 		v3f rgb2 = hsv_to_rgb(v3f{{hue2, 1, 1}});
-    
-    v4f rgba = {.xyz = rgb, .aw = 1}; 
+		
+		v4f rgba = {.xyz = rgb, .aw = 1}; 
 		v4f rgba2 = {.xyz = rgb2, .aw = 1};
 		
 		R_Rect *recty = d_rect(segment_rect, {});
@@ -801,11 +810,11 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		
 		Rect recty = rect(pos, {{size,size}});
 		
-    
+		
 		R_Rect *indi = d_rect(recty, {});
-    indi->radius = 5;
-    indi->border_color = D_COLOR_BLACK;
-    indi->border_thickness = 5;
+		indi->radius = 5;
+		indi->border_color = D_COLOR_BLACK;
+		indi->border_thickness = 5;
 	}
 	
 }
@@ -871,11 +880,11 @@ function UI_CUSTOM_DRAW(ui_image_draw)
 	}
 	
 	R_Rect *img = d_rect(rect(widget->pos, widget->size), color);
-  img->src = draw_data->src;
-  img->tex = draw_data->img;
-  img->border_thickness = widget->border_thickness;
-  img->border_color = widget->border_color;
-  img->radius = widget->radius;
+	img->src = draw_data->src;
+	img->tex = draw_data->img;
+	img->border_thickness = widget->border_thickness;
+	img->border_color = widget->border_color;
+	img->radius = widget->radius;
 }
 
 function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, Str8 text)
@@ -1053,16 +1062,16 @@ function void ui_layout_pos(UI_Widget *root)
 			if(!(root->flags & UI_Flags_is_floating_x))
 			{
 				root->computed_rel_position[Axis2_X] = root->prev->computed_rel_position[Axis2_X] + root->prev->computed_size[Axis2_X];
-        // NOTE(mizu): working on this rn
-        //root->computed_rel_position[Axis2_X] += root->parent->computed_size[Axis2_X];// * 0.5;
-      }
+				// NOTE(mizu): working on this rn
+				//root->computed_rel_position[Axis2_X] += root->parent->computed_size[Axis2_X];// * 0.5;
+			}
 		}
 		else if(root->parent->child_layout_axis == Axis2_Y)
 		{
 			if(!(root->flags & UI_Flags_is_floating_y))
 			{
 				root->computed_rel_position[Axis2_Y] = root->prev->computed_rel_position[Axis2_Y] + root->prev->computed_size[Axis2_Y];
-      }
+			}
 		}
 	}
 	

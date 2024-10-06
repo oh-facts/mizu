@@ -39,6 +39,7 @@
 #include <third_party/KHR/khrplatform.h>
 #include <third_party/glad/glad.h>
 #include <third_party/glad/glad.c>
+#include <third_party/box2d/box2d.h>
 
 #include <context_cracking.cpp>
 #if defined(OS_WIN32)

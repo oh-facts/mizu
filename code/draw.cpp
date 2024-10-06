@@ -177,6 +177,11 @@ function R_Sprite *d_sprite(Rect dst, v4f color)
   return out;
 }
 
+function inline R_Sprite *d_spriteCenter(v2f pos, v2f size, v4f color)
+{
+	return d_sprite(rect(pos - size / 2, size), color);
+}
+
 function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 {
 	D_Bucket *bucket = d_state->top;

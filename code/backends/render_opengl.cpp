@@ -827,11 +827,9 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 {
 	SDL_GL_MakeCurrent(win->raw, win->gl_cxt);
 	
-	//glBindFramebuffer(GL_FRAMEBUFFER, fb.u32_m[2]);
 	f32 color[3] = {1,0,1};
 	glClearNamedFramebufferfv(0, GL_COLOR, 0, color);
 	
-  // TODO(mizu): use render target size, not window size 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
@@ -949,30 +947,6 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
   }
   
   SDL_GL_SwapWindow(win->raw);
-  
-  /*
-    struct
-    {
-      u64 id;
-      s32 w;
-      s32 h;
-    }fb_ssbo;
-    
-    fb_ssbo.id = fb.u64_m[0];
-    fb_ssbo.w = fb.u32_m[3];
-    fb_ssbo.h = fb.u32_m[4];
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    
-    void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB], 0, sizeof(fb_ssbo), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-    glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_FB]);
-    
-    memcpy(ssbo_data, &fb_ssbo, sizeof(fb_ssbo));
-    
-    glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_FB]);
-    
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices);
-  */
 }
 
 function v2s r_tex_size_from_handle(R_Handle handle)

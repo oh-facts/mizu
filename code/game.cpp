@@ -7,8 +7,13 @@ enum
 	EntityFlags_Follow = 1 << 1,
 	EntityFlags_Friendly = 1 << 2,
 	EntityFlags_Enemy = 1 << 3,
-	EntityFlags_Dead = 1 << 4
+	EntityFlags_Dead = 1 << 4,
+	EntityFlags_Dynamic = 1 << 5,
+	EntityFlags_Static = 1 << 6,
+	
 };
+
+#define EntityFlags_Physics (EntityFlags_Static | EntityFlags_Dynamic)
 
 enum Art
 {
@@ -44,6 +49,7 @@ struct Entity
 	v2f old_pos;
 	v2f size;
 	s32 layer;
+	v2f mv;
 	
 	f32 speed;
 	f32 health;
@@ -58,6 +64,9 @@ struct Entity
 	s32 n;
 	v2f basis;
 	
+	b2BodyId body;
+	b2Polygon box;
+	
 	EntityHandle target;
 	Entity *next;
 };
@@ -66,7 +75,7 @@ function Entity *entityFromHandle(EntityHandle handle)
 {
 	Entity *out = 0;
 	
-	if(handle.gen == handle.v->gen)
+	if(handle.v && handle.gen == handle.v->gen)
 	{
 		out = handle.v;
 	}
@@ -128,32 +137,32 @@ function void entity_free(EntityStore *store, EntityHandle handle)
 
 struct Camera
 {
-  v3f pos;
-  v3f target;
-  v3f up;
-  f32 pitch;
-  f32 yaw;
-  f32 zoom;
-  v3f mv;
-  v3f input_rot;
-  f32 speed;
-  f32 aspect;
-  
+	v3f pos;
+	v3f target;
+	v3f up;
+	f32 pitch;
+	f32 yaw;
+	f32 zoom;
+	v3f mv;
+	v3f input_rot;
+	f32 speed;
+	f32 aspect;
+	
 	EntityHandle follow;
 };
 
 function m4f_ortho_proj cam_get_proj_inv(Camera *cam)
 {
-  f32 z = cam->zoom;
-  f32 za = z * cam->aspect;
-  
-  m4f_ortho_proj out = m4f_ortho(-za, za, -z, z, 0.001, 1000);
-  return out;
+	f32 z = cam->zoom;
+	f32 za = z * cam->aspect;
+	
+	m4f_ortho_proj out = m4f_ortho(-za, za, -z, z, 0.001, 1000);
+	return out;
 }
 
 function m4f cam_get_proj(Camera *cam)
 {
-  f32 z = cam->zoom;
+	f32 z = cam->zoom;
 	f32 za = z * cam->aspect;
 	
 	m4f out = m4f_ortho(-za, za, -z, z, 0.001, 1000).fwd;
@@ -162,7 +171,7 @@ function m4f cam_get_proj(Camera *cam)
 
 function m4f cam_get_view(Camera *cam)
 {
-  return m4f_look_at(cam->pos, cam->pos + cam->target, cam->up);
+	return m4f_look_at(cam->pos, cam->pos + cam->target, cam->up);
 }
 
 function void cam_update(Camera *cam, f32 delta)
@@ -176,13 +185,15 @@ struct Game
 	EntityStore e_store;
 	Camera cam;
 	b32 initialized;
+	
+	b2WorldId world;
+	
 	b32 start;
 	b32 paused;
 	
+	b32 draw_spiral;
 	b32 draw_health;
 	b32 draw_collision;
-	
-	D_Bucket *bucket;
 };
 
 struct Lister
@@ -222,7 +233,8 @@ function ED_CUSTOM_TAB(lister_panel)
 				ui_spacer(window->cxt);
 			}
 			
-			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+			ui_press_color(window->cxt, D_COLOR_RED)
+				ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 				ui_col(window->cxt)
 				ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 			{
@@ -238,6 +250,7 @@ function ED_CUSTOM_TAB(lister_panel)
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
 		game->draw_health = ui_labelf(window->cxt, "draw health").toggle;
+		game->draw_spiral = ui_labelf(window->cxt, "draw spiral").toggle;
 		game->draw_collision = ui_labelf(window->cxt, "draw collison").toggle;
 	}
 	
@@ -258,7 +271,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		
 		ED_Panel *panel2 = ed_open_panel(test, Axis2_X, 1);
 		ed_open_tab(panel2, ED_TabKind_Debug);
-    
+		
 		// lister tab
 		ED_Tab *tab = ed_open_tab(panel2, ED_TabKind_Custom, {{400, 800}});
 		tab->custom_draw = lister_panel;
@@ -296,16 +309,23 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	
 	if(game->paused)
 	{
-		goto remove_me;
+		goto end_of_sim;
 	}
 	
 	if(!game->start)
 	{
+		
+		b2WorldDef worldDef = b2DefaultWorldDef();
+		worldDef.gravity = {};
+		
+		game->world = b2CreateWorld(&worldDef);
+		
 		game->e_store.num_entities = 0;
 		
 		game->start = 1;
-		Entity *py = entity_alloc(store, EntityFlags_Control);
-		py->pos = {{730, 417}};
+		
+		Entity *py = entity_alloc(store, EntityFlags_Control | EntityFlags_Dynamic);
+		py->pos = {{1000, 417}};
 		py->size = {{64, 64}};
 		py->tint = D_COLOR_WHITE;
 		py->art = ArtKind_Impolo;
@@ -317,8 +337,22 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		py->speed = 250;
 		py->health = 300;
 		py->name = str8_lit("impolo");
+		{
+			b2BodyDef bodyDef = b2DefaultBodyDef();
+			bodyDef.type = b2_dynamicBody;
+			bodyDef.position = (b2Vec2){py->pos.x, py->pos.y};
+			py->body = b2CreateBody(game->world, &bodyDef);
+			
+			py->box = b2MakeBox(py->size.x / 2, py->size.y / 2);
+			
+			b2ShapeDef shapeDef = b2DefaultShapeDef();
+			shapeDef.density = 0.3f;
+			//shapeDef.friction = 0.3f;
+			
+			b2CreatePolygonShape(py->body, &shapeDef, &py->box);
+		}
 		
-		Entity *fox = entity_alloc(store, EntityFlags_Follow);
+		Entity *fox = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
 		fox->pos = {{100, 100}};
 		fox->size = {{32, 32}};
 		fox->tint = D_COLOR_WHITE;
@@ -328,11 +362,28 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		fox->n = 3;
 		fox->x = 3;
 		fox->y = 2;
-		fox->speed = 150;
+		fox->speed = 30;
 		fox->target = handleFromEntity(py);
 		fox->health = 300;
 		fox->name = str8_lit("fox");
 		fox->damage = 0;
+		
+		{
+			b2BodyDef bodyDef = b2DefaultBodyDef();
+			bodyDef.type = b2_kinematicBody;
+			bodyDef.position = (b2Vec2){fox->pos.x, fox->pos.y};
+			fox->body = b2CreateBody(game->world, &bodyDef);
+			b2MassData mass = {};
+			mass.mass = 1000;
+			b2Body_SetMassData(fox->body, mass);
+			fox->box = b2MakeBox(fox->size.x / 2, fox->size.y / 2);
+			
+			b2ShapeDef shapeDef = b2DefaultShapeDef();
+			shapeDef.density = 1.f;
+			//shapeDef.friction = 0.3f;
+			
+			b2CreatePolygonShape(fox->body, &shapeDef, &fox->box);
+		}
 		
 		cam->follow = handleFromEntity(py);
 		cam->target = WORLD_FRONT;
@@ -342,8 +393,11 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		cam->input_rot.x = 0;
 		cam->input_rot.y = 0;
 		cam->aspect = tab->target.u32_m[3] * 1.f / tab->target.u32_m[4];
+		cam->pos.x = py->pos.x;
+		cam->pos.y = -py->pos.y;
+		cam->pos.z = -1;
 		
-		Entity *tree = entity_alloc(store, 0);
+		Entity *tree = entity_alloc(store, EntityFlags_Static);
 		tree->pos = {{700, 400}};
 		tree->size = {{128, 128}};
 		tree->tint = D_COLOR_WHITE;
@@ -355,6 +409,16 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		tree->basis.y = -25;
 		tree->health = 100;
 		tree->name = str8_lit("Treehouse");
+		
+		b2BodyDef groundBodyDef = b2DefaultBodyDef();
+		groundBodyDef.position = (b2Vec2){tree->pos.x, tree->pos.y};
+		tree->body = b2CreateBody(game->world, &groundBodyDef);
+		
+		tree->box = b2MakeBox(tree->size.x / 2.f, tree->size.y / 2.f);
+		
+		b2ShapeDef groundShapeDef = b2DefaultShapeDef();
+		b2CreatePolygonShape(tree->body, &groundShapeDef, &tree->box);
+		
 	}
 	
 	// update camera
@@ -362,10 +426,13 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		Entity *target = entityFromHandle(cam->follow);
 		if(target)
 		{
-			cam->pos = v3f{{target->pos.x, -target->pos.y, -1}};
+			cam->pos = v3f{{target->pos.x, -target->pos.y, -1}};// + v3f{{target->size.x / 2, - target->size.y / 2, 0}};
 		}
 	}
 	
+	d_push_target(tab->target);
+	
+	// tilemap
 	{
 		m4f_ortho_proj world_proj_inv = cam_get_proj_inv(cam);
 		
@@ -388,8 +455,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			{1, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1},
 			{1, 0, 1, 0,  1, 0, 1, 0,  0, 0, 1, 0,  1, 0, 0, 1},
 		};
-		
-		d_push_target(tab->target);
 		
 		for(s32 row = 0; row < 9; row++)
 		{
@@ -416,48 +481,64 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					Rect dst = {};
 					dst.tl.x = col * 64;
 					dst.tl.y = row * 64;
-					dst.br.x = dst.tl.x + 128;
-					dst.br.y = dst.tl.y + 128;
+					dst.br.x = dst.tl.x + 64;
+					dst.br.y = dst.tl.y + 64;
 					
 					R_Sprite *sprite = d_sprite(dst, color);
 					sprite->layer = 0;
-					sprite->radius = 64;
+					//sprite->radius = 64;
 					sprite->tex = a_get_alpha_bg_tex();
 				}
 			}
 		}
 		
+		// Kill entities with health < 0 
 		for(s32 i = 0; i < store->num_entities; i++)
 		{
 			Entity *e = store->entities + i;
-			
 			if(e->health < 0)
 			{
 				e->flags |= EntityFlags_Dead;
 			}
+		}
+		
+		// player control
+		for(s32 i = 0; i < store->num_entities; i++)
+		{
+			Entity *e = store->entities + i;
 			
 			if((e->flags & EntityFlags_Control) && !(e->flags & EntityFlags_Dead))
 			{
+				v2f dir = {};
+				
 				if(os_key_press(window->win, SDLK_A))
 				{
-					e->pos.x -= delta * e->speed;
+					dir.x = -1;
 				}
 				
 				if(os_key_press(window->win, SDLK_D))
 				{
-					e->pos.x += delta * e->speed;
+					dir.x = 1;
 				}
 				
 				if(os_key_press(window->win, SDLK_S))
 				{
-					e->pos.y += delta * e->speed;
+					dir.y = 1;
 				}
 				
 				if(os_key_press(window->win, SDLK_W))
 				{
-					e->pos.y -= delta * e->speed;
+					dir.y = -1;
 				}
+				
+				e->mv = dir;
 			}
+		}
+		
+		// pathfind
+		for(s32 i = 0; i < store->num_entities; i++)
+		{
+			Entity *e = store->entities + i;
 			
 			if(e->flags & EntityFlags_Follow)
 			{
@@ -470,7 +551,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					if(dist > 30)
 					{
 						dir = dir / dist;
-						e->pos += dir * e->speed * delta;
+						e->mv = dir;
 					}
 					else
 					{
@@ -478,17 +559,62 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					}
 				}
 			}
+		}
+		
+		// update positions
+		for(s32 i = 0; i < store->num_entities; i++)
+		{
+			Entity *e = store->entities + i;
 			
-			// collider visualizer
+			e->old_pos = e->pos;
+			//e->pos += e->mv * delta * e->speed;
+		}
+		
+		// physics
+		float timeStep = 1.0f / 60.0f;
+		int subStepCount = 4;
+		b2World_Step(game->world, timeStep, subStepCount);
+		
+		for(s32 i = 0; i < store->num_entities; i++)
+		{
+			Entity *e = store->entities + i;
+			
+			if(e->flags & EntityFlags_Dynamic)
+			{
+				v2f vel = e->mv * delta * e->speed * 100;
+				
+				b2Body_SetLinearVelocity(e->body, {vel.x, vel.y});
+				
+				b2Vec2 position = b2Body_GetPosition(e->body);
+				//b2Rot rotation = b2Body_GetRotation(e->body);
+				e->pos.x = position.x;
+				e->pos.y = position.y;
+			}
+			
+		}
+		
+		// draw visualizers
+		for(s32 i = 0; i < store->num_entities; i++)
+		{
+			Entity *e = store->entities + i;
+			
+			// collider
+			
 			if(game->draw_collision)
 			{
-				R_Sprite *sprite = d_sprite(rect(e->old_pos - e->size/4, e->size / 2), {{1, 0, 0, 0.2}});
-				sprite->layer = 1;
+				if(e->flags & EntityFlags_Physics)
+				{
+					b2Vec2 pos = b2Body_GetPosition(e->body);
+					v2f posf = {{pos.x, pos.y}};
+					
+					R_Sprite *sprite = d_spriteCenter(posf, e->size, {{1, 0, 0, 0.2}});
+					sprite->layer = 1;
+				}
 			}
 			
 			// art
 			{
-				R_Sprite *sprite = d_sprite(rect(e->old_pos - e->size/2, e->size), e->tint);
+				R_Sprite *sprite = d_spriteCenter(e->old_pos, e->size, e->tint);
 				
 				if(e->art == ArtKind_Null)
 				{
@@ -498,7 +624,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				{
 					sprite->tex = a_handleFromPath(art_paths[e->art]);
 				}
-				
 				sprite->basis.y = e->basis.y;
 				sprite->layer = e->layer;
 				
@@ -515,27 +640,52 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				sprite->src = src;
 			}
 			
-			// health 
+			// health bar
 			if(game->draw_health)
 			{
 				v2f pos = e->old_pos;
 				pos.y += e->size.y / 2;
-				pos.x -= 15;
-				s32 count = (e->health + 99) / 100;
-				for(s32 j = 0; j < count; j++)
+				
+				R_Sprite *health = d_spriteCenter(pos, {{e->health  * 0.1f, 5}}, D_COLOR_RED);
+				health->layer = 2;
+			}
+			
+			if(game->draw_spiral)
+			{
+				v2f pos = e->old_pos;
+				v2f size = {{0.5, 0.5f}};
+				f32 thickness = 10;
+				f32 rot_speed = 0.01f;
+				
+				static f32 timer = 0;
+				timer += delta;
+				
+				for(s32 j = 0; j < 100; j++)
 				{
-					R_Sprite *health = d_sprite(rect(pos + v2f{.x = j * 10.f}, {{10, 5}}), D_COLOR_RED);
-					health->layer = 2;
+					f32 angle = rot_speed * timer * j;
+					v2f rel_pos = pos - e->old_pos;
+					f32 cos_t = cos(angle);
+					f32 sin_t = sin(angle);
+					
+					v2f rot_pos = { };
+					rot_pos.x = rel_pos.x * cos_t - rel_pos.y * sin_t;
+					rot_pos.y = rel_pos.x * sin_t + rel_pos.y * cos_t;
+					
+					v2f final_pos = rot_pos + e->old_pos;
+					R_Sprite *line = d_sprite(rect(final_pos, size * thickness), D_COLOR_WHITE);
+					line->layer = 2;
+					pos = pos + size * 2;
 				}
 			}
-			e->old_pos = e->pos;
+			
+			
 		}
 		
 		d_pop_target();
 		d_pop_proj_view();
 	}
 	
-	remove_me:
+	end_of_sim:
 	
 	v2s size = r_tex_size_from_handle(tab->target);
 	

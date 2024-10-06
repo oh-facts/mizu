@@ -62,11 +62,11 @@ function void* _arena_alloc(Arena* arena, size_t size)
 	}
 	
 	void *memory = 0;
-  
-  if (arena->cmt >= pos_new) 
+	
+	if (arena->cmt >= pos_new) 
 	{
-    memory = (u8*)arena + pos_mem;
-    arena->used = pos_new;
+		memory = (u8*)arena + pos_mem;
+		arena->used = pos_new;
 	}
 	
 	return memory;
@@ -127,47 +127,47 @@ function Arena *arena_create()
 typedef union v2s v2s;
 union v2s
 {
-  s32 e[2];
-  struct
-  {
-    s32 x;
-    s32 y;
-  };
+	s32 e[2];
+	struct
+	{
+		s32 x;
+		s32 y;
+	};
 };
 
 typedef union v2f v2f;
 union v2f
 {
-  f32 e[2];
-  struct
-  {
-    f32 x;
-    f32 y;
-  };
+	f32 e[2];
+	struct
+	{
+		f32 x;
+		f32 y;
+	};
 };
 
 typedef union v3f v3f;
 union v3f
 {
-  f32 e[3];
-  struct
-  {
-    f32 x;
-    f32 y;
-    f32 z;
-  };
-  struct
-  {
-    v2f xy;
-    f32 _z;
-  };
+	f32 e[3];
+	struct
+	{
+		f32 x;
+		f32 y;
+		f32 z;
+	};
+	struct
+	{
+		v2f xy;
+		f32 _z;
+	};
 };
 
 typedef union v4f v4f;
 union v4f
 {
-  f32 e[4];
-  
+	f32 e[4];
+	
 	struct
 	{
 		v3f xyz;
@@ -175,247 +175,275 @@ union v4f
 	};
 	
 	struct
-  {
-    f32 x;
-    f32 y;
-    f32 z;
-    f32 w;
-  };
+	{
+		f32 x;
+		f32 y;
+		f32 z;
+		f32 w;
+	};
 	
 };
+
+function void operator*=(v4f &a, f32 b)
+{
+	a.x *= b;
+	a.y *= b;
+	a.z *= b;
+	a.w *= b;
+}
+
+function v4f operator*(v4f a, f32 b)
+{
+	v4f out = {};
+	out.x = a.x * b;
+	out.y = a.y * b;
+	out.z = a.z * b;
+	out.w = a.w * b;
+	return out;
+}
+
+function v4f operator-(v4f a, v4f b)
+{
+	v4f out = {};
+	out.x = a.x - b.x;
+	out.y = a.y - b.y;
+	out.z = a.z - b.z;
+	out.w = a.w - b.w;
+	return out;
+}
 
 typedef union m4f m4f;
 union m4f
 {
-  f32 e[4][4];
+	f32 e[4][4];
 };
 
 typedef struct m4f_ortho_proj m4f_ortho_proj;
 struct m4f_ortho_proj
 {
-  m4f fwd;
-  m4f inv;
+	m4f fwd;
+	m4f inv;
 };
 
 function s32 floor_f32_to_s32(f32 a)
 {
-  s32 res = _mm_cvtss_si32(_mm_floor_ss(_mm_setzero_ps(), _mm_set_ss(a)));
-  return res;
+	s32 res = _mm_cvtss_si32(_mm_floor_ss(_mm_setzero_ps(), _mm_set_ss(a)));
+	return res;
 }
 
 function f32 v2f_dist_sq(v2f a, v2f b)
 {
-  f32 out = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
-  return out;
+	f32 out = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+	return out;
 }
 
 function b32 v2s_equals(v2s a, v2s b)
 {
-  return a.x == b.x && a.y == b.y;
+	return a.x == b.x && a.y == b.y;
 }
 
 function b32 operator==(v2s a, v2s b)
 {
-  return a.x == b.x && a.y == b.y;
+	return a.x == b.x && a.y == b.y;
 }
 
 function v2s operator-(v2s a, v2s b)
 {
-  v2s out = {};
-  out.x = a.x - b.x,
-  out.y = a.y - b.y;
+	v2s out = {};
+	out.x = a.x - b.x,
+	out.y = a.y - b.y;
 	
-  return out;
+	return out;
 }
 
 function v2s operator+(v2s a, v2s b)
 {
-  v2s out = {};
-  out.x = a.x + b.x,
-  out.y = a.y + b.y;
+	v2s out = {};
+	out.x = a.x + b.x,
+	out.y = a.y + b.y;
 	
-  return out;
+	return out;
 }
 
 function void operator+=(v2s &a, v2s b)
 {
-  a.x += b.x;
-  a.y += b.y;
+	a.x += b.x;
+	a.y += b.y;
 }
 
 function void operator-=(v2s &a, v2s b)
 {
-  a.x -= b.x;
-  a.y -= b.y;
+	a.x -= b.x;
+	a.y -= b.y;
 }
 
 function v2f operator+(v2f a, f32 b)
 {
-  return(v2f){
-    {
-      a.x + b,
-      a.y + b
-    }
-  };
+	return(v2f){
+		{
+			a.x + b,
+			a.y + b
+		}
+	};
 }
 
 function v2f operator-(v2f a, f32 b)
 {
-  return(v2f){
-    {
-      a.x - b,
-      a.y - b
-    }
-  };
+	return(v2f){
+		{
+			a.x - b,
+			a.y - b
+		}
+	};
 }
 
 function v2f operator*(v2f a, f32 b)
 {
-  return(v2f){
-    {
-      a.x * b,
-      a.y * b
-    }
-  };
+	return(v2f){
+		{
+			a.x * b,
+			a.y * b
+		}
+	};
 }
 
 function v2f operator/(v2f a, f32 b)
 {
-  return(v2f){
-    {
-      a.x / b,
-      a.y / b
-    }
-  };
+	return(v2f){
+		{
+			a.x / b,
+			a.y / b
+		}
+	};
 }
 
 function void operator+=(v2f& a, f32 b)
 {
-  a.x += b;
-  a.y += b;
+	a.x += b;
+	a.y += b;
 }
 
 function void operator*=(v2f &a, f32 b)
 {
-  a.x *= b;
-  a.y *= b;
+	a.x *= b;
+	a.y *= b;
 }
 
 function v2f operator+(v2f a, v2f b)
 {
-  return (v2f){
-    {
-      a.x + b.x,
-      a.y + b.y
-    }
+	return (v2f){
+		{
+			a.x + b.x,
+			a.y + b.y
+		}
 		
-  };
+	};
 }
 
 function v2f operator-(v2f a, v2f b)
 {
-  return (v2f){
-    {
-      a.x - b.x,
-      a.y - b.y
-    }
+	return (v2f){
+		{
+			a.x - b.x,
+			a.y - b.y
+		}
 		
-  };
+	};
 }
 
 function void operator+=(v2f &a, v2f b)
 {
-  a.x += b.x;
-  a.y += b.y;
+	a.x += b.x;
+	a.y += b.y;
 }
 
 function void operator-=(v2f &a, v2f b)
 {
-  a.x -= b.x;
-  a.y -= b.y;
+	a.x -= b.x;
+	a.y -= b.y;
 }
 
 function f32 v3f_len(v3f v)
 {
-  return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 function v3f v3f_normalize(v3f v)
 {
-  f32 l = v3f_len(v);
+	f32 l = v3f_len(v);
 	
-  return v3f{
-    {
-      v.x/l,
-      v.y/l,
-      v.z/l
-    }};
+	return v3f{
+		{
+			v.x/l,
+			v.y/l,
+			v.z/l
+		}};
 }
 
 function f32 v3f_dot(v3f a, v3f b)
 {
-  return a.x * b.x + a.y * b.y + a.z * b.z;
+	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 function v3f v3f_cross(v3f a, v3f b)
 {
-  v3f result;
-  result.x = a.y * b.z - a.z * b.y;
-  result.y = a.z * b.x - a.x * b.z;
-  result.z = a.x * b.y - a.y * b.x;
-  return result;
+	v3f result;
+	result.x = a.y * b.z - a.z * b.y;
+	result.y = a.z * b.x - a.x * b.z;
+	result.z = a.x * b.y - a.y * b.x;
+	return result;
 }
 
 function v3f operator*(v3f a, f32 b)
 {
-  return (v3f){
-    {
-      a.x * b,
-      a.y * b,
-      a.z * b
-    }
+	return (v3f){
+		{
+			a.x * b,
+			a.y * b,
+			a.z * b
+		}
 		
-  };
+	};
 }
 
 function v3f operator*(f32 a, v3f b)
 {
-  return b * a;
+	return b * a;
 }
 
 function void operator+=(v3f &a, v3f b)
 {
-  a.x += b.x;
-  a.y += b.y;
-  a.z += b.z;
+	a.x += b.x;
+	a.y += b.y;
+	a.z += b.z;
 }
 
 function void operator*=(v3f &a, f32 b)
 {
-  a.x *= b;
-  a.y *= b;
-  a.z *= b;
+	a.x *= b;
+	a.y *= b;
+	a.z *= b;
 }
 
 function v3f operator+(v3f a, v3f b)
 {
-  return (v3f){
-    {
-      a.x + b.x,
-      a.y + b.y,
-      a.z + b.z
-    }
+	return (v3f){
+		{
+			a.x + b.x,
+			a.y + b.y,
+			a.z + b.z
+		}
 		
-  };
+	};
 }
 
 function v3f operator-(v3f a, v3f b)
 {
-  return v3f{{
-      a.x - b.x,
-      a.y - b.y,
-      a.z - b.z
-    }};
+	return v3f{{
+			a.x - b.x,
+			a.y - b.y,
+			a.z - b.z
+		}};
 }
 
 function b32 operator==(v3f a, v3f b)
@@ -432,66 +460,66 @@ function b32 operator==(v3f a, v3f b)
 
 function v4f operator*(m4f a, v4f b)
 {
-  v4f out = {};
+	v4f out = {};
 	
-  for(u32 r = 0; r < 4; r ++)
-  {
-    out.e[r] =
-      a.e[r][0] * b.e[0] +
-      a.e[r][1] * b.e[1] +
-      a.e[r][2] * b.e[2] +
-      a.e[r][3] * b.e[3];
-  }
+	for(u32 r = 0; r < 4; r ++)
+	{
+		out.e[r] =
+			a.e[r][0] * b.e[0] +
+			a.e[r][1] * b.e[1] +
+			a.e[r][2] * b.e[2] +
+			a.e[r][3] * b.e[3];
+	}
 	
-  return out;
+	return out;
 }
 
 function m4f m4f_identity()
 {
-  return (m4f){
-    {
-      {1, 0, 0, 0},
-      {0, 1, 0, 0},
-      {0, 0, 1, 0},
-      {0, 0, 0, 1},
-    }
-  };
+	return (m4f){
+		{
+			{1, 0, 0, 0},
+			{0, 1, 0, 0},
+			{0, 0, 1, 0},
+			{0, 0, 0, 1},
+		}
+	};
 }
 
 function m4f m4f_make_trans(v3f v)
 {
-  return (m4f){
-    {
-      {1, 0, 0, v.x},
-      {0, 1, 0, v.y},
-      {0, 0, 1, v.z},
-      {0, 0, 0, 1},
-    }
-  };
+	return (m4f){
+		{
+			{1, 0, 0, v.x},
+			{0, 1, 0, v.y},
+			{0, 0, 1, v.z},
+			{0, 0, 0, 1},
+		}
+	};
 }
 
 function m4f m4f_make_trans(f32 x, f32 y, f32 z)
 {
-  return (m4f){
-    {
-      {1, 0, 0, x},
-      {0, 1, 0, y},
-      {0, 0, 1, z},
-      {0, 0, 0, 1},
-    }
-  };
+	return (m4f){
+		{
+			{1, 0, 0, x},
+			{0, 1, 0, y},
+			{0, 0, 1, z},
+			{0, 0, 0, 1},
+		}
+	};
 }
 
 function m4f m4f_make_scale(v3f v)
 {
-  return (m4f){
-    {
-      {v.x, 0, 0, 0},
-      {0, v.y, 0, 0},
-      {0, 0, v.z, 0},
-      {0, 0, 0, 1},
-    }
-  };
+	return (m4f){
+		{
+			{v.x, 0, 0, 0},
+			{0, v.y, 0, 0},
+			{0, 0, v.z, 0},
+			{0, 0, 0, 1},
+		}
+	};
 }
 
 // ty billy madison
@@ -500,329 +528,329 @@ function m4f m4f_make_scale(v3f v)
 
 function m4f m4f_make_perspective(f32 fov, f32 aspect, f32 near, f32 far)
 {
-  f32 tan_half_fov = tan(fov / 2.0f);
-  f32 z_range = near - far;
-  
-  return (m4f){
-    {
-      {1.0f / (aspect * tan_half_fov), 0, 0, 0},
-      {0, 1.0f / tan_half_fov, 0, 0},
-      {0, 0, (far + near) / z_range, 2 * far * near / z_range},
-      {0, 0, -1, 0}
-    }
-  };
+	f32 tan_half_fov = tan(fov / 2.0f);
+	f32 z_range = near - far;
+	
+	return (m4f){
+		{
+			{1.0f / (aspect * tan_half_fov), 0, 0, 0},
+			{0, 1.0f / tan_half_fov, 0, 0},
+			{0, 0, (far + near) / z_range, 2 * far * near / z_range},
+			{0, 0, -1, 0}
+		}
+	};
 }
 
 function m4f m4f_make_scale(f32 s)
 {
-  return (m4f){
-    {
-      {s, 0, 0, 0},
-      {0, s, 0, 0},
-      {0, 0, s, 0},
-      {0, 0, 0, 1},
-    }
-  };
+	return (m4f){
+		{
+			{s, 0, 0, 0},
+			{0, s, 0, 0},
+			{0, 0, s, 0},
+			{0, 0, 0, 1},
+		}
+	};
 }
 
 function m4f m4f_make_rot_x(f32 rad)
 {
-  float c = cos(rad);
-  float s = sin(rad);
+	float c = cos(rad);
+	float s = sin(rad);
 	
-  return (m4f){
-    {
-      {1, 0, 0, 0},
-      {0, c, -s, 0},
-      {0, s, c, 0},
-      {0, 0, 0, 1}
-    }
-  };
+	return (m4f){
+		{
+			{1, 0, 0, 0},
+			{0, c, -s, 0},
+			{0, s, c, 0},
+			{0, 0, 0, 1}
+		}
+	};
 }
 
 function m4f m4f_make_rot_y(f32 rad)
 {
-  float c = cos(rad);
-  float s = sin(rad);
+	float c = cos(rad);
+	float s = sin(rad);
 	
-  return (m4f){
-    {
-      {c, 0, s, 0},
-      {0, 1, 0, 0},
-      {-s, 0, c, 0},
-      {0, 0, 0, 1}
-    }
-  };
+	return (m4f){
+		{
+			{c, 0, s, 0},
+			{0, 1, 0, 0},
+			{-s, 0, c, 0},
+			{0, 0, 0, 1}
+		}
+	};
 }
 
 function m4f m4f_make_rot_z(f32 rad)
 {
-  float c = cos(rad);
-  float s = sin(rad);
+	float c = cos(rad);
+	float s = sin(rad);
 	
-  return (m4f){
-    {
-      {c,-s, 0, 0},
-      {s, c, 0, 0},
-      {0, 0, 1, 0},
-      {0, 0, 0, 1}
-    }
-  };
+	return (m4f){
+		{
+			{c,-s, 0, 0},
+			{s, c, 0, 0},
+			{0, 0, 1, 0},
+			{0, 0, 0, 1}
+		}
+	};
 }
 
 function m4f m4f_translate(m4f m, v3f v)
 {
-  m4f out = m;
+	m4f out = m;
 	
-  out.e[3][0] = v.x;
-  out.e[3][1] = v.y;
-  out.e[3][2] = v.z;
+	out.e[3][0] = v.x;
+	out.e[3][1] = v.y;
+	out.e[3][2] = v.z;
 	
-  return out;
+	return out;
 }
 
 function m4f m4f_scale(m4f m, v3f v)
 {
-  m4f out = m;
+	m4f out = m;
 	
-  out.e[0][0] = v.x;
-  out.e[1][1] = v.y;
-  out.e[2][2] = v.z;
+	out.e[0][0] = v.x;
+	out.e[1][1] = v.y;
+	out.e[2][2] = v.z;
 	
-  return out;
+	return out;
 }
 
 function m4f m4f_rot(m4f m, v3f v)
 {
-  m4f out = m;
+	m4f out = m;
 	
-  out.e[0][0] = v.x;
-  out.e[1][1] = v.y;
-  out.e[2][2] = v.z;
+	out.e[0][0] = v.x;
+	out.e[1][1] = v.y;
+	out.e[2][2] = v.z;
 	
-  return out;
+	return out;
 }
 
 function m4f_ortho_proj m4f_ortho(f32 left,f32 right,f32 bottom, f32 top, f32 _near, f32 _far)
 {
-  f32 rpl = right + left;
-  f32 rml = right - left;
-  f32 tpb = top + bottom;
-  f32 tmb = top - bottom;
-  f32 fpn = _far + _near;
-  f32 fmn = _far - _near;
+	f32 rpl = right + left;
+	f32 rml = right - left;
+	f32 tpb = top + bottom;
+	f32 tmb = top - bottom;
+	f32 fpn = _far + _near;
+	f32 fmn = _far - _near;
 	
-  m4f fwd = {{
-      {2/rml,     0,          0,       -rpl/rml},
-      {0,         2/tmb,      0,       -tpb/tmb},
-      {0,         0,          -2/fmn,   - fpn/fmn},
-      {0, 0,  0, 1}
-    }};
+	m4f fwd = {{
+			{2/rml,     0,          0,       -rpl/rml},
+			{0,         2/tmb,      0,       -tpb/tmb},
+			{0,         0,          -2/fmn,   - fpn/fmn},
+			{0, 0,  0, 1}
+		}};
 	
-  m4f inv = {{
-      {rml/2,   0,       0,       rpl/2},
-      {0,       tmb/2,   0,       tpb/2},
-      {0,       0,       -fmn/2,  -fpn/2},
-      {0,   0,   0,   1}
-    }};
+	m4f inv = {{
+			{rml/2,   0,       0,       rpl/2},
+			{0,       tmb/2,   0,       tpb/2},
+			{0,       0,       -fmn/2,  -fpn/2},
+			{0,   0,   0,   1}
+		}};
 	
-  return m4f_ortho_proj{fwd, inv};
+	return m4f_ortho_proj{fwd, inv};
 }
 
 function m4f m4f_look_at(v3f eye, v3f center, v3f up)
 {
-  v3f z = v3f_normalize(center - eye);
-  v3f x = v3f_normalize(v3f_cross(z, up));
-  v3f y = v3f_cross(x, z);
+	v3f z = v3f_normalize(center - eye);
+	v3f x = v3f_normalize(v3f_cross(z, up));
+	v3f y = v3f_cross(x, z);
 	
-  m4f mat = {
-    {
-      {x.x, y.x, -z.x, -v3f_dot(x,eye)},
-      {x.y, y.y, -z.y, -v3f_dot(y,eye)},
-      {x.z, y.z, -z.z, -v3f_dot(z,eye)},
-      {0,0,0, 1}
-    }
-  };
+	m4f mat = {
+		{
+			{x.x, y.x, -z.x, -v3f_dot(x,eye)},
+			{x.y, y.y, -z.y, -v3f_dot(y,eye)},
+			{x.z, y.z, -z.z, -v3f_dot(z,eye)},
+			{0,0,0, 1}
+		}
+	};
 	
-  return mat;
+	return mat;
 }
 
 function f32 determinant3x3(f32 a, f32 b, f32 c,
                             f32 d, f32 e, f32 f,
                             f32 g, f32 h, f32 i) {
-  return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+	return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
 }
 
 function m4f adjugate(const m4f& mat) {
-  m4f adj;
+	m4f adj;
 	
-  adj.e[0][0] =  determinant3x3(mat.e[1][1], mat.e[1][2], mat.e[1][3],
-                                mat.e[2][1], mat.e[2][2], mat.e[2][3],
-                                mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-  adj.e[1][0] = -determinant3x3(mat.e[1][0], mat.e[1][2], mat.e[1][3],
-                                mat.e[2][0], mat.e[2][2], mat.e[2][3],
-                                mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-  adj.e[2][0] =  determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][3],
-                                mat.e[2][0], mat.e[2][1], mat.e[2][3],
-                                mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-  adj.e[3][0] = -determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][2],
-                                mat.e[2][0], mat.e[2][1], mat.e[2][2],
-                                mat.e[3][0], mat.e[3][1], mat.e[3][2]);
+	adj.e[0][0] =  determinant3x3(mat.e[1][1], mat.e[1][2], mat.e[1][3],
+																															mat.e[2][1], mat.e[2][2], mat.e[2][3],
+																															mat.e[3][1], mat.e[3][2], mat.e[3][3]);
+	adj.e[1][0] = -determinant3x3(mat.e[1][0], mat.e[1][2], mat.e[1][3],
+																															mat.e[2][0], mat.e[2][2], mat.e[2][3],
+																															mat.e[3][0], mat.e[3][2], mat.e[3][3]);
+	adj.e[2][0] =  determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][3],
+																															mat.e[2][0], mat.e[2][1], mat.e[2][3],
+																															mat.e[3][0], mat.e[3][1], mat.e[3][3]);
+	adj.e[3][0] = -determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][2],
+																															mat.e[2][0], mat.e[2][1], mat.e[2][2],
+																															mat.e[3][0], mat.e[3][1], mat.e[3][2]);
 	
-  adj.e[0][1] = -determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
-                                mat.e[2][1], mat.e[2][2], mat.e[2][3],
-                                mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-  adj.e[1][1] =  determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
-                                mat.e[2][0], mat.e[2][2], mat.e[2][3],
-                                mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-  adj.e[2][1] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
-                                mat.e[2][0], mat.e[2][1], mat.e[2][3],
-                                mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-  adj.e[3][1] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
-                                mat.e[2][0], mat.e[2][1], mat.e[2][2],
-                                mat.e[3][0], mat.e[3][1], mat.e[3][2]);
+	adj.e[0][1] = -determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
+																															mat.e[2][1], mat.e[2][2], mat.e[2][3],
+																															mat.e[3][1], mat.e[3][2], mat.e[3][3]);
+	adj.e[1][1] =  determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
+																															mat.e[2][0], mat.e[2][2], mat.e[2][3],
+																															mat.e[3][0], mat.e[3][2], mat.e[3][3]);
+	adj.e[2][1] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
+																															mat.e[2][0], mat.e[2][1], mat.e[2][3],
+																															mat.e[3][0], mat.e[3][1], mat.e[3][3]);
+	adj.e[3][1] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
+																															mat.e[2][0], mat.e[2][1], mat.e[2][2],
+																															mat.e[3][0], mat.e[3][1], mat.e[3][2]);
 	
-  adj.e[0][2] =  determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
-                                mat.e[1][1], mat.e[1][2], mat.e[1][3],
-                                mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-  adj.e[1][2] = -determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
-                                mat.e[1][0], mat.e[1][2], mat.e[1][3],
-                                mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-  adj.e[2][2] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
-                                mat.e[1][0], mat.e[1][1], mat.e[1][3],
-                                mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-  adj.e[3][2] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
-                                mat.e[1][0], mat.e[1][1], mat.e[1][2],
-                                mat.e[3][0], mat.e[3][1], mat.e[3][2]);
+	adj.e[0][2] =  determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
+																															mat.e[1][1], mat.e[1][2], mat.e[1][3],
+																															mat.e[3][1], mat.e[3][2], mat.e[3][3]);
+	adj.e[1][2] = -determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
+																															mat.e[1][0], mat.e[1][2], mat.e[1][3],
+																															mat.e[3][0], mat.e[3][2], mat.e[3][3]);
+	adj.e[2][2] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
+																															mat.e[1][0], mat.e[1][1], mat.e[1][3],
+																															mat.e[3][0], mat.e[3][1], mat.e[3][3]);
+	adj.e[3][2] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
+																															mat.e[1][0], mat.e[1][1], mat.e[1][2],
+																															mat.e[3][0], mat.e[3][1], mat.e[3][2]);
 	
-  adj.e[0][3] = -determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
-                                mat.e[1][1], mat.e[1][2], mat.e[1][3],
-                                mat.e[2][1], mat.e[2][2], mat.e[2][3]);
-  adj.e[1][3] =  determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
-                                mat.e[1][0], mat.e[1][2], mat.e[1][3],
-                                mat.e[2][0], mat.e[2][2], mat.e[2][3]);
-  adj.e[2][3] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
-                                mat.e[1][0], mat.e[1][1], mat.e[1][3],
-                                mat.e[2][0], mat.e[2][1], mat.e[2][3]);
-  adj.e[3][3] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
-                                mat.e[1][0], mat.e[1][1], mat.e[1][2],
-                                mat.e[2][0], mat.e[2][1], mat.e[2][2]);
+	adj.e[0][3] = -determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
+																															mat.e[1][1], mat.e[1][2], mat.e[1][3],
+																															mat.e[2][1], mat.e[2][2], mat.e[2][3]);
+	adj.e[1][3] =  determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
+																															mat.e[1][0], mat.e[1][2], mat.e[1][3],
+																															mat.e[2][0], mat.e[2][2], mat.e[2][3]);
+	adj.e[2][3] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
+																															mat.e[1][0], mat.e[1][1], mat.e[1][3],
+																															mat.e[2][0], mat.e[2][1], mat.e[2][3]);
+	adj.e[3][3] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
+																															mat.e[1][0], mat.e[1][1], mat.e[1][2],
+																															mat.e[2][0], mat.e[2][1], mat.e[2][2]);
 	
-  return adj;
+	return adj;
 }
 
 function f32 determinant(const m4f& mat) {
-  f32 det = 0;
+	f32 det = 0;
 	
-  det += mat.e[0][0] * determinant3x3(mat.e[1][1], mat.e[1][2], mat.e[1][3],
-                                      mat.e[2][1], mat.e[2][2], mat.e[2][3],
-                                      mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-  det -= mat.e[0][1] * determinant3x3(mat.e[1][0], mat.e[1][2], mat.e[1][3],
-                                      mat.e[2][0], mat.e[2][2], mat.e[2][3],
-                                      mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-  det += mat.e[0][2] * determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][3],
-                                      mat.e[2][0], mat.e[2][1], mat.e[2][3],
-                                      mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-  det -= mat.e[0][3] * determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][2],
-                                      mat.e[2][0], mat.e[2][1], mat.e[2][2],
-                                      mat.e[3][0], mat.e[3][1], mat.e[3][2]);
+	det += mat.e[0][0] * determinant3x3(mat.e[1][1], mat.e[1][2], mat.e[1][3],
+																																					mat.e[2][1], mat.e[2][2], mat.e[2][3],
+																																					mat.e[3][1], mat.e[3][2], mat.e[3][3]);
+	det -= mat.e[0][1] * determinant3x3(mat.e[1][0], mat.e[1][2], mat.e[1][3],
+																																					mat.e[2][0], mat.e[2][2], mat.e[2][3],
+																																					mat.e[3][0], mat.e[3][2], mat.e[3][3]);
+	det += mat.e[0][2] * determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][3],
+																																					mat.e[2][0], mat.e[2][1], mat.e[2][3],
+																																					mat.e[3][0], mat.e[3][1], mat.e[3][3]);
+	det -= mat.e[0][3] * determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][2],
+																																					mat.e[2][0], mat.e[2][1], mat.e[2][2],
+																																					mat.e[3][0], mat.e[3][1], mat.e[3][2]);
 	
-  return det;
+	return det;
 }
 
 function m4f inverse(const m4f& mat) {
-  m4f inv;
+	m4f inv;
 	
-  f32 det = determinant(mat);
-  if (det == 0) {
-    
-    return inv;
-  }
+	f32 det = determinant(mat);
+	if (det == 0) {
+		
+		return inv;
+	}
 	
-  m4f adj = adjugate(mat);
+	m4f adj = adjugate(mat);
 	
-  f32 inv_det = 1.0f / det;
-  for (int r = 0; r < 4; ++r) {
-    for (int c = 0; c < 4; ++c) {
-      inv.e[r][c] = adj.e[r][c] * inv_det;
-    }
-  }
+	f32 inv_det = 1.0f / det;
+	for (int r = 0; r < 4; ++r) {
+		for (int c = 0; c < 4; ++c) {
+			inv.e[r][c] = adj.e[r][c] * inv_det;
+		}
+	}
 	
-  return inv;
+	return inv;
 }
 
 function m4f operator*(m4f a, m4f b)
 {
-  m4f out = {};
+	m4f out = {};
 	
-  for(u32 r = 0; r < 4; r ++)
-  {
-    for(u32 c = 0; c < 4; c ++)
-    {
-      out.e[r][c] =
-        a.e[r][0] * b.e[0][c] +
-        a.e[r][1] * b.e[1][c] +
-        a.e[r][2] * b.e[2][c] +
-        a.e[r][3] * b.e[3][c];
-    }
-  }
+	for(u32 r = 0; r < 4; r ++)
+	{
+		for(u32 c = 0; c < 4; c ++)
+		{
+			out.e[r][c] =
+				a.e[r][0] * b.e[0][c] +
+				a.e[r][1] * b.e[1][c] +
+				a.e[r][2] * b.e[2][c] +
+				a.e[r][3] * b.e[3][c];
+		}
+	}
 	
-  return out;
+	return out;
 }
 
 union quat
 {
-  struct
-  {
-    f32 r,i,j,k;
-  };
-  
-  struct
-  {
-    f32 x,y,z,w;
-  };
-  
-  f32 e[4];
+	struct
+	{
+		f32 r,i,j,k;
+	};
+	
+	struct
+	{
+		f32 x,y,z,w;
+	};
+	
+	f32 e[4];
 };
 
 function quat operator*(quat x, quat y)
 {
-  return (quat){
-    .r = x.r * y.r - x.i * y.i - x.j * y.j - x.k * y.k,
-    .i = x.r * y.i + x.i * y.r + x.j * y.k - x.k * y.j,
-    .j = x.r * y.j - x.i * y.k + x.j * y.r + x.k * y.i,
-    .k = x.r * y.k + x.i * y.j - x.j * y.i + x.k * y.r
-  };
+	return (quat){
+		.r = x.r * y.r - x.i * y.i - x.j * y.j - x.k * y.k,
+		.i = x.r * y.i + x.i * y.r + x.j * y.k - x.k * y.j,
+		.j = x.r * y.j - x.i * y.k + x.j * y.r + x.k * y.i,
+		.k = x.r * y.k + x.i * y.j - x.j * y.i + x.k * y.r
+	};
 }
 
 function m4f quat_to_matrix(quat q) 
 {
-  f32 xx = q.i * q.i;
-  f32 yy = q.j * q.j;
-  f32 zz = q.k * q.k;
-  f32 xy = q.i * q.j;
-  f32 xz = q.i * q.k;
-  f32 yz = q.j * q.k;
-  f32 wx = q.r * q.i;
-  f32 wy = q.r * q.j;
-  f32 wz = q.r * q.k;
-  
-  return (m4f) {
-    {
-      {1 - 2 * (yy + zz), 2 * (xy - wz),     2 * (xz + wy),     0},
-      {2 * (xy + wz),     1 - 2 * (xx + zz), 2 * (yz - wx),     0},
-      {2 * (xz - wy),     2 * (yz + wx),     1 - 2 * (xx + yy), 0},
-      {0,                 0,                 0,                 1}
-    }
-  };
+	f32 xx = q.i * q.i;
+	f32 yy = q.j * q.j;
+	f32 zz = q.k * q.k;
+	f32 xy = q.i * q.j;
+	f32 xz = q.i * q.k;
+	f32 yz = q.j * q.k;
+	f32 wx = q.r * q.i;
+	f32 wy = q.r * q.j;
+	f32 wz = q.r * q.k;
+	
+	return (m4f) {
+		{
+			{1 - 2 * (yy + zz), 2 * (xy - wz),     2 * (xz + wy),     0},
+			{2 * (xy + wz),     1 - 2 * (xx + zz), 2 * (yz - wx),     0},
+			{2 * (xz - wy),     2 * (yz + wx),     1 - 2 * (xx + yy), 0},
+			{0,                 0,                 0,                 1}
+		}
+	};
 }
 
 #define str8_varg(S) (int)((S).len), ((S).c)
 
 struct Str8
 {
-  u8 *c;
-  u64 len;
+	u8 *c;
+	u64 len;
 };
 
 #define str8_lit(c) Str8{(u8*)c, sizeof(c) - 1}
@@ -1096,9 +1124,9 @@ struct Atlas
 
 enum FILE_TYPE
 {
-  FILE_TYPE_TEXT,
-  FILE_TYPE_BINARY,
-  FILE_TYPE_COUNT
+	FILE_TYPE_TEXT,
+	FILE_TYPE_BINARY,
+	FILE_TYPE_COUNT
 };
 
 struct File_data
@@ -1258,9 +1286,9 @@ function Glyph *make_bmp_font(u8* path, char *codepoints, u32 num_cp, Arena* are
 				u8 alpha = *src++;
 				
 				*dest++ = ((alpha <<24) |
-									 (0xFF <<16) |
-									 (0xFF << 8) |
-									 (0xFF));
+															(0xFF <<16) |
+															(0xFF << 8) |
+															(0xFF));
 			}
 			dest_row += 4 * w;
 			src_row -= w;

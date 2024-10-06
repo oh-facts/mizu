@@ -113,7 +113,7 @@ update :: (a : int) -> int, float, double
 }
 
   import math/fm as fast_math
-  import radio/fm as radio
+  import radio/fm as fm_radio
 
   use game.players[10].pos as pos;
 
@@ -124,7 +124,7 @@ v2 pos = game.players[10].pos
 
 or
 
-v2 *pos = game.players[10].pos
+v2 *pos = &game.players[10].pos
 
 @compile
 @inline
