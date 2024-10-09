@@ -180,14 +180,7 @@ function void update_and_render(void *memory, f32 delta)
 		
 		ED_Panel *main_panel = ed_openPanel(game_win, Axis2_X, 1);
 		
-		ed_openTab(main_panel, ED_TabKind_ModelViewer);
-		
-		ED_Tab *ts_viewer = ed_openTab(main_panel, ED_TabKind_TileSetViewer);
-		ED_Tab *insp = ed_openTab(main_panel, ED_TabKind_Inspector);
-		insp->hsva = {{1,0,1,1}};
-		ts_viewer->inspector = insp;
-		
-		ED_Tab *game = ed_openTab(main_panel, ED_TabKind_Custom);
+		ED_Tab *game = ed_openTab(main_panel, "Game");
 		game->custom_draw = game_update_and_render;
 		game->custom_drawData = push_struct(state->arena, Game);
 		

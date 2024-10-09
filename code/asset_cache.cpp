@@ -2,74 +2,29 @@
 
 const Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
 
-// two things need to happen here. Caching font data, and caching glyphs
-
-// For font; it has hashed font binary data;
-struct A_Handle
-{
-	u64 m_u64;
-};
-
-struct A_FontCache
-{
-	A_Handle atlas;
-};
-
-struct A_GlyphCache
-{
-	A_Handle font;
-	R_Handle tex;
-	Glyph metrics;
-};
-
 struct A_TextureCache
 {
+	// used as hash link when in map, used as free list link when freed
+	A_TextureCache *next;
+	u64 key;
+	Str8 path;
 	R_Handle v;
-};
-
-enum A_AssetKind
-{
-	A_AssetKind_Null,
-	A_AssetKind_Font,
-	A_AssetKind_Glyph,
-	A_AssetKind_Texture,
-	A_AssetKind_COUNT
-};
-
-struct A_AssetCache
-{
-	A_AssetKind kind;
-	A_AssetCache* next;
-	Str8 key;
-	u64 hash;
+	b32 loaded;
 	u64 last_touched;
-	
-	union
-	{
-		A_FontCache fontCache;
-		A_GlyphCache glyphCache;
-		A_TextureCache textureCache;
-	};
 };
 
-struct A_AssetCacheSlot
+struct A_TextureCacheSlot
 {
-	A_AssetCache* first;
-	A_AssetCache* last;
-};
-
-struct A_AssetStore
-{
-	A_AssetCacheSlot* slots;
-	u32 num_slots;
+	A_TextureCache *first;
+	A_TextureCache *last;
 };
 
 struct A_State
 {
-	Arena* arena;
-	A_AssetStore stores[A_AssetKind_COUNT];
-	A_AssetCache* free;
-	
+	Arena *arena;
+	A_TextureCacheSlot *slots;
+	A_TextureCache *free;
+	u32 num_slots;
 	Str8 asset_dir;
 	u32 num_tex;
 	u64 tex_mem;
@@ -79,7 +34,7 @@ struct A_State
 	R_Handle alpha_bg_tex;
 };
 
-global A_State* a_state;
+global A_State *a_state;
 
 // you need to solve two more problems.
 // 1) freeing must happen next frame
@@ -87,29 +42,13 @@ global A_State* a_state;
 // Should I only free as many as required, or as many as can be? Batch alloc / dealloc is better, no? I need to test this with massive textures to understand.
 // 3) Lastly, all alloc and eviction must happen on separate thread
 
-function void a_init()
+void a_init()
 {
-	Arena* arena = arenaAlloc(100, Megabytes(1));
+	Arena *arena = arenaAlloc(100, Megabytes(1));
 	a_state = push_struct(arena, A_State);
 	a_state->arena = arena;
-	
-	{
-		A_AssetStore* cache = a_state->stores + A_AssetKind_Font;
-		cache->num_slots = 10;
-		cache->slots = push_array(arena, A_AssetCacheSlot, cache->num_slots);
-	}
-	
-	{
-		A_AssetStore* cache = a_state->stores + A_AssetKind_Texture;
-		cache->num_slots = 1024;
-		cache->slots = push_array(arena, A_AssetCacheSlot, cache->num_slots);
-	}
-	
-	{
-		A_AssetStore* cache = a_state->stores + A_AssetKind_Glyph;
-		cache->num_slots = 1024;
-		cache->slots = push_array(arena, A_AssetCacheSlot, cache->num_slots);
-	}
+	a_state->num_slots = 1;
+	a_state->slots = push_array(arena, A_TextureCacheSlot, a_state->num_slots); 
 	
 	ArenaTemp temp = scratch_begin(0, 0);
 	Str8 app_dir = os_getAppDir(temp.arena);
@@ -123,12 +62,11 @@ function void a_init()
 		0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
 		0xFF000000, 0xFFFF00FF, 0xFF000000, 0xFFFF00FF,
 		0xFFFF00FF, 0xFF000000, 0xFFFF00FF, 0xFF000000,
-	};
+	}; 
 	
 	a_state->checker_tex = r_allocTexture(checker, 4, 4, 4, &tiled_params);
 	
-	u32 alpha_bg[] = 
-	{
+	u32 alpha_bg[] = {
 		0xFF808080, 0xFFc0c0c0,
 		0xFFc0c0c0, 0xFF808080,
 	};
@@ -138,12 +76,12 @@ function void a_init()
 }
 
 // djb2
-function u64 a_hash(Str8 str)
+u64 a_hash(Str8 str)
 {
 	u64 hash = 5381;
 	int c;
 	
-	for (u32 i = 0; i < str.len; i++)
+	for(u32 i = 0; i < str.len; i++)
 	{
 		c = str.c[i];
 		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
@@ -152,100 +90,98 @@ function u64 a_hash(Str8 str)
 	return hash;
 }
 
-function A_AssetCache* a_allocAssetCache(A_AssetKind kind)
+A_TextureCache *a_allocTextureCache()
 {
-	A_AssetCache* out = a_state->free;
+	A_TextureCache *out = a_state->free;
 	
-	if (!out)
+	if(!out)
 	{
-		out = push_struct(a_state->arena, A_AssetCache);
+		out = push_struct(a_state->arena, A_TextureCache);
 	}
 	else
 	{
 		a_state->free = a_state->free->next;
 	}
 	*out = {};
-	out->kind = kind;
-	
 	return out;
 }
 
-function void a_freeAssetCache(A_AssetCache* ass)
+void a_freeTextureCache(A_TextureCache *tex)
 {
-	ass->next = a_state->free;
-	a_state->free = ass;
+	tex->next = a_state->free;
+	a_state->free = tex;
 }
 
-function void a_addToHash(A_AssetStore* store, A_AssetCache* cache)
+void a_addToHash(A_TextureCache *tex)
 {
-	u64 hash = cache->hash;
-	u64 slot = hash % store->num_slots;
+	u64 hash = tex->key;
+	u64 slot = hash % a_state->num_slots;
 	
-	if (store->slots[slot].last)
+	if(a_state->slots[slot].last)
 	{
-		store->slots[slot].last = store->slots[slot].last->next = cache;
+		a_state->slots[slot].last = a_state->slots[slot].last->next = tex;
 	}
 	else
 	{
-		store->slots[slot].last = store->slots[slot].first = cache;
+		a_state->slots[slot].last = a_state->slots[slot].first = tex;
 	}
 }
 
-function void a_evict(A_AssetKind kind)
+R_Handle a_getCheckerTex()
 {
-	A_AssetStore* store = a_state->stores + kind;
-	for (u32 i = 0; i < store->num_slots; i++)
+	return a_state->checker_tex;
+}
+
+R_Handle a_getAlphaBGTex()
+{
+	return a_state->alpha_bg_tex;
+}
+
+void a_evict()
+{
+	for(u32 i = 0; i < a_state->num_slots; i++)
 	{
-		A_AssetCache* first_hash = (store->slots + i)->first;
-		if (!first_hash)
+		A_TextureCache *first_hash = (a_state->slots + i)->first;
+		if(!first_hash)
 		{
 			continue;
 		}
-		if (first_hash)
+		if(first_hash)
 		{
-			A_AssetCache* cur = first_hash;
-			A_AssetCache* prev = 0;
-			while (cur)
+			A_TextureCache *cur = first_hash;
+			A_TextureCache *prev = 0;
+			while(cur)
 			{
-				if (cur->last_touched != a_state->frame_count)
+				if(cur->last_touched != a_state->frame_count)
 				{
-					printf("pruned %.*s\n", str8_varg(cur->key));
+					printf("pruned %.*s\n", str8_varg(cur->path));
+					--a_state->num_tex;
+					v2s tex_size = r_texSizeFromHandle(cur->v);
+					a_state->tex_mem -= tex_size.x * tex_size.y * 4; 
+					r_freeTexture(cur->v);
+					cur->loaded = 0;
 					
-					switch (kind)
+					if(prev)
 					{
-						default: INVALID_CODE_PATH();
-						case A_AssetKind_Texture:
+						prev->next = cur->next;
+						if (!cur->next)
 						{
-							--a_state->num_tex;
-							v2s tex_size = r_texSizeFromHandle(cur->textureCache.v);
-							a_state->tex_mem -= tex_size.x * tex_size.y * 4;
-							r_freeTexture(cur->textureCache.v);
-							
-							if (prev)
-							{
-								prev->next = cur->next;
-								if (!cur->next)
-								{
-									(store->slots + i)->last = prev;
-								}
-							}
-							else
-							{
-								(store->slots + i)->first = cur->next;
-								if (!cur->next)
-								{
-									(store->slots + i)->last = 0;
-								}
-							}
-							
-						}break;
+							(a_state->slots + i)->last = prev;
+						}
+					}
+					else
+					{
+						(a_state->slots + i)->first = cur->next;
+						if (!cur->next)
+						{
+							(a_state->slots + i)->last = 0;
+						}
 					}
 					
-					// free to_free
-					A_AssetCache* to_free = cur;
+					A_TextureCache *to_free = cur;
 					cur = cur->next;
-					a_freeAssetCache(to_free);
-					
+					a_freeTextureCache(to_free);
+					// free to_free
 				}
 				else
 				{
@@ -257,89 +193,61 @@ function void a_evict(A_AssetKind kind)
 	}
 }
 
-function R_Handle a_getCheckerTex()
+R_Handle a_handleFromPath(Str8 path)
 {
-	return a_state->checker_tex;
-}
-
-function R_Handle a_getAlphaBGTex()
-{
-	return a_state->alpha_bg_tex;
-}
-
-function A_AssetCache* a_assetCacheFromKey(A_AssetKind kind, Str8 key)
-{
-	A_AssetStore* store = a_state->stores + kind;
-	u64 hash = a_hash(key);
-	u64 slot = hash % store->num_slots;
+	u64 hash = a_hash(path);
+	u64 slot = hash % a_state->num_slots;
 	
-	A_AssetCache* cache = store->slots[slot].first;
+	A_TextureCache *tex_cache = a_state->slots[slot].first;
 	
-	while (cache)
+	while(tex_cache)
 	{
-		if (hash == cache->hash)
+		if(hash == tex_cache->key)
 		{
 			break;
 		}
-		cache = cache->next;
+		
+		tex_cache = tex_cache->next;
 	}
 	
-	if (!cache)
+	if(!tex_cache)
 	{
-		printf("Added %.*s\n", str8_varg(key));
+		printf("Added %.*s\n", str8_varg(path));
 		
-		cache = a_allocAssetCache(kind);
-		cache->hash = hash;
-		cache->key = key;
-		
-		switch (kind)
+		if(a_state->tex_mem > A_MAX_TEXTURE_MEM)
 		{
-			default: INVALID_CODE_PATH();
-			case A_AssetKind_Texture:
-			{
-				if (a_state->tex_mem > A_MAX_TEXTURE_MEM)
-				{
-					a_evict(A_AssetKind_Texture);
-				}
-				
-				ArenaTemp temp = scratch_begin(0, 0);
-				Str8 abs_path = str8_join(temp.arena, a_state->asset_dir, key);
-				
-				Bitmap bmp = bitmap(abs_path);
-				
-				// if bmp not found, use checkerboard art
-				if (bmp.data)
-				{
-					cache->textureCache.v = r_allocTexture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
-				}
-				else
-				{
-					cache->textureCache.v = a_getCheckerTex();
-				}
-				
-				a_state->tex_mem += bmp.w * bmp.h * 4;
-				++a_state->num_tex;
-				scratch_end(&temp);
-				
-			}break;
+			a_evict();
 		}
 		
-		a_addToHash(store, cache);
+		tex_cache = a_allocTextureCache();
+		ArenaTemp temp = scratch_begin(0, 0);
+		Str8 abs_path = str8_join(temp.arena, a_state->asset_dir, path);
+		Bitmap bmp = bitmap(abs_path);
+		
+		// if bmp not found, use checkerboard art
+		if(bmp.data)
+		{
+			tex_cache->v = r_allocTexture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
+		}
+		else
+		{
+			tex_cache->v = a_getCheckerTex();
+		}
+		
+		tex_cache->key = hash;
+		tex_cache->loaded = 1;
+		
+		a_addToHash(tex_cache);
+		
+		scratch_end(&temp);
+		a_state->tex_mem += bmp.w * bmp.h * 4; 
+		++a_state->num_tex;
 	}
 	
 	a_state->frame_count++;
-	cache->last_touched = a_state->frame_count;
-	
-	return cache;
-	//R_Handle out = tex_cache->textureCache.v;
-	//return out;
-}
-
-function R_Handle a_handleFromPath(Str8 path)
-{
-	R_Handle out = {};
-	out = a_assetCacheFromKey(A_AssetKind_Texture, path)->textureCache.v;
-	
+	tex_cache->last_touched = a_state->frame_count;
+	tex_cache->path = path;
+	R_Handle out = tex_cache->v;
 	return out;
 }
 

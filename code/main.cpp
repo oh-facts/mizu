@@ -2,19 +2,19 @@
 
 int main(int argc, char **argv)
 {
-	OS_Api os_api = os_get_api();
+	OS_Api os_api = os_getApi();
 	os_api_init(&os_api);
 	
-	Arena *arena = arena_create();
+	Arena *arena = arenaAlloc();
 	void *memory = push_struct(arena, State);
 	State *state = (State *)memory;
 	state->argc = argc;
 	state->argv = argv;
 	state->arena = arena;
-	state->trans = arena_create();
+	state->trans = arenaAlloc();
 	state->os_api = os_api;
 	
-	Str8 app_dir = os_get_app_dir(arena);
+	Str8 app_dir = os_getAppDir(arena);
 	
 	state->app_dir = app_dir;
 	
@@ -28,8 +28,8 @@ int main(int argc, char **argv)
 	
 	load_game_dll(&state->hr, "update_and_render");
 	
-	u64 start = os_get_perf_counter();
-	u64 freq = os_get_perf_freq();
+	u64 start = os_getPerfCounter();
+	u64 freq = os_getPerfFreq();
 	
 	f64 time_elapsed = 0;
 	f64 delta = 0;
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 		
 		((update_and_render_fn)state->hr.entry)(memory, delta);
 		
-		u64 end = os_get_perf_counter();
+		u64 end = os_getPerfounter();
 		time_elapsed = (double)(end - start) / freq;
 		
 		delta = time_elapsed - time_since_last;

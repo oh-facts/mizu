@@ -43,32 +43,6 @@ enum
 
 typedef int ED_TabFlags;
 
-enum
-{
-	ED_TabFlags_Custom = 1 << 0,
-};
-
-enum ED_TabKind
-{
-	ED_TabKind_Custom,
-	ED_TabKind_ModelViewer,
-	
-	ED_TabKind_TileSetViewer,
-	ED_TabKind_Inspector,
-	ED_TabKind_Debug,
-	ED_TabKind_COUNT,
-};
-
-global char *tab_names[ED_TabKind_COUNT] =
-{
-	"Custom",
-	"Model viewer",
-	
-	"tileset",
-	"inspector",
-	"debug"
-};
-
 struct ED_Window;
 struct ED_Panel;
 struct ED_Tab;
@@ -82,7 +56,6 @@ struct ED_Tab
 	ED_Tab *prev;
 	ED_Panel *parent;
 	
-	ED_TabKind kind;
 	Str8 name;
 	
 	ED_Tab *inspector;
@@ -276,7 +249,7 @@ function ED_Panel *ed_openPanel(ED_Window *window, Axis2 axis, f32 pct_of_parent
 	return out;
 }
 
-function ED_Tab *ed_openTab(ED_Panel *panel, ED_TabKind kind, v2f size = {{960, 540}})
+function ED_Tab *ed_openTab(ED_Panel *panel, char *name, v2f size = {{960, 540}})
 {
 	ED_Tab *out = push_struct(ed_state->arena, ED_Tab);
 	*out = {};
@@ -292,16 +265,11 @@ function ED_Tab *ed_openTab(ED_Panel *panel, ED_TabKind kind, v2f size = {{960, 
 	}
 	
 	out->parent = panel;
-	out->kind = kind;
 	
 	//v2f size = ed_size_of_panel(panel);
-	if(kind == ED_TabKind_Custom)
-	{
-		out->target = r_allocFramebuffer(size.x, size.y);
-	}
+	out->target = r_allocFramebuffer(size.x, size.y);
 	
-	
-	out->name = push_str8f(ed_state->arena, tab_names[kind]);
+	out->name = push_str8f(ed_state->arena, name);
 	
 	panel->active_tab = out;
 	
@@ -575,12 +543,15 @@ function void ed_update(f32 delta)
 							
 							ED_Tab *tab = panel->active_tab;
 							
+							tab->custom_draw(window, tab, delta, tab->custom_drawData);
+							
+							/*
 							switch(tab->kind)
 							{
 								default: INVALID_CODE_PATH();
 								case ED_TabKind_Custom:
 								{
-									tab->custom_draw(window, tab, delta, tab->custom_drawData);
+									
 								}break;
 																
 								case ED_TabKind_TileSetViewer:
@@ -668,46 +639,9 @@ function void ed_update(f32 delta)
 										}
 									}
 								}break;
+	
 								
-								case ED_TabKind_Debug:
-								{
-									tab->update_timer += delta;
-									if(tab->update_timer > 1.f)
-									{
-										tab->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
-										tab->ft = delta;
-										tab->update_timer = 0;
-									}
-									
-									ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-									{
-										if(ui_labelf(window->cxt, "cc : %.f K", tab->cc).active)
-										{
-											printf("pressed\n");
-										}
-										
-										ui_labelf(window->cxt, "ft : %.fms", tab->ft * 1000);
-										ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
-										ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
-										ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
-										
-										for(u32 i = 0; i < 2; i++)
-										{
-											ED_Window *w = ed_state->windows + i;
-											ui_labelf(window->cxt, "[%.f %.f]", w->pos.x, w->pos.y);
-										}
-									}
-									
-									R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
-									
-									ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-										ui_pref_size(window->cxt, 100)
-									{
-										ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
-									}
-								}break;
-								
-							}
+							}*/
 						}
 					}
 				}

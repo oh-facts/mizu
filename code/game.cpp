@@ -566,6 +566,54 @@ function ED_CUSTOM_TAB(lister_panel)
 	}
 }
 
+function ED_CUSTOM_TAB(profiler_panel)
+{
+	d_push_target(tab->target);
+	tab->update_timer += delta;
+	if(tab->update_timer > 1.f)
+	{
+		tab->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
+		tab->ft = delta;
+		tab->update_timer = 0;
+	}
+
+	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	{
+		if(ui_labelf(window->cxt, "cc : %.f K", tab->cc).active)
+		{
+			printf("pressed\n");
+		}
+		
+		ui_labelf(window->cxt, "ft : %.fms", tab->ft * 1000);
+		ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
+		ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
+		ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
+		
+		for(u32 i = 0; i < 2; i++)
+		{
+			ED_Window *w = ed_state->windows + i;
+			ui_labelf(window->cxt, "[%.f %.f]", w->pos.x, w->pos.y);
+		}
+	}
+
+	R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
+
+	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+		ui_pref_size(window->cxt, 100)
+	{
+		ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
+	}
+	d_pop_target();
+
+	v2s size = r_texSizeFromHandle(tab->target);
+	ui_pref_width(window->cxt, size.x)
+	ui_pref_height(window->cxt, size.y)
+	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+	{
+		ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+	}
+}
+
 function ED_CUSTOM_TAB(game_update_and_render)
 {
 	Game *game = (Game*)(user_data); 
@@ -580,15 +628,18 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		ED_Window *test = ed_openWindow(ED_WindowFlags_HasSurface, v2f{{1230, 50}}, v2f{{400,800}});
 		
 		ED_Panel *panel2 = ed_openPanel(test, Axis2_X, 1);
-		ed_openTab(panel2, ED_TabKind_Debug);
-		
+		{
+			ED_Tab *debug_tab = ed_openTab(panel2, "Profiler");
+			debug_tab->custom_draw = profiler_panel;
+		}
 		// lister tab
-		ED_Tab *tab = ed_openTab(panel2, ED_TabKind_Custom, {{400, 800}});
-		tab->custom_draw = lister_panel;
-		
-		Lister *lister = push_struct(game->arena, Lister);
-		lister->game = game;
-		tab->custom_drawData = lister;
+		{
+			ED_Tab *lister_tab = ed_openTab(panel2, "Lister", {{400, 800}});
+			lister_tab->custom_draw = lister_panel;
+			Lister *lister = push_struct(game->arena, Lister);
+			lister->game = game;
+			lister_tab->custom_drawData = lister;
+		}
 	}
 	
 	b32 restart = 0;
@@ -603,9 +654,9 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		{
 			R_Handle pause_play = a_handleFromPath(str8_lit("editor/pause_play.png"));
-			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.5, 1), D_COLOR_WHITE, "restart").active;
+			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.5, 1), ED_THEME_TEXT, "restart").active;
 			
-			game->paused = ui_imagef(window->cxt, pause_play, rect(0.5, 0, 1, 1), D_COLOR_WHITE, "paused").toggle;
+			game->paused = ui_imagef(window->cxt, pause_play, rect(0.5, 0, 1, 1), ED_THEME_TEXT, "paused").toggle;
 		}
 	}
 	
