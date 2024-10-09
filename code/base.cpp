@@ -598,39 +598,6 @@ function m4f m4f_make_rot_z(f32 rad)
 	};
 }
 
-function m4f m4f_translate(m4f m, v3f v)
-{
-	m4f out = m;
-	
-	out.e[3][0] = v.x;
-	out.e[3][1] = v.y;
-	out.e[3][2] = v.z;
-	
-	return out;
-}
-
-function m4f m4f_scale(m4f m, v3f v)
-{
-	m4f out = m;
-	
-	out.e[0][0] = v.x;
-	out.e[1][1] = v.y;
-	out.e[2][2] = v.z;
-	
-	return out;
-}
-
-function m4f m4f_rot(m4f m, v3f v)
-{
-	m4f out = m;
-	
-	out.e[0][0] = v.x;
-	out.e[1][1] = v.y;
-	out.e[2][2] = v.z;
-	
-	return out;
-}
-
 function m4f_ortho_proj m4f_ortho(f32 left,f32 right,f32 bottom, f32 top, f32 _near, f32 _far)
 {
 	f32 rpl = right + left;
@@ -692,54 +659,6 @@ function m4f operator*(m4f a, m4f b)
 	}
 	
 	return out;
-}
-
-union quat
-{
-	struct
-	{
-		f32 r,i,j,k;
-	};
-	
-	struct
-	{
-		f32 x,y,z,w;
-	};
-	
-	f32 e[4];
-};
-
-function quat operator*(quat x, quat y)
-{
-	return (quat)
-	{
-		.r = x.r * y.r - x.i * y.i - x.j * y.j - x.k * y.k,
-		.i = x.r * y.i + x.i * y.r + x.j * y.k - x.k * y.j,
-		.j = x.r * y.j - x.i * y.k + x.j * y.r + x.k * y.i,
-		.k = x.r * y.k + x.i * y.j - x.j * y.i + x.k * y.r
-	};
-}
-
-function m4f quat_to_matrix(quat q) 
-{
-	f32 xx = q.i * q.i;
-	f32 yy = q.j * q.j;
-	f32 zz = q.k * q.k;
-	f32 xy = q.i * q.j;
-	f32 xz = q.i * q.k;
-	f32 yz = q.j * q.k;
-	f32 wx = q.r * q.i;
-	f32 wy = q.r * q.j;
-	f32 wz = q.r * q.k;
-	
-	return (m4f) {
-		{
-			{1 - 2 * (yy + zz), 2 * (xy - wz),     2 * (xz + wy),     0},
-			{2 * (xy + wz),     1 - 2 * (xx + zz), 2 * (yz - wx),     0},
-			{2 * (xz - wy),     2 * (yz + wx),     1 - 2 * (xx + yy), 0},
-			{0,                 0,                 0,                 1}
-		}
-	};
 }
 
 #define str8_varg(S) (int)((S).len), ((S).c)

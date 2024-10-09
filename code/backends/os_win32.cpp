@@ -59,13 +59,3 @@ function Str8 os_win32_getAppDir(Arena *arena)
 	
 	return out;
 }
-
-function OS_Api os_win32_getApi()
-{
-	OS_Api out = {};
-	out.os_reserve = os_win32_reserve;
-	out.os_commit = os_win32_commit;
-	out.os_decommit = os_win32_decommit;
-	out.os_release = os_win32_release;
-	return out;
-}

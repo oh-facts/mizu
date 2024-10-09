@@ -1,8 +1,4 @@
 /* date = August 6th 2024 10:51 pm */
-
-#ifndef CONTEXT_CRACKING_H
-#define CONTEXT_CRACKING_H
-
 #if defined(_WIN32)
 #define OS_WIN32
 #elif defined (__linux__)
@@ -89,24 +85,9 @@ typedef int32_t b32;
 
 // not super happy with this, know no other way
 
-typedef void *(*os_reserve_fn)(u64 size);
-typedef b32 (*os_commit_fn)(void *ptr, u64 size);
-typedef void (*os_decommit_fn)(void *ptr, u64 size);
-typedef void (*os_release_fn)(void *ptr, u64 size);
-
-global os_reserve_fn os_reserve;
-global os_commit_fn os_commit;
-global os_decommit_fn os_decommit;
-global os_release_fn os_release;
+function void *os_reserve(u64 size);
+function b32 os_commit(void *ptr, u64 size);
+function void os_decommit(void *ptr, u64 size);
+function void os_release(void *ptr, u64 size);
 
 function u64 os_getPageSize();
-
-struct OS_Api
-{
-	os_reserve_fn os_reserve;
-	os_commit_fn os_commit;
-	os_decommit_fn os_decommit;
-	os_release_fn os_release;
-};
-
-#endif //BASE_CONTEXT_CRACKING_H

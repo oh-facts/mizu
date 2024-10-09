@@ -395,75 +395,6 @@ void main()
 )"
 ;
 
-// mesh shader
-
-global char *r_vs_mesh_src =
-R"(
-#version 450 core
-
-struct Vertex 
-{
-	vec3 pos;
-	float uv_x;
-	vec3 norm;
-	float uv_y;
-	vec4 color;
-};
-
-layout (std430, binding = 0) buffer ssbo 
-{
-	Vertex vertices[];
-};
-
-layout (std430, binding = 1) buffer ssbo1 
-{
-	mat4 proj_view;
-	mat4 model;
-	uvec2 sprite_id;
-	uvec2 pad;
-};
-
-out vec3 a_norm;
-out vec2 a_tex;
-flat out uvec2 a_sprite_id;
-out vec4 a_color;
-void main()
-{
-	Vertex vtx = vertices[gl_VertexID];
-	a_norm = vtx.norm;
-	a_tex.x = vtx.uv_x;
-	a_tex.y = vtx.uv_y;
-	a_sprite_id = sprite_id;
-	a_color = vtx.color;
-
-	gl_Position = vec4(vtx.pos, 1) *  model * proj_view;
-}
-
-)"
-;
-
-global char* r_fs_mesh_src = 
-R"(
-#version 450 core
-#extension GL_ARB_bindless_texture: require
-
-out vec4 FragColor;
-in vec3 a_norm;
-in vec2 a_tex;
-flat in uvec2 a_sprite_id;
-in vec4 a_color;
-void main() 
-{
-	vec4 tex_col = texture(sampler2D(a_sprite_id), a_tex);
-
-	//FragColor = a_color;
-	FragColor = tex_col;
-	//FragColor = vec4(a_tex.x, a_tex.y, 0, 1);
-}
-
-)"
-;
-
 /*
  
 vec4 linear_to_srgb(vec4 linearCol) {
@@ -716,10 +647,7 @@ function void r_opengl_init()
 	
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_makeShaderProgram(r_vs_ui_src, r_fs_ui_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_makeBuffer(Megabytes(8));
-	
-	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH] = r_opengl_makeShaderProgram(r_vs_mesh_src, r_fs_mesh_src);
-	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH] = r_opengl_makeBuffer(Megabytes(8));
-	
+		
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE] = r_opengl_makeShaderProgram(r_vs_sprite_src, r_fs_sprite_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE] = r_opengl_makeBuffer(Megabytes(8));
 }

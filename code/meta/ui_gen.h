@@ -51,7 +51,7 @@ UI_##Name##_node *free;\
 b32 auto_pop;\
 }name##_stack;
 
-#define num_stacks 15
+#define num_stacks 16
 static Stacks stacks[num_stacks] =
 {
 	{"Parent", "parent", "UI_Widget*"},
@@ -62,6 +62,7 @@ static Stacks stacks[num_stacks] =
 	{"Color", "border_color", "v4f"},
 	{"float_value", "border_thickness", "f32"},
 	{"float_value", "radius", "f32"},
+ {"float_value", "scale", "f32"},
 	
 	{"Pref_width", "pref_width", "f32"},
 	{"Pref_height", "pref_height", "f32"},

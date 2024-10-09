@@ -191,12 +191,11 @@ function void ed_drawSpritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
 	}
 }
 
-function ED_State *ed_alloc()
+function void ed_init()
 {
 	Arena *arena = arenaAlloc();
-	ED_State *state = push_struct(arena, ED_State);
-	state->arena = arena;
-	return state;
+	ed_state = push_struct(arena, ED_State);
+	ed_state->arena = arena;
 }
 
 function ED_Window *ed_openWindow(ED_WindowFlags flags, v2f pos, v2f size)
@@ -306,15 +305,7 @@ function void ed_drawChildren(ED_Panel *panel, UI_Widget *root)
 		{
 			color = root->color;
 		}
-		
-		D_Text_params params = 
-		{
-			color,
-			d_state->default_text_params.scale,
-			d_state->default_text_params.atlas,
-			d_state->default_text_params.atlas_tex,
-		};
-		
+
 		v2f pos = root->pos;
 		
 #if 0
@@ -334,7 +325,7 @@ function void ed_drawChildren(ED_Panel *panel, UI_Widget *root)
 		pos.y = top_left.tl.y;
 		pos.x = top_left.tl.x + 4;
 #endif
-		d_text(root->text, pos , &params);
+		d_text(root->text, pos, color, root->scale);
 	}
 	
 	ED_Tab *tab = panel->active_tab;
@@ -522,7 +513,6 @@ function void ed_update(f32 delta)
 					
 					if(!(window->flags & ED_WindowFlags_Hidden))
 					{
-						
 						// tab list
 						for(ED_Panel *panel = window->first_panel; panel; panel = panel->next)
 						{
@@ -544,104 +534,6 @@ function void ed_update(f32 delta)
 							ED_Tab *tab = panel->active_tab;
 							
 							tab->custom_draw(window, tab, delta, tab->custom_drawData);
-							
-							/*
-							switch(tab->kind)
-							{
-								default: INVALID_CODE_PATH();
-								case ED_TabKind_Custom:
-								{
-									
-								}break;
-																
-								case ED_TabKind_TileSetViewer:
-								{
-									struct spritesheet
-									{
-										Str8 path;
-										s32 x;
-										s32 y;
-									};
-									
-									read_only spritesheet sheets[] = {
-										{str8_lit("fox/fox.png"), 3, 2},
-										{str8_lit("impolo/impolo-east.png"), 3, 3},
-										{str8_lit("tree/trees.png"), 3, 1},
-										{str8_lit("grass/grass_tile.png"), 3, 3}
-									};
-									
-									for(s32 i = 0; i < 2; i++)
-									{
-										ui_row(window->cxt)
-										{
-											for(s32 j = 0; j < 2; j++)
-											{
-												s32 index = i*2 + j;
-												ed_drawSpritesheet(tab, sheets[index].x, sheets[index].y, sheets[index].path);
-												
-												ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-													ui_pref_width(window->cxt, 45)
-												{
-													ui_spacer(window->cxt);
-												}
-											}
-											
-										}
-									}
-								}break;
-								
-								case ED_TabKind_Inspector:
-								{
-									if(tab->selected_tile.len > 0)
-									{
-										ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-										{
-											ui_labelf(window->cxt, "%.*s", str8_varg(tab->selected_tile));
-											
-											ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-												ui_pref_size(window->cxt, 100)
-											{
-												R_Handle img = a_handleFromPath(tab->selected_tile);
-												
-												tab->selected_slot = ui_image(window->cxt, img, tab->selected_tile_rect, hsva_to_rgba(tab->hsva), str8_lit("inspector window image")).widget;
-											}
-											
-											ui_labelf(window->cxt, "[%.2f, %.2f]", rect_tl_varg(tab->selected_tile_rect));
-											ui_labelf(window->cxt, "[%.2f, %.2f]", rect_br_varg(tab->selected_tile_rect));
-											
-											ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-												ui_pref_size(window->cxt, 360)
-											{
-												ui_sat_picker(window->cxt, tab->hsva.x, &tab->hsva.y, &tab->hsva.z, str8_lit("sat picker thing"));
-												
-												ui_pref_height(window->cxt, 10)
-												{
-													ui_spacer(window->cxt);
-												}
-												
-												ui_pref_height(window->cxt, 40)
-												{
-													ui_hue_picker(window->cxt, &tab->hsva.x, str8_lit("hue picker thing"));
-													
-													ui_alpha_picker(window->cxt, tab->hsva.xyz, &tab->hsva.w, str8_lit("alpha picker thing"));
-												}
-											}
-											
-											s32 hue = tab->hsva.x;
-											s32 sat = tab->hsva.y * 100;
-											s32 val = tab->hsva.z * 100;
-											
-											ui_labelf(window->cxt, "hsv: %d, %d%, %d%", hue, sat, val);
-											
-											v4f rgba = hsva_to_rgba(tab->hsva);
-											
-											ui_labelf(window->cxt, "rgb: %.2f, %.2f, %.2f, %.2f", v4f_varg(rgba));
-										}
-									}
-								}break;
-	
-								
-							}*/
 						}
 					}
 				}

@@ -14,15 +14,6 @@
 #define D_COLOR_THEME_2 (v4f){{0.03, 0.02, 0.03,1}}
 #define D_COLOR_THEME_3 (v4f){{0.21044,0.02368,0.06198,1}}
 
-// TODO(mizu): bad. needs to go
-struct D_Text_params
-{
-	v4f color;
-	f32 scale;
-	Atlas *atlas;
-	R_Handle *atlas_tex;
-};
-
 // TODO(mizu): make the gen produce a header and src file
 struct D_Proj_view_node;
 struct D_Target_node;
@@ -46,7 +37,6 @@ struct D_State
 	Arena *arena;
 	R_Handle white_square;
 	D_Bucket *top;
-	D_Text_params default_text_params;
 	ArenaTemp temp;
 };
 
@@ -66,13 +56,6 @@ function void d_init()
 function void d_begin()
 {
 	d_state->temp = arenaTempBegin(d_state->arena);
-	d_state->default_text_params =
-	(D_Text_params){
-		(v4f){{1,1,1,1}},
-		FONT_SIZE,
-		&font->atlas,
-		font->atlas_tex
-	};
 }
 
 function void d_end()
@@ -183,11 +166,11 @@ function inline R_Sprite *d_spriteCenter(v2f pos, v2f size, v4f color)
 	return d_sprite(rect(pos - size / 2, size), color);
 }
 
-function void d_text(Str8 text, v2f pos, D_Text_params *p)
+function void d_text(Str8 text, v2f pos, v4f color, f32 scale)
 {
 	D_Bucket *bucket = d_state->top;
 	
-	Rect ex = ui_rectFromString(p->atlas->glyphs, text, p->scale);
+	Rect ex = rectFromString(text, scale);
 	
 	v2f text_pos = pos;
 	text_pos.y += ex.tl.y;
@@ -197,23 +180,23 @@ function void d_text(Str8 text, v2f pos, D_Text_params *p)
 	{
 		char c = text.c[i];
 		
-		Glyph *ch = glyphFromCodepoint(p->atlas, c);
-		f32 xpos = text_pos.x + ch->bearing.x * p->scale;
+		Glyph *ch = glyphFromCodepoint(&font->atlas, c);
+		f32 xpos = text_pos.x + ch->bearing.x * scale;
 		
-		f32 ypos = text_pos.y + (ch->bearing.y - (ch->y1 + ch->y0)) * p->scale;
+		f32 ypos = text_pos.y + (ch->bearing.y - (ch->y1 + ch->y0)) * scale;
 		
-		f32 w = (ch->x1 - ch->x0) * p->scale;
-		f32 h = (ch->y1 - ch->y0) * p->scale;
+		f32 w = (ch->x1 - ch->x0) * scale;
+		f32 h = (ch->y1 - ch->y0) * scale;
 		
 		//width += ch->advance * p->scale;
 		
 		if(c == ' ')
 		{
-			text_pos.x += ch->advance * p->scale;
+			text_pos.x += ch->advance * scale;
 			continue;
 		}
 		
-		text_pos.x += ch->advance * p->scale;
+		text_pos.x += ch->advance * scale;
 		
 		R_Pass *pass = d_pushPass(d_state->arena, bucket, R_PASS_KIND_UI);
 		R_Rect *rect = r_pushBatch(d_state->arena, &pass->rect_pass.rects, R_Rect);
@@ -229,14 +212,14 @@ function void d_text(Str8 text, v2f pos, D_Text_params *p)
 		rect->src.br.x = 1;
 		rect->src.br.y = 1;
 		
-		rect->fade[Corner_00] = p->color;
-		rect->fade[Corner_01] = p->color;
-		rect->fade[Corner_10] = p->color;
-		rect->fade[Corner_11] = p->color;
+		rect->fade[Corner_00] = color;
+		rect->fade[Corner_01] = color;
+		rect->fade[Corner_10] = color;
+		rect->fade[Corner_11] = color;
 		
-		rect->tex = p->atlas_tex[(u32)c];
+		rect->tex = font->atlas_tex[(u32)c];
 		
-		rect->border_color = p->color;
+		rect->border_color = color;
 		rect->radius = 0;
 		rect->border_thickness = -2;
 	}

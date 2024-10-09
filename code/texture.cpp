@@ -250,31 +250,3 @@ R_Handle a_handleFromPath(Str8 path)
 	R_Handle out = tex_cache->v;
 	return out;
 }
-
-function Rect ui_rectFromString(Glyph* atlas, Str8 text, f32 scale)
-{
-	Rect out = {};
-	
-	for (u32 i = 0; i < text.len; i++)
-	{
-		char c = text.c[i];
-		
-		Glyph ch = *(atlas + (u32)c);
-		
-		if (out.tl.y < ch.y1 && c != ' ')
-		{
-			out.tl.y = ch.y1;
-		}
-		if (out.br.y > ch.y0 && c != ' ')
-		{
-			out.br.y = ch.y0;
-		}
-		
-		out.br.x += ch.advance;
-	}
-	
-	out.tl *= scale;
-	out.br *= scale;
-	
-	return out;
-}

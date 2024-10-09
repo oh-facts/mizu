@@ -82,8 +82,9 @@ struct UI_Widget
 	UI_Flags flags;
 	R_Handle img;
 	Str8 text;
+	f32 scale;
 	UI_Size pref_size[Axis2_COUNT];
-	
+
 	v4f color;
 	v4f bg_color;
 	v4f hover_color;
@@ -230,6 +231,7 @@ function UI_Context *ui_allocCxt()
 	ui_push_fixed_pos(cxt, v2f{{0,0}});
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
 	ui_push_align_kind_x(cxt, UI_AlignKind_Left);
+	ui_push_scale(cxt, FONT_SIZE);
 	
 	cxt->frames = 0;
 	
@@ -365,8 +367,9 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 	widget->border_color = cxt->border_color_stack.top->v;
 	widget->border_thickness = cxt->border_thickness_stack.top->v;
 	widget->radius = cxt->radius_stack.top->v;
+	widget->scale = cxt->scale_stack.top->v;
 	
-	Rect extent = ui_rectFromString(font->atlas.glyphs, text, FONT_SIZE);
+	Rect extent = rectFromString(text, widget->scale);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
 	
@@ -989,6 +992,8 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 #define ui_pref_size(cxt, v) ui_pref_width(cxt, v) ui_pref_height(cxt, v)
 
 #define ui_align_kind_x(cxt, v) UI_DeferLoop(ui_push_align_kind_x(cxt, v), ui_pop_align_kind_x(cxt))
+
+#define ui_scale(cxt, v) UI_DeferLoop(ui_push_scale(cxt, v), ui_pop_scale(cxt))
 
 function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)
 {

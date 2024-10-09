@@ -1,6 +1,6 @@
 // Style Structs
 
-//2024-10-06 13:37:02
+//2024-10-09 19:26:47
 
 struct UI_Parent_node
 {
@@ -113,6 +113,12 @@ struct\
 	UI_float_value_node *free;\
 	b32 auto_pop;\
 }radius_stack;\
+;struct\
+{\
+	UI_float_value_node *top;\
+	UI_float_value_node *free;\
+	b32 auto_pop;\
+}scale_stack;\
 ;struct\
 {\
 	UI_Pref_width_node *top;\

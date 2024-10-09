@@ -1,6 +1,6 @@
 //Alloc nodes
 
-//2024-10-06 13:37:02
+//2024-10-09 19:26:47
 
 function UI_Parent_node *ui_alloc_parent_node(UI_Context *cxt)
 {
@@ -106,6 +106,20 @@ function UI_float_value_node *ui_alloc_radius_node(UI_Context *cxt)
 	if(node)
 	{
 		cxt->radius_stack.free = cxt->radius_stack.free->next;
+		*node = {};
+	}
+	else
+	{
+		node = push_struct(cxt->arena, UI_float_value_node);
+	}
+	return node;
+}
+function UI_float_value_node *ui_alloc_scale_node(UI_Context *cxt)
+{
+	UI_float_value_node *node = cxt->scale_stack.free;
+	if(node)
+	{
+		cxt->scale_stack.free = cxt->scale_stack.free->next;
 		*node = {};
 	}
 	else
@@ -253,6 +267,11 @@ function void ui_free_radius_node(UI_Context *cxt, UI_float_value_node *node)
 {
 	node->next = cxt->radius_stack.free;
 	cxt->radius_stack.free = node;
+}
+function void ui_free_scale_node(UI_Context *cxt, UI_float_value_node *node)
+{
+	node->next = cxt->scale_stack.free;
+	cxt->scale_stack.free = node;
 }
 function void ui_free_pref_width_node(UI_Context *cxt, UI_Pref_width_node *node)
 {
@@ -408,6 +427,21 @@ function void ui_push_radius(UI_Context *cxt, f32 val)
 	{
 		node->next = cxt->radius_stack.top;
 		cxt->radius_stack.top = node;
+	}
+}
+
+function void ui_push_scale(UI_Context *cxt, f32 val)
+{
+	UI_float_value_node *node = ui_alloc_scale_node(cxt);
+	node->v = val;
+	if (!cxt->scale_stack.top)
+	{
+		cxt->scale_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->scale_stack.top;
+		cxt->scale_stack.top = node;
 	}
 }
 
@@ -646,6 +680,22 @@ function void ui_set_next_radius(UI_Context *cxt, f32 val)
 	cxt->radius_stack.auto_pop = 1;
 }
 
+function void ui_set_next_scale(UI_Context *cxt, f32 val)
+{
+	UI_float_value_node *node = ui_alloc_scale_node(cxt);
+	node->v = val;
+	if (!cxt->scale_stack.top)
+	{
+		cxt->scale_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->scale_stack.top;
+		cxt->scale_stack.top = node;
+	}
+	cxt->scale_stack.auto_pop = 1;
+}
+
 function void ui_set_next_pref_width(UI_Context *cxt, f32 val)
 {
 	UI_Pref_width_node *node = ui_alloc_pref_width_node(cxt);
@@ -814,6 +864,13 @@ function void ui_pop_radius(UI_Context *cxt)
 	UI_float_value_node *pop = cxt->radius_stack.top;
 	cxt->radius_stack.top = cxt->radius_stack.top->next;
 	ui_free_radius_node(cxt, pop);
+}
+
+function void ui_pop_scale(UI_Context *cxt)
+{
+	UI_float_value_node *pop = cxt->scale_stack.top;
+	cxt->scale_stack.top = cxt->scale_stack.top->next;
+	ui_free_scale_node(cxt, pop);
 }
 
 function void ui_pop_pref_width(UI_Context *cxt)
