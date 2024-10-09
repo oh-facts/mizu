@@ -24,6 +24,7 @@ int main(int argc, char **argv)
 	state->hr.path = str8_join(arena, app_dir, dll_rel_path);
 	push_struct(arena, u8);
 	state->hr.cloned_path = str8_join(arena, app_dir, dll_clone_rel_path);
+	push_struct(arena, u8);
 	
 	load_game_dll(&state->hr, "update_and_render");
 	

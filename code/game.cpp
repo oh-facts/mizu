@@ -1,137 +1,7 @@
 /* date = September 27th 2024 4:22 pm */
-typedef u32 EntityFlags;
 
-enum
-{
-	EntityFlags_Control = 1 << 0,
-	EntityFlags_Follow = 1 << 1,
-	EntityFlags_Friendly = 1 << 2,
-	EntityFlags_Enemy = 1 << 3,
-	EntityFlags_Dead = 1 << 4,
-	EntityFlags_Dynamic = 1 << 5,
-	EntityFlags_Static = 1 << 6,
-	
-};
-
-#define EntityFlags_Physics (EntityFlags_Static | EntityFlags_Dynamic)
-
-enum Art
-{
-	ArtKind_Null,
-	ArtKind_Fox,
-	ArtKind_Impolo,
-	ArtKind_Trees,
-	ArtKind_COUNT
-};
-
-global Str8 art_paths[ArtKind_COUNT] = 
-{
-	str8_lit(""),
-	str8_lit("fox/fox.png"),
-	str8_lit("impolo/impolo-east.png"),
-	str8_lit("tree/trees.png"),
-};
-
-struct Entity;
-struct EntityHandle
-{
-	u64 gen;
-	Entity *v;
-};
-
-struct Entity
-{
-	Str8 name;
-	u64 gen;
-	
-	EntityFlags flags;
-	v2f pos;
-	v2f old_pos;
-	v2f size;
-	s32 layer;
-	v2f mv;
-	
-	f32 speed;
-	f32 health;
-	f32 max_health;
-	f32 damage;
-	
-	v4f tint;
-	
-	Art art;
-	s32 x;
-	s32 y;
-	s32 n;
-	v2f basis;
-	
-	b2BodyId body;
-	b2Polygon box;
-	b2Capsule caps;
-	
-	EntityHandle target;
-	Entity *next;
-};
-
-function Entity *entityFromHandle(EntityHandle handle)
-{
-	Entity *out = 0;
-	
-	if(handle.v && handle.gen == handle.v->gen)
-	{
-		out = handle.v;
-	}
-	
-	return out;
-}
-
-function EntityHandle handleFromEntity(Entity *entity)
-{
-	EntityHandle out = {};
-	out.v = entity;
-	out.gen = entity->gen;
-	return out;
-}
-
-#define MAX_ENTITIES 100
-
-struct EntityStore
-{
-	Entity entities[MAX_ENTITIES];
-	s32 num_entities;
-	
-	Entity *free;
-};
-
-function Entity *entity_alloc(EntityStore *store, EntityFlags flags)
-{
-	Entity *out = store->free;
-	
-	if(!out)
-	{
-		out = store->entities + store->num_entities++;
-	}
-	
-	*out = {};
-	
-	out->flags = flags;
-	out->gen ++;
-	
-	return out;
-}
-
-function void entity_free(EntityStore *store, EntityHandle handle)
-{
-	handle.v->gen++;
-	if(!store->free)
-	{
-		store->free = handle.v;
-	}
-	else
-	{
-		handle.v->next = store->free;
-		store->free = handle.v;
-	}
-}
+// TODO(mizu): Clean up this file
+// Have a temp arena to save start checkpoint
 
 #define WORLD_UP (v3f){{0,1,0}}
 #define WORLD_FRONT (v3f){{0,0,-1}}
@@ -627,7 +497,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		game->start = 1;
 		
 		Entity *py = entity_alloc(store, EntityFlags_Control | EntityFlags_Dynamic);
-		py->pos = {{591, 348}};
+		py->pos = {{614, 408}};
 		py->size = {{64, 64}};
 		py->tint = D_COLOR_WHITE;
 		py->art = ArtKind_Impolo;
@@ -673,7 +543,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		
 		{
 			b2BodyDef bodyDef = b2DefaultBodyDef();
-			bodyDef.type = b2_dynamicBody;
+			bodyDef.type = b2_kinematicBody;
 			bodyDef.position = (b2Vec2){fox->pos.x, fox->pos.y};
 			fox->body = b2CreateBody(game->world, &bodyDef);
 			b2MassData mass = {};
@@ -699,7 +569,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		cam->pos.y = -py->pos.y;
 		cam->pos.z = -1;
 		
-#if 1
+#if 0
 		Entity *tree = entity_alloc(store, EntityFlags_Static);
 		tree->pos = {{877, 414}};
 		tree->size = {{128, 128}};
@@ -730,12 +600,12 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		s32 tilemap_data[] = {
 			1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,
 			1, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 1,
-			1, 0, 0, 0,  0, 0, 0, 0,  1, 1, 1, 0,  0, 0, 0, 1,
-			1, 0, 0, 1,  1, 0, 1, 1,  1, 0, 1, 0,  0, 0, 0, 1,
-			1, 1, 0, 0,  1, 0, 1, 0,  0, 0, 1, 0,  0, 0, 0, 0,
+			1, 0, 0, 0,  0, 0, 0, 0,  1, 1, 1, 1,  1, 1, 0, 1,
+			1, 0, 0, 1,  1, 0, 1, 1,  1, 0, 0, 0,  0, 0, 0, 1,
+			1, 1, 0, 0,  1, 0, 1, 0,  0, 0, 1, 0,  1, 1, 0, 1,
 			1, 0, 0, 1,  0, 1, 1, 0,  1, 1, 1, 0,  0, 0, 0, 1,
 			1, 0, 0, 1,  0, 1, 1, 0,  1, 0, 1, 0,  0, 0, 0, 1,
-			1, 1, 0, 1,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1,
+			1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1,
 			1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1
 		};
 		
