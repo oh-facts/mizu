@@ -1,8 +1,5 @@
 // TODO(mizu): If a window is focussed, other windows come to the top too. Also, add a minimize and maximize and close button. And work on making the panels better to interact with.
 
-// Also fix the focus stealing thing where if a window is being interacted with
-// but it hovers over another window, other window and current window fight for focus.
-
 // TODO(mizu): Then work on panels and then on tabs
 
 // Also make it so that if a window is ontop of main window, it moves with the main window
@@ -14,10 +11,7 @@
 // And give the debug panel lots of functionality to control all other windows's features.
 
 // padding in ui
-// make text look proper
 // UI_SizeKind_PercentOfParent
-// make a transition_time so when you press on ui, you can see it as a certain color for
-// some time
 
 // DOTO(mizu): And ofc, make the main engine window also one of these ui windows. 
 // Call panels windows, because thats what they are. 
@@ -26,6 +20,9 @@
 // render game to an image, then render that as a ui element
 // make a render parameter - output frame buffer. used by submit maybe? If 0, renders to default
 // fb, otherwise, renders to the passed framebuffer
+// make text look proper
+// make a transition_time so when you press on ui, you can see it as a certain color for
+// some time
 
 #define ED_MAX_WINDOWS 10
 
@@ -354,7 +351,26 @@ function void ed_draw_children(ED_Panel *panel, UI_Widget *root)
 			d_state->default_text_params.atlas_tex,
 		};
 		
-		d_draw_text(root->text, root->pos, &params);
+		v2f pos = root->pos;
+		
+#if 0
+		R_Rect *bg = d_rect(rect(root->pos, root->size - v2f{.y = 2}), color * 0.1);
+		bg->radius = 4;
+		bg->border_color = color;
+		bg->border_thickness = 4;
+		
+		v2f size = root->size;
+		
+		Rect top_left = rect(pos, size);
+		Rect text_size = ui_text_spacing_stats(font->atlas.glyphs, root->text, FONT_SIZE);
+		
+		top_left.tl += text_size.tl / 2;
+		top_left.br += text_size.br / 2;
+		
+		pos.y = top_left.tl.y;
+		pos.x = top_left.tl.x + 4;
+#endif
+		d_draw_text(root->text, pos , &params);
 	}
 	
 	ED_Tab *tab = panel->active_tab;
@@ -438,7 +454,7 @@ function void ed_update(f32 delta)
 		{
 			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 			{
-				window->root = ui_make_widget(window->cxt, str8_lit(""));
+				window->root = ui_make_widget(window->cxt, str8_lit("bridget"));
 				
 				window->color = ED_THEME_BG;
 				
@@ -451,7 +467,7 @@ function void ed_update(f32 delta)
 				ui_parent(window->cxt, window->root)
 					ui_text_color(window->cxt, ED_THEME_TEXT)
 					//ui_fixed_pos(window->cxt, (window->pos))
-					ui_col(window->cxt)
+					ui_named_colf(window->cxt, "jones")
 				{
 					ui_named_rowf(window->cxt, "%d editor title bar")
 					{
@@ -708,7 +724,7 @@ function void ed_update(f32 delta)
 										s32 y;
 									};
 									
-									local_persist spritesheet sheets[] = {
+									read_only spritesheet sheets[] = {
 										{str8_lit("fox/fox.png"), 3, 2},
 										{str8_lit("impolo/impolo-east.png"), 3, 3},
 										{str8_lit("tree/trees.png"), 3, 1},

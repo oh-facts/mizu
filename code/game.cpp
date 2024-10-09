@@ -66,6 +66,7 @@ struct Entity
 	
 	b2BodyId body;
 	b2Polygon box;
+	b2Capsule caps;
 	
 	EntityHandle target;
 	Entity *next;
@@ -179,12 +180,309 @@ function void cam_update(Camera *cam, f32 delta)
 	cam->pos += cam->mv * cam->speed * delta;
 }
 
+struct AS_Node
+{
+	s32 g;
+	s32 h;
+	b32 unwalkable;
+	
+	v2s index;
+	
+	AS_Node *next;
+	AS_Node *prev;
+	AS_Node *parent;
+};
+
+struct AS_NodeList
+{
+	AS_Node *first;
+	AS_Node *last;
+	
+	u64 count;
+};
+
+function AS_Node *as_pushNode(Arena *arena, AS_NodeList *list, AS_Node node)
+{
+	AS_Node *out = push_struct(arena, AS_Node);
+	*out = node;
+	out->next = 0;
+	out->prev = 0;
+	
+	if (!list->first)
+	{
+		list->first = list->last = out;
+	}
+	else
+	{
+		out->prev = list->last;
+		list->last->next = out;
+		list->last = out;
+	}
+	
+	list->count++;
+	
+	return out;
+}
+
+#if 0
+// NOTE(mizu): Asserts are disabled when shipping. If the assert fails, it means there is
+// a bug in the pathfinding code. There is no reason to pop a node from an empty linked list
+function void as_popNode(AS_NodeList *list)
+{
+	Assert(list->count > 0);
+	AS_Node *node = list->last;
+	
+	list->last = node->prev;
+	
+	if (list->last)
+	{
+		list->last->next = 0;
+	}
+	else
+	{
+		list->first = 0;
+	}
+	
+	list->count--;
+	
+	//free(node);
+}
+#endif
+
+function void as_removeNode(AS_NodeList *list, AS_Node *node)
+{
+	Assert(list->count > 0);
+	
+	if (node->prev)
+	{
+		node->prev->next = node->next;
+	}
+	else
+	{
+		list->first = node->next;
+	}
+	
+	if (node->next)
+	{
+		node->next->prev = node->prev;
+	}
+	else
+	{
+		list->last = node->prev;
+	}
+	
+	list->count--;
+	
+	node->next = node->prev = 0;
+	
+	//free(node);
+}
+
+function b32 as_containsNode(AS_NodeList *list, AS_Node *node)
+{
+	b32 out = 0;
+	for (AS_Node *iter = list->first; iter; iter = iter->next)
+	{
+		if (iter->index == node->index)
+		{
+			out = 1;
+			break;
+		}
+	}
+	return out;
+}
+
+function s32 as_fcost(AS_Node node)
+{
+	return node.g + node.h;
+}
+
+struct AS_Grid
+{
+	AS_Node *nodes;
+	s32 col;
+	s32 row;
+	v2f size;
+};
+
+// TODO(mizu): have a grid size instead of doing / 64 and * 64 like a psychopath.
+// Same for the tilemap
+
+function v2s as_nodePosFromWorldPos(AS_Grid *grid, v2f pos)
+{
+	v2s out = {};
+	
+	out.x = pos.x / grid->size.x;
+	out.y = pos.y / grid->size.y;
+	
+	return out;
+}
+
+function v2f as_worldPosFromNodePos(AS_Grid *grid, v2s pos)
+{
+	v2f out = {{pos.x * grid->size.x, pos.y * grid->size.y}};
+	
+	return out;
+}
+
+function AS_Node as_nodeFromWorldPos(AS_Grid *grid, v2f pos)
+{
+	v2s out = {};
+	
+	out.x = pos.x / grid->size.x;
+	out.y = pos.y / grid->size.y;
+	
+	AS_Node node = grid->nodes[out.y * grid->col + out.x];
+	
+	return node;
+}
+
+function v2f as_worldPosFromNode(AS_Grid *grid, AS_Node node)
+{
+	v2f out = {{node.index.x * grid->size.x, node.index.y * grid->size.y}};
+	
+	return out;
+}
+
+function s32 as_nodeDistance(AS_Node a, AS_Node b)
+{
+	s32 out = 0;
+	
+	s32 x = abs(a.index.x - b.index.x);
+	s32 y = abs(a.index.y - b.index.y);
+	
+	if (x > y)
+	{
+		out = 14 * y + 10 * (x - y);
+	}
+	else
+	{
+		out = 14 * x + 10 * (y - x);
+	}
+	return out;
+}
+
+v2f normalize(v2f v)
+{
+	float length = sqrt(v.x * v.x + v.y * v.y);
+	return (length != 0) ? v / length : v2f{{0, 0}};
+}
+
+
+function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end)
+{
+	AS_NodeList open = {};
+	AS_NodeList close = {};
+	
+	AS_Node *first_node = as_pushNode(arena, &open, as_nodeFromWorldPos(grid, start));
+	
+	AS_Node *end_node = push_struct(arena, AS_Node);
+	*end_node = as_nodeFromWorldPos(grid, end);
+	
+	while (open.count > 0)
+	{
+		// cur is node in open w/ the lowest f cost
+		AS_Node *cur = open.first;
+		
+		for (AS_Node *iter = cur->next; iter; iter = iter->next)
+		{
+			b32 check = as_fcost(*iter) < as_fcost(*cur);
+			check = check || (as_fcost(*iter) == as_fcost(*cur) && (iter->h < cur->h));
+			
+			if (check)
+			{
+				cur = iter;
+			}
+		}
+		
+		as_removeNode(&open, cur);
+		cur = as_pushNode(arena, &close, *cur);
+		
+		if (cur->index == end_node->index)
+		{
+			AS_NodeList rev = {};
+			// yay
+			//printf("e");
+			
+			while(!(cur->index == first_node->index))
+			{
+				//printf("[%d %d] \n", cur->index.x, cur->index.y);
+				cur = as_pushNode(arena, &rev, *cur);
+				cur = cur->parent;
+			}
+			
+			AS_NodeList out = {};
+			
+			for (AS_Node *iter = rev.last; iter; iter = iter->prev) 
+			{
+    as_pushNode(arena, &out, *iter);
+			}
+			
+			return out;
+		}
+		
+		// get neighbours
+		AS_NodeList neighbours = {};
+		
+		for (s32 i = -1; i <= 1; i++)
+		{
+			for (s32 j = -1; j <= 1; j++)
+			{
+				if (i == 0 && j == 0)
+				{
+					continue;
+				}
+				
+				v2s neighbourIndex = cur->index + v2s{{j, i}};
+				
+				if (neighbourIndex.x >= 0 && neighbourIndex.x < grid->col && neighbourIndex.y >= 0 && neighbourIndex.y < grid->row)
+				{
+					AS_Node node = grid->nodes[neighbourIndex.y * grid->col + neighbourIndex.x];
+					as_pushNode(arena, &neighbours, node);
+				}
+			}
+		}
+		
+		for (AS_Node *iter = neighbours.first; iter; iter = iter->next)
+		{
+			// NOTE(mizu): profile if hashset is better for contains node. Memory is always contiguous
+			// so i can't imagine its slow to be a problem, but something to consider.
+			if (iter->unwalkable || as_containsNode(&close, iter))
+			{
+				continue;
+			}
+			
+			s32 new_cost = cur->g + as_nodeDistance(*cur, *iter);
+			
+			if (new_cost < iter->g || !as_containsNode(&open, iter))
+			{
+				iter->g = new_cost;
+				iter->h = as_nodeDistance(*iter, *end_node);
+				iter->parent = cur;
+				
+				if (!as_containsNode(&open, iter))
+				{
+					as_pushNode(arena, &open, *iter);
+				}
+			}
+		}
+	}
+	
+	return {};
+}
+
 struct Game
 {
 	Arena *arena;
 	EntityStore e_store;
 	Camera cam;
 	b32 initialized;
+	
+	s32 *tilemap;
+	s32 col;
+	s32 row;
+	
+	AS_Grid as_grid;
 	
 	b2WorldId world;
 	
@@ -194,6 +492,7 @@ struct Game
 	b32 draw_spiral;
 	b32 draw_health;
 	b32 draw_collision;
+	b32 draw_pathfinding;
 };
 
 struct Lister
@@ -219,7 +518,10 @@ function ED_CUSTOM_TAB(lister_panel)
 		Entity *entity = store->entities + i;
 		
 		ui_text_color(window->cxt, D_COLOR_WHITE)
-			ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+			//ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+			ui_pref_height(window->cxt, 45)
+			ui_pref_width(window->cxt, 256)
 		{
 			ui_labelf(window->cxt, "%s", (char*)entity->name.c);
 		}
@@ -237,6 +539,10 @@ function ED_CUSTOM_TAB(lister_panel)
 				ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 				ui_col(window->cxt)
 				ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+				//ui_size_kind_y(window->cxt, UI_SizeKind_Pixels)
+				//ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+				//ui_pref_height(window->cxt, 45)
+				//ui_pref_width(window->cxt, 256)
 			{
 				ui_labelf(window->cxt, "position: [%.f, %.f] #%d", entity->pos.x, entity->pos.y, i);
 				ui_labelf(window->cxt, "layer: %d #%d", entity->layer, i);
@@ -252,8 +558,8 @@ function ED_CUSTOM_TAB(lister_panel)
 		game->draw_health = ui_labelf(window->cxt, "draw health").toggle;
 		game->draw_spiral = ui_labelf(window->cxt, "draw spiral").toggle;
 		game->draw_collision = ui_labelf(window->cxt, "draw collison").toggle;
+		game->draw_pathfinding = ui_labelf(window->cxt, "draw pathfinding").toggle;
 	}
-	
 }
 
 function ED_CUSTOM_TAB(game_update_and_render)
@@ -284,17 +590,14 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	b32 restart = 0;
 	
 	ui_hover_color(window->cxt, (v4f{{0.8, 0.8, 0.8, 1}}))
-		ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-		ui_row(window->cxt)
+		ui_size_kind_x(window->cxt, UI_SizeKind_PercentOfParent)
+		ui_size_kind_y(window->cxt, UI_SizeKind_ChildrenSum)
+		ui_named_rowf(window->cxt, "boba tea")
 	{
-		ui_pref_size(window->cxt, 60)
+		ui_align_kind_x(window->cxt, UI_AlignKind_Center)
+			ui_pref_size(window->cxt, 60)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		{
-			ui_pref_width(window->cxt, 480 - 64)
-			{
-				ui_spacer(window->cxt);
-			}
-			
 			R_Handle pause_play = a_handleFromPath(str8_lit("editor/pause_play.png"));
 			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.5, 1), D_COLOR_WHITE, "restart").active;
 			
@@ -314,7 +617,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	
 	if(!game->start)
 	{
-		
 		b2WorldDef worldDef = b2DefaultWorldDef();
 		worldDef.gravity = {};
 		
@@ -325,7 +627,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		game->start = 1;
 		
 		Entity *py = entity_alloc(store, EntityFlags_Control | EntityFlags_Dynamic);
-		py->pos = {{1000, 417}};
+		py->pos = {{591, 348}};
 		py->size = {{64, 64}};
 		py->tint = D_COLOR_WHITE;
 		py->art = ArtKind_Impolo;
@@ -343,7 +645,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			bodyDef.position = (b2Vec2){py->pos.x, py->pos.y};
 			py->body = b2CreateBody(game->world, &bodyDef);
 			
-			py->box = b2MakeBox(py->size.x / 2, py->size.y / 2);
+			// TODO(mizu): Temp! added small padding for now so i can slip through nooks. 
+			py->box = b2MakeBox(py->size.x / 4, py->size.y / 4);
 			
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
 			shapeDef.density = 0.3f;
@@ -353,7 +656,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		}
 		
 		Entity *fox = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
-		fox->pos = {{100, 100}};
+		fox->pos = {{270, 150}};
 		fox->size = {{32, 32}};
 		fox->tint = D_COLOR_WHITE;
 		fox->art = ArtKind_Fox;
@@ -362,7 +665,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		fox->n = 3;
 		fox->x = 3;
 		fox->y = 2;
-		fox->speed = 30;
+		fox->speed = 180;
 		fox->target = handleFromEntity(py);
 		fox->health = 300;
 		fox->name = str8_lit("fox");
@@ -370,25 +673,24 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		
 		{
 			b2BodyDef bodyDef = b2DefaultBodyDef();
-			bodyDef.type = b2_kinematicBody;
+			bodyDef.type = b2_dynamicBody;
 			bodyDef.position = (b2Vec2){fox->pos.x, fox->pos.y};
 			fox->body = b2CreateBody(game->world, &bodyDef);
 			b2MassData mass = {};
 			mass.mass = 1000;
 			b2Body_SetMassData(fox->body, mass);
-			fox->box = b2MakeBox(fox->size.x / 2, fox->size.y / 2);
-			
+			fox->caps = b2Capsule{-10, 10, 10};
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
 			shapeDef.density = 1.f;
 			//shapeDef.friction = 0.3f;
-			
-			b2CreatePolygonShape(fox->body, &shapeDef, &fox->box);
+			b2CreateCapsuleShape(fox->body,&shapeDef, &fox->caps);
+			//b2CreatePolygonShape(fox->body, &shapeDef, &fox->box);
 		}
 		
 		cam->follow = handleFromEntity(py);
 		cam->target = WORLD_FRONT;
 		cam->up = WORLD_UP;
-		cam->zoom = 135.f;
+		cam->zoom = 135.f * 2;
 		cam->speed = 400;
 		cam->input_rot.x = 0;
 		cam->input_rot.y = 0;
@@ -397,8 +699,9 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		cam->pos.y = -py->pos.y;
 		cam->pos.z = -1;
 		
+#if 1
 		Entity *tree = entity_alloc(store, EntityFlags_Static);
-		tree->pos = {{700, 400}};
+		tree->pos = {{877, 414}};
 		tree->size = {{128, 128}};
 		tree->tint = D_COLOR_WHITE;
 		tree->art = ArtKind_Trees;
@@ -418,7 +721,74 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		
 		b2ShapeDef groundShapeDef = b2DefaultShapeDef();
 		b2CreatePolygonShape(tree->body, &groundShapeDef, &tree->box);
+#endif
 		
+		game->row = 9;
+		game->col = 16;
+		game->tilemap = push_array(game->arena, s32, game->row * game->col);
+		
+		s32 tilemap_data[] = {
+			1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,
+			1, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 1,
+			1, 0, 0, 0,  0, 0, 0, 0,  1, 1, 1, 0,  0, 0, 0, 1,
+			1, 0, 0, 1,  1, 0, 1, 1,  1, 0, 1, 0,  0, 0, 0, 1,
+			1, 1, 0, 0,  1, 0, 1, 0,  0, 0, 1, 0,  0, 0, 0, 0,
+			1, 0, 0, 1,  0, 1, 1, 0,  1, 1, 1, 0,  0, 0, 0, 1,
+			1, 0, 0, 1,  0, 1, 1, 0,  1, 0, 1, 0,  0, 0, 0, 1,
+			1, 1, 0, 1,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1,
+			1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1
+		};
+		
+		for(s32 i = 0; i < game->row * game->col; i++)
+		{
+			game->tilemap[i] = tilemap_data[i];
+		}
+		
+		// generate collisions for tilemap
+		{
+			b2BodyDef groundBodyDef = b2DefaultBodyDef();
+			b2ShapeDef groundShapeDef = b2DefaultShapeDef();
+			
+			for(s32 row = 0; row < game->row; row++)
+			{
+				for(s32 col = 0; col < game->col; col++)
+				{
+					s32 tile_id = game->tilemap[row * game->col + col];
+					
+					if(tile_id == 1)
+					{
+						v2f pos = {{col * 64.f, row * 64.f}};
+						
+						groundBodyDef.position = (b2Vec2){pos.x + 32, pos.y + 32};
+						b2BodyId body = b2CreateBody(game->world, &groundBodyDef);
+						
+						b2Polygon box = b2MakeBox(32.f, 32.f);
+						
+						b2CreatePolygonShape(body, &groundShapeDef, &box);
+					}
+				}
+			}
+			
+		}
+		
+		game->as_grid.row = 9 * 4;
+		game->as_grid.col = 16 * 4;
+		game->as_grid.nodes = push_array(game->arena, AS_Node, game->as_grid.row * game->as_grid.col);
+		game->as_grid.size = {{16, 16}};
+		
+		AS_Grid *grid = &game->as_grid;
+		
+		for(s32 row = 0; row < grid->row; row++)
+		{
+			for(s32 col = 0; col < grid->col; col++)
+			{
+				if(game->tilemap[(row / 4) * (grid->col / 4) + (col / 4)] == 1)
+				{
+					grid->nodes[row * grid->col + col].unwalkable = 1;
+				}
+				grid->nodes[row * grid->col + col].index = {{col, row}};
+			}
+		}
 	}
 	
 	// update camera
@@ -432,7 +802,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	
 	d_push_target(tab->target);
 	
-	// tilemap
 	{
 		m4f_ortho_proj world_proj_inv = cam_get_proj_inv(cam);
 		
@@ -443,29 +812,15 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		m4f world_proj_view = world_proj * world_view * m4f_make_scale({{1, -1, 1}});
 		d_push_proj_view(world_proj_view);
 		
-		s32 tilemap[9][16] = 
+		// render tilemap
+		for(s32 row = 0; row < game->row; row++)
 		{
-			{1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1},
-			{1, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-			{1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-			{1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 1},
-			{1, 1, 0, 1,  1, 0, 0, 0,  1, 1, 1, 0,  0, 0, 0, 0},
-			{1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
-			{1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 1, 0,  0, 0, 0, 1},
-			{1, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 1},
-			{1, 0, 1, 0,  1, 0, 1, 0,  0, 0, 1, 0,  1, 0, 0, 1},
-		};
-		
-		for(s32 row = 0; row < 9; row++)
-		{
-			for(s32 col = 0; col < 16; col++)
+			for(s32 col = 0; col < game->col; col++)
 			{
-				s32 tile_id = tilemap[row][col];
+				s32 tile_id = game->tilemap[row * game->col + col];
 				
-				if(tile_id == 0)
+				if(tile_id == 0 )
 				{
-					v4f color = {};
-					
 					read_only v4f colors[] = 
 					{
 						D_COLOR_WHITE,
@@ -476,7 +831,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 						D_COLOR_YELLOW
 					};
 					
-					color = colors[(row + col) % 6];
+					v4f color = colors[(row + col) % 6];
 					
 					Rect dst = {};
 					dst.tl.x = col * 64;
@@ -486,8 +841,35 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					
 					R_Sprite *sprite = d_sprite(dst, color);
 					sprite->layer = 0;
-					//sprite->radius = 64;
 					sprite->tex = a_get_alpha_bg_tex();
+				}
+			}
+		}
+		
+		// render a* grid
+		if(1)
+		{
+			AS_Grid *grid = &game->as_grid;
+			for(s32 row = 0; row < grid->row; row++)
+			{
+				for(s32 col = 0; col < grid->col; col++)
+				{
+					v2s index = {{col, row}};
+					AS_Node node = grid->nodes[row * grid->col + col];
+					
+					v4f color = {};
+					
+					if(node.unwalkable == 1)
+					{
+						color = D_COLOR_CYAN;
+					}
+					
+					v2f pos = as_worldPosFromNodePos(grid, index);
+					
+					R_Sprite *grid = d_sprite(rect(pos, {{game->as_grid.size.x, game->as_grid.size.x}}), color);
+					grid->border_color = D_COLOR_BLACK;
+					grid->border_thickness = 2;
+					grid->layer = 2;
 				}
 			}
 		}
@@ -542,20 +924,62 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			
 			if(e->flags & EntityFlags_Follow)
 			{
+				Arena_temp temp = arena_temp_begin(game->arena);
 				Entity *target = entityFromHandle(e->target);
+				
 				if(target)
 				{
-					v2f dir = target->pos - e->pos;
-					f32 dist = sqrt(dir.x * dir.x + dir.y * dir.y);
+					v2f pos = e->pos;
+					v2f dir2 = {pos.x - target->pos.x, pos.y - target->pos.y};
+					float length2 = sqrt(dir2.x * dir2.x + dir2.y * dir2.y);
 					
-					if(dist > 30)
+					if (length2 > 50)
 					{
-						dir = dir / dist;
-						e->mv = dir;
+						AS_NodeList list = as_findPath(game->arena, &game->as_grid, e->pos, target->pos);
+						
+						if(list.first)
+						{
+							v2f next_pos = as_worldPosFromNode(&game->as_grid, *list.first) + v2f{{8, 8}};
+							
+							v2f dir = { next_pos.x - pos.x, next_pos.y - pos.y };
+							float length = sqrt(dir.x * dir.x + dir.y * dir.y);
+							
+							
+							if (length > 0) 
+							{
+								dir.x /= length;
+								dir.y /= length;
+								e->mv = dir;
+							}
+							
+						}
+						
+						if(game->draw_pathfinding)
+						{
+							v2s poss = {{(s32)(e->pos.x / game->as_grid.size.x * 1.f), (s32)(e->pos.y / game->as_grid.size.x * 1.f)}};
+							v2f pos = {{poss.x * game->as_grid.size.x * 1.f, poss.y * game->as_grid.size.x * 1.f}};
+							R_Sprite *sprite = d_sprite(rect(pos, {{game->as_grid.size.x, game->as_grid.size.x}}), D_COLOR_BLACK);
+							sprite->layer = 1;
+							for(AS_Node *iter = list.first; iter; iter = iter->next)
+							{
+								v2f pos = as_worldPosFromNode(&game->as_grid, *iter);
+								
+								v4f color = D_COLOR_RED;
+								if(iter == list.last)
+								{
+									color = D_COLOR_YELLOW;
+								}
+								
+								R_Sprite *sprite = d_sprite(rect(pos, {{game->as_grid.size.x, game->as_grid.size.x}}), color);
+								sprite->layer = 1;
+							}
+						}
+						
+						arena_temp_end(&temp);
 					}
 					else
 					{
-						target->health -= delta * e->damage;
+						e->mv = {};
 					}
 				}
 			}
@@ -607,8 +1031,10 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					b2Vec2 pos = b2Body_GetPosition(e->body);
 					v2f posf = {{pos.x, pos.y}};
 					
-					R_Sprite *sprite = d_spriteCenter(posf, e->size, {{1, 0, 0, 0.2}});
+					f32 rad = 10 + 10 + 10;
+					R_Sprite *sprite = d_spriteCenter(posf, {{rad, 10}}, {{1, 0, 0, 1}});
 					sprite->layer = 1;
+					
 				}
 			}
 			
@@ -702,3 +1128,73 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		ui_labelf(window->cxt, "Except for you, you can stay");
 	}
 }
+
+/*
+
+enum Cmd
+{
+	CmdKind_DoFoo,
+	CmdKind_DoBar,
+	CmdKind_COUNT
+};
+
+struct CmdFoo
+{
+	Cmd kind;
+	s32 foo;
+}
+
+struct CmdBar
+{
+	Cmd kind;
+	f32 bar;
+}
+
+struct CmdBuffer
+{
+	u8 *base;
+	u64 used;
+	u64 size;
+	u64 num;
+};
+
+void cmdDoFoo(CmdBuffer *buffer, s32 foo)
+{
+	CmdFoo *data = buffer->base + buffer->used;
+	data->kind = CmdKind_DoFoo;
+	data->foo = foo;
+	
+	buffer->used += sizeof(CmdFoo);
+	buffer->num += 1;
+}
+
+void cmdDoBar(CmdBuffer *buffer, f32 bar)
+{
+	CmdBar *data = buffer->base + buffer->used;
+	data->kind = CmdKind_DoBar;
+	data->bar = bar;
+	
+	buffer->used += sizeof(CmdBar);
+	buffer->num += 1;
+}
+
+void processCmds(CmdBuffer *buffer)
+{
+	u8 *pos = buffer->base;
+	for(u64 i = 0; i < buffer->num; i+=1)
+	{
+		Cmd type = *(Cmd*)pos;
+		if(type == CmdKind_DoFoo)
+		{
+			CmdFoo *foo = (CmdFoo*)pos;
+			// do foo stuff
+			pos += sizeof(CmdFoo);
+		}
+		else if(type == CmdKind_DoBar)
+		{
+			CmdBar *bar = (CmdBar*)pos;
+			// do bar stuff
+			pos += sizeof(CmdBar);
+		}
+	}
+}*/

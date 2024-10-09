@@ -14,6 +14,7 @@
 #define D_COLOR_THEME_2 (v4f){{0.03, 0.02, 0.03,1}}
 #define D_COLOR_THEME_3 (v4f){{0.21044,0.02368,0.06198,1}}
 
+// TODO(mizu): bad. needs to go
 struct D_Text_params
 {
 	v4f color;
@@ -31,13 +32,13 @@ struct D_Bucket
 {
 	D_Bucket *next;
 	R_Pass_list list;
-  
-  u64 stack_gen;
-  u64 last_stack_gen;
-  
+	
+	u64 stack_gen;
+	u64 last_stack_gen;
+	
 	D_Proj_view_node *proj_view_top;
-  D_Target_node *target_top;
-  D_Viewport_node *viewport_top;
+	D_Target_node *target_top;
+	D_Viewport_node *viewport_top;
 };
 
 struct D_State
@@ -108,19 +109,19 @@ function R_Pass *d_push_pass(Arena *arena, D_Bucket *bucket, R_PASS_KIND kind)
 	R_Pass_node *node = bucket->list.last;
 	R_Pass *pass = 0;
 	
-  if(!node || node->pass.kind != kind || bucket->stack_gen != bucket->last_stack_gen)
+	if(!node || node->pass.kind != kind || bucket->stack_gen != bucket->last_stack_gen)
 	{
 		pass = r_push_pass_list(arena, &bucket->list, kind);
-    
-    if(bucket->target_top)
-    {
-      pass->rect_pass.target = bucket->target_top->v;
-    }
-    if(bucket->proj_view_top)
-    {
-      pass->rect_pass.proj_view = bucket->proj_view_top->v;
-    }
-  }
+		
+		if(bucket->target_top)
+		{
+			pass->rect_pass.target = bucket->target_top->v;
+		}
+		if(bucket->proj_view_top)
+		{
+			pass->rect_pass.proj_view = bucket->proj_view_top->v;
+		}
+	}
 	else
 	{
 		pass = &node->pass;
@@ -133,11 +134,11 @@ function R_Rect *d_rect(Rect dst, v4f color)
 {
 	D_Bucket *bucket = d_state->top;
 	
-  R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_UI);
+	R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_UI);
 	
-  R_Rect *out = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
+	R_Rect *out = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 	
-  out->dst = dst;
+	out->dst = dst;
 	out->src = rect(0, 0, 1, 1);
 	out->fade[Corner_00] = color;
 	out->fade[Corner_01] = color;
@@ -145,36 +146,36 @@ function R_Rect *d_rect(Rect dst, v4f color)
 	out->fade[Corner_11] = color;
 	out->tex = d_state->white_square;
 	
-  // NOTE(mizu): figure out why there is a 1px ghost outline even when thickness is 0
-  out->border_color = color;
+	// NOTE(mizu): figure out why there is a 1px ghost outline even when thickness is 0
+	out->border_color = color;
 	out->radius = {};
-  out->border_thickness = {};
-  bucket->last_stack_gen = bucket->stack_gen;
-  return out;
+	out->border_thickness = {};
+	bucket->last_stack_gen = bucket->stack_gen;
+	return out;
 }
 
 function R_Sprite *d_sprite(Rect dst, v4f color)
 {
 	D_Bucket *bucket = d_state->top;
 	
-  R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_SPRITE);
+	R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_SPRITE);
 	
-  R_Sprite *out = r_push_batch(d_state->arena, &pass->sprite_pass.sprites, R_Sprite);
+	R_Sprite *out = r_push_batch(d_state->arena, &pass->sprite_pass.sprites, R_Sprite);
 	
-  out->dst = dst;
-  out->src = rect(0, 0, 1, 1);
+	out->dst = dst;
+	out->src = rect(0, 0, 1, 1);
 	out->fade[Corner_00] = color;
 	out->fade[Corner_01] = color;
 	out->fade[Corner_10] = color;
 	out->fade[Corner_11] = color;
 	out->tex = d_state->white_square;
 	
-  // NOTE(mizu): figure out why there is a 1px ghost outline even when thickness is 0
-  out->border_color = color;
+	// NOTE(mizu): figure out why there is a 1px ghost outline even when thickness is 0
+	out->border_color = color;
 	out->radius = {};
-  out->border_thickness = {};
-  bucket->last_stack_gen = bucket->stack_gen;
-  return out;
+	out->border_thickness = {};
+	bucket->last_stack_gen = bucket->stack_gen;
+	return out;
 }
 
 function inline R_Sprite *d_spriteCenter(v2f pos, v2f size, v4f color)
@@ -185,8 +186,8 @@ function inline R_Sprite *d_spriteCenter(v2f pos, v2f size, v4f color)
 function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 {
 	D_Bucket *bucket = d_state->top;
-  
-  Rect ex = ui_text_spacing_stats(p->atlas->glyphs, text, p->scale);
+	
+	Rect ex = ui_text_spacing_stats(p->atlas->glyphs, text, p->scale);
 	
 	v2f text_pos = pos;
 	text_pos.y += ex.tl.y;
@@ -235,10 +236,10 @@ function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		
 		rect->tex = p->atlas_tex[(u32)c];
 		
-    rect->border_color = p->color;
-    rect->radius = 0;
-    rect->border_thickness = -2;
+		rect->border_color = p->color;
+		rect->radius = 0;
+		rect->border_thickness = -2;
 	}
-  
-  bucket->last_stack_gen = bucket->stack_gen;
+	
+	bucket->last_stack_gen = bucket->stack_gen;
 }

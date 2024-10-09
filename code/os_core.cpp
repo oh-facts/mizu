@@ -8,7 +8,7 @@
 // And see if you can remove source / header files co-existance. It is crap design.
 // Working on the editor has gotten easier now that I don't have to update function
 // declarations. C is so crappy to write in. But there is too much inertia 
-// (thus I won't use better alternatives like odin) and until I get around to making
+// (thus I won't use alternatives like odin) and until I get around to making
 // my own language / language editor, I will need to use this crap. C is for Crap.
 // C++ is Crap ++
 // Also, consider raylib.
@@ -23,7 +23,7 @@
 
 function void os_api_init(OS_Api *api)
 {
-  os_reserve = api->os_reserve;
+	os_reserve = api->os_reserve;
 	os_commit = api->os_commit;
 	os_decommit = api->os_decommit;
 	os_release = api->os_release;
@@ -32,27 +32,27 @@ function void os_api_init(OS_Api *api)
 function OS_Api os_get_api()
 {
 #if defined(OS_WIN32)
-  return os_win32_get_api();
+	return os_win32_get_api();
 #else
-  return os_linux_get_api();
+	return os_linux_get_api();
 #endif
 }
 
 function u64 os_get_page_size()
 {
 #if defined(OS_WIN32)
-  return os_win32_get_page_size();
+	return os_win32_get_page_size();
 #else
-  return os_linux_get_page_size();
+	return os_linux_get_page_size();
 #endif
 }
 
 function Str8 os_get_app_dir(Arena *arena)
 {
 #if defined(OS_WIN32)
-  return os_win32_get_app_dir(arena);
+	return os_win32_get_app_dir(arena);
 #else
-  return os_linux_get_app_dir(arena);
+	return os_linux_get_app_dir(arena);
 #endif
 }
 

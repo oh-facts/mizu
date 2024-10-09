@@ -1,5 +1,5 @@
-// TODO(mizu): Major: widget focus and metaprogram implicit parameter stacks.
-// Minor : Refactor pass. Transitions.
+// TODO(mizu): Major: widget focus, origining
+// Minor : Refactor pass.
 #define UI_DeferLoop(begin, end) for(int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
 
 enum Axis2
@@ -13,6 +13,7 @@ enum Axis2
 enum UI_AlignKind
 {
 	UI_AlignKind_Left,
+	UI_AlignKind_Center,
 	UI_AlignKind_Right,
 };
 
@@ -32,7 +33,9 @@ struct UI_Size
 	f32 strictness;
 };
 
-enum UI_Flags
+typedef u32 UI_Flags;
+
+enum
 {
 	UI_Flags_has_text = 1 << 0,
 	UI_Flags_has_bg = 1 << 1,
@@ -58,6 +61,7 @@ typedef UI_CUSTOM_DRAW(UI_WidgetCustomDrawFunctionType);
 
 struct UI_Widget
 {
+	// links
 	UI_Widget *first;
 	UI_Widget *last;
 	UI_Widget *next;
@@ -65,14 +69,16 @@ struct UI_Widget
 	UI_Widget *parent;
 	u64 num_child;
 	
+	// hash
 	UI_Widget *hash_next;
 	UI_Widget *hash_prev;
-	
 	u64 last_frame_touched_index;
-	
-	u32 id;
 	u64 hash;
 	
+	// debug
+	u32 id;
+	
+	// styling
 	UI_Flags flags;
 	R_Handle img;
 	Str8 text;
@@ -89,7 +95,9 @@ struct UI_Widget
 	
 	Axis2 child_layout_axis;
 	UI_AlignKind alignKind;
+	
 	v2f fixed_position;
+	
 	UI_WidgetCustomDrawFunctionType *custom_draw;
 	void *custom_draw_data;
 	
@@ -124,6 +132,7 @@ struct UI_Context
 	// reset completely every frame. Non zeroed.
 	Arena *frame_arena;
 	
+	// used for input state.
 	OS_Window *win;
 	
 	u64 hash_table_size;
@@ -1007,8 +1016,9 @@ function void ui_layout_upward_dependent(UI_Widget *root, Axis2 axis)
 	{
 		if(root->parent->pref_size[axis].kind != UI_SizeKind_ChildrenSum)
 		{
-			//printf("%s\n", root->text.c);
+			
 		}
+		
 	}
 	
 	for(UI_Widget *child = root->first; child; child = child->next)
@@ -1040,6 +1050,15 @@ function void ui_layout_downward_dependent(UI_Widget *root, Axis2 axis)
 				}
 			}
 		}
+		else if(parent->pref_size[axis].kind == UI_SizeKind_PercentOfParent)
+		{
+			if(axis == Axis2_X)
+			{
+				parent->computed_size[axis] = parent->parent->size.x;
+			}
+			//parent->computed_size[axis] = root->computed_size[axis];
+			//printf("%f\n", parent->parent->size.x);
+		}
 	}
 }
 
@@ -1050,6 +1069,12 @@ function void ui_layout_pos(UI_Widget *root)
 	{
 		root->computed_rel_position[0] = root->parent->computed_rel_position[0];
 		root->computed_rel_position[1] = root->parent->computed_rel_position[1];
+		
+		if(root->alignKind == UI_AlignKind_Center)
+		{
+			root->computed_rel_position[Axis2_X] += root->parent->size.x / 2 - root->size.x;
+		}
+		
 	}
 	
 	// TODO(mizu): Note how this just adds / subtracts instead of cumulatively adding 
@@ -1062,6 +1087,7 @@ function void ui_layout_pos(UI_Widget *root)
 			if(!(root->flags & UI_Flags_is_floating_x))
 			{
 				root->computed_rel_position[Axis2_X] = root->prev->computed_rel_position[Axis2_X] + root->prev->computed_size[Axis2_X];
+				
 				// NOTE(mizu): working on this rn
 				//root->computed_rel_position[Axis2_X] += root->parent->computed_size[Axis2_X];// * 0.5;
 			}

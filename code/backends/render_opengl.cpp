@@ -7,7 +7,7 @@ enum R_OPENGL_INST_BUFFER
 	R_OPENGL_INST_BUFFER_MESH,
 	R_OPENGL_INST_BUFFER_SPRITE,
 	
-  R_OPENGL_INST_BUFFER_COUNT,
+	R_OPENGL_INST_BUFFER_COUNT,
 };
 
 enum R_OPENGL_SHADER_PROG
@@ -16,22 +16,22 @@ enum R_OPENGL_SHADER_PROG
 	R_OPENGL_SHADER_PROG_MESH,
 	R_OPENGL_SHADER_PROG_SPRITE,
 	
-  R_OPENGL_SHADER_PROG_COUNT,
+	R_OPENGL_SHADER_PROG_COUNT,
 };
 
 struct R_Opengl_state
 {
 	Arena *arena;
 	
-  GLuint shader_prog[R_OPENGL_SHADER_PROG_COUNT];
+	GLuint shader_prog[R_OPENGL_SHADER_PROG_COUNT];
 	GLuint inst_buffer[R_OPENGL_INST_BUFFER_COUNT];
 };
 
 global R_Opengl_state *r_opengl_state;
 
 global u32 quad_draw_indices[] = {
-  0,1,3,
-  1,2,3
+	0,1,3,
+	1,2,3
 };
 
 global char *r_vs_fb_src = 
@@ -666,10 +666,10 @@ function GLuint r_opengl_make_shader_program(char *vertexShaderSource, char *fra
 
 enum R_BufferKind
 {
-  R_BufferKind_Null,
-  R_BufferKind_SSBO,
-  R_BufferKind_Index,
-  R_BufferKind_COUNT
+	R_BufferKind_Null,
+	R_BufferKind_SSBO,
+	R_BufferKind_Index,
+	R_BufferKind_COUNT
 };
 
 function GLuint r_opengl_make_buffer(size_t size)
@@ -687,12 +687,12 @@ function GLuint r_opengl_make_buffer(size_t size)
 
 function GLuint r_opengl_make_buffer(void *data, size_t size)
 {
-  GLuint buffer = 0;
-  
-  glCreateBuffers(1, &buffer);
-  glNamedBufferData(buffer, size, data, GL_DYNAMIC_COPY);
-  
-  return buffer;
+	GLuint buffer = 0;
+	
+	glCreateBuffers(1, &buffer);
+	glNamedBufferData(buffer, size, data, GL_DYNAMIC_COPY);
+	
+	return buffer;
 }
 
 function void r_opengl_init()
@@ -707,15 +707,15 @@ function void r_opengl_init()
 	glDebugMessageCallback(glDebugOutput, 0);
 	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
 #endif
-  
+	
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_make_shader_program(r_vs_ui_src, r_fs_ui_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_make_buffer(Megabytes(8));
-  
-  r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH] = r_opengl_make_shader_program(r_vs_mesh_src, r_fs_mesh_src);
-  r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH] = r_opengl_make_buffer(Megabytes(8));
-  
-  r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE] = r_opengl_make_shader_program(r_vs_sprite_src, r_fs_sprite_src);
-  r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE] = r_opengl_make_buffer(Megabytes(8));
+	
+	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH] = r_opengl_make_shader_program(r_vs_mesh_src, r_fs_mesh_src);
+	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH] = r_opengl_make_buffer(Megabytes(8));
+	
+	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE] = r_opengl_make_shader_program(r_vs_sprite_src, r_fs_sprite_src);
+	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE] = r_opengl_make_buffer(Megabytes(8));
 }
 
 function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
@@ -783,7 +783,7 @@ function R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 	GLuint fbo;
 	glCreateFramebuffers(1, &fbo);
 	
-  // color attachment
+	// color attachment
 	GLuint tex;
 	glCreateTextures(GL_TEXTURE_2D, 1, &tex);
 	glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -793,16 +793,16 @@ function R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 	glTextureStorage2D(tex, 1, GL_RGB8, w, h);
 	glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, tex, 0);
 	
-  // depth attachment
-  GLuint depthTex;
-  glCreateTextures(GL_TEXTURE_2D, 1, &depthTex);
-  glTextureParameteri(depthTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTextureParameteri(depthTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTextureParameteri(depthTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTextureParameteri(depthTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTextureStorage2D(depthTex, 1, GL_DEPTH_COMPONENT24, w, h);
-  glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, depthTex, 0);
-  
+	// depth attachment
+	GLuint depthTex;
+	glCreateTextures(GL_TEXTURE_2D, 1, &depthTex);
+	glTextureParameteri(depthTex, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTextureParameteri(depthTex, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTextureParameteri(depthTex, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(depthTex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureStorage2D(depthTex, 1, GL_DEPTH_COMPONENT24, w, h);
+	glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, depthTex, 0);
+	
 	auto status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
 	
 	if(status != GL_FRAMEBUFFER_COMPLETE)
@@ -870,27 +870,27 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 				
 				for(u32 j = 0; j < batches->num; j++)
 				{
-          void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
-																									GL_MAP_INVALIDATE_BUFFER_BIT);
+					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Rect), GL_MAP_WRITE_BIT | 
+																																													GL_MAP_INVALIDATE_BUFFER_BIT);
 					
-          m4f mat = pass->rect_pass.proj_view;
-          //m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});
-          
+					m4f mat = pass->rect_pass.proj_view;
+					//m4f mat = m4f_make_scale({{0.5, 0.5, 0.5}});
+					
 					memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
 					memcpy((u8*)ssbo_data + sizeof(win_size_float), &mat, sizeof(m4f));
 					memcpy((u8*)ssbo_data + sizeof(win_size_float) + sizeof(m4f), batch->base, batch->count * sizeof(R_Rect));
 					
 					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI]);
 					
-          glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
+					glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
 					batch = batch->next;
 				}
-        
-      }break;
-      
-      case R_PASS_KIND_SPRITE:
-      {
-        R_Batch_list *batches = &pass->sprite_pass.sprites;
+				
+			}break;
+			
+			case R_PASS_KIND_SPRITE:
+			{
+				R_Batch_list *batches = &pass->sprite_pass.sprites;
 				
 				v4f win_size_float = {};
 				
@@ -930,29 +930,29 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 					qsort(first, batch->count, sizeof(R_Sprite), r_sprite_sort);
 					
 					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Sprite), GL_MAP_WRITE_BIT | 
-																									GL_MAP_INVALIDATE_BUFFER_BIT);
+																																													GL_MAP_INVALIDATE_BUFFER_BIT);
 					
-          memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
+					memcpy(ssbo_data, &win_size_float, sizeof(win_size_float));
 					memcpy((u8*)ssbo_data + sizeof(win_size_float), &mat, sizeof(m4f));
 					memcpy((u8*)ssbo_data + sizeof(win_size_float) + sizeof(m4f), batch->base, batch->count * sizeof(R_Sprite));
 					
 					glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE]);
 					
-          glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
+					glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, quad_draw_indices, batch->count);
 					batch = batch->next;
 				}
-        
-      }break;
-    }
-  }
-  
-  SDL_GL_SwapWindow(win->raw);
+				
+			}break;
+		}
+	}
+	
+	SDL_GL_SwapWindow(win->raw);
 }
 
 function v2s r_tex_size_from_handle(R_Handle handle)
 {
-  v2s out = {};
-  out.x = handle.u32_m[3];
-  out.y = handle.u32_m[4];
-  return out;
+	v2s out = {};
+	out.x = handle.u32_m[3];
+	out.y = handle.u32_m[4];
+	return out;
 }

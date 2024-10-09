@@ -14,18 +14,18 @@
 
 union R_Handle
 {
-  u64 u64_m[4];
+	u64 u64_m[4];
 	u32 u32_m[8];
 	u16 u16_m[16];
 };
 
 struct R_Vertex
 {
-  v3f pos;
-  f32 uv_x;
-  v3f normal;
-  f32 uv_y;
-  v4f color;
+	v3f pos;
+	f32 uv_x;
+	v3f normal;
+	f32 uv_y;
+	v4f color;
 };
 
 enum R_TEXTURE_FILTER
@@ -100,10 +100,10 @@ struct R_Rect
 	v4f fade[Corner_COUNT];
 	
 	R_Handle tex;
-  
+	
 	f32 border_thickness;
-  f32 radius;
-  f32 pad[2];
+	f32 radius;
+	f32 pad[2];
 };
 
 struct R_Sprite
@@ -141,31 +141,31 @@ int r_sprite_sort(const void* a, const void* b)
 
 struct R_MeshInst
 {
-  m4f model;
+	m4f model;
 };
 
 struct R_Primitive
 {
-  u32 start;
-  u32 count;
-  
-  R_Handle tex;
+	u32 start;
+	u32 count;
+	
+	R_Handle tex;
 };
 
 struct R_Mesh
 {
-  R_Primitive *primitives;
-  u64 num_primitives;
-  
-  GLuint index;
-  GLuint vert;
-  u32 num_indices;
+	R_Primitive *primitives;
+	u64 num_primitives;
+	
+	GLuint index;
+	GLuint vert;
+	u32 num_indices;
 };
 
 struct R_Model
 {
-  R_Mesh *meshes;
-  u64 num_meshes;
+	R_Mesh *meshes;
+	u64 num_meshes;
 };
 
 struct R_Batch
@@ -188,34 +188,34 @@ struct R_Batch_list
 struct R_Rect_pass
 {
 	R_Batch_list rects;
-  m4f proj_view;
-  R_Handle target;
+	m4f proj_view;
+	R_Handle target;
 };
 
 struct R_Sprite_pass
 {
-  R_Batch_list sprites;
-  m4f proj_view;
-  R_Handle target;
+	R_Batch_list sprites;
+	m4f proj_view;
+	R_Handle target;
 };
 
 struct R_Mesh_pass
 {
-  R_Batch_list mesh;
-  R_Handle target;
-  m4f proj_view;
-  
-  GLuint index;
-  u32 num_indices;
-  GLuint vert;
+	R_Batch_list mesh;
+	R_Handle target;
+	m4f proj_view;
+	
+	GLuint index;
+	u32 num_indices;
+	GLuint vert;
 };
 
 enum R_PASS_KIND
 {
 	R_PASS_KIND_UI,
 	R_PASS_KIND_MESH,
-  R_PASS_KIND_SPRITE,
-  R_PASS_KIND_COUNT,
+	R_PASS_KIND_SPRITE,
+	R_PASS_KIND_COUNT,
 };
 
 struct R_Pass
@@ -225,9 +225,9 @@ struct R_Pass
 	union
 	{
 		R_Rect_pass rect_pass;
-    R_Mesh_pass mesh_pass;
-    R_Sprite_pass sprite_pass;
-  };
+		R_Mesh_pass mesh_pass;
+		R_Sprite_pass sprite_pass;
+	};
 };
 
 struct R_Pass_node
