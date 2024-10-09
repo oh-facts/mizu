@@ -26,7 +26,7 @@
 
 #define ED_MAX_WINDOWS 10
 
-typedef int ED_WindowFlags;
+typedef s32 ED_WindowFlags;
 
 enum
 {
@@ -157,7 +157,7 @@ struct ED_State
 
 global ED_State *ed_state;
 
-function void ed_draw_spritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
+function void ed_drawSpritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
 {
 	ED_Panel *panel = tab->parent;
 	ED_Window *window = panel->parent;
@@ -220,23 +220,23 @@ function void ed_draw_spritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
 
 function ED_State *ed_alloc()
 {
-	Arena *arena = arena_create();
+	Arena *arena = arenaAlloc();
 	ED_State *state = push_struct(arena, ED_State);
 	state->arena = arena;
 	return state;
 }
 
-function ED_Window *ed_open_window(ED_WindowFlags flags, v2f pos, v2f size)
+function ED_Window *ed_openWindow(ED_WindowFlags flags, v2f pos, v2f size)
 {
 	ED_Window *out = ed_state->windows + ed_state->num_windows++;
 	out->flags = flags;
 	out->size = size;
 	out->pos = pos;
-	out->cxt = ui_alloc_cxt();
+	out->cxt = ui_allocCxt();
 	
-	out->win = os_window_open("alfia", out->size.x, out->size.y);
+	out->win = os_windowOpen("alfia", out->size.x, out->size.y);
 	
-	os_set_window_pos(out->win, out->pos);
+	os_setWindowPos(out->win, out->pos);
 	
 	if(ed_state->num_windows == 1)
 	{
@@ -246,7 +246,7 @@ function ED_Window *ed_open_window(ED_WindowFlags flags, v2f pos, v2f size)
 	return out;
 }
 
-function v2f ed_size_of_panel(ED_Panel *panel)
+function v2f ed_sizeOfPanel(ED_Panel *panel)
 {
 	v2f out = {};
 	out.x = 960;
@@ -254,7 +254,7 @@ function v2f ed_size_of_panel(ED_Panel *panel)
 	return out;
 }
 
-function ED_Panel *ed_open_panel(ED_Window *window, Axis2 axis, f32 pct_of_parent)
+function ED_Panel *ed_openPanel(ED_Window *window, Axis2 axis, f32 pct_of_parent)
 {
 	ED_Panel *out = push_struct(ed_state->arena, ED_Panel);
 	*out = {};
@@ -276,7 +276,7 @@ function ED_Panel *ed_open_panel(ED_Window *window, Axis2 axis, f32 pct_of_paren
 	return out;
 }
 
-function ED_Tab *ed_open_tab(ED_Panel *panel, ED_TabKind kind, v2f size = {{960, 540}})
+function ED_Tab *ed_openTab(ED_Panel *panel, ED_TabKind kind, v2f size = {{960, 540}})
 {
 	ED_Tab *out = push_struct(ed_state->arena, ED_Tab);
 	*out = {};
@@ -297,13 +297,9 @@ function ED_Tab *ed_open_tab(ED_Panel *panel, ED_TabKind kind, v2f size = {{960,
 	//v2f size = ed_size_of_panel(panel);
 	if(kind == ED_TabKind_Custom)
 	{
-		out->target = r_alloc_frame_buffer(size.x, size.y);
+		out->target = r_allocFramebuffer(size.x, size.y);
 	}
 	
-	if(kind == ED_TabKind_ModelViewer)
-	{
-		out->target = r_alloc_frame_buffer(size.x, size.y);
-	}
 	
 	out->name = push_str8f(ed_state->arena, tab_names[kind]);
 	
@@ -312,7 +308,7 @@ function ED_Tab *ed_open_tab(ED_Panel *panel, ED_TabKind kind, v2f size = {{960,
 	return out;
 }
 
-function void ed_draw_children(ED_Panel *panel, UI_Widget *root)
+function void ed_drawChildren(ED_Panel *panel, UI_Widget *root)
 {
 	ED_Window *window = panel->parent;
 	root->pos.x = root->computed_rel_position[0];
@@ -370,7 +366,7 @@ function void ed_draw_children(ED_Panel *panel, UI_Widget *root)
 		pos.y = top_left.tl.y;
 		pos.x = top_left.tl.x + 4;
 #endif
-		d_draw_text(root->text, pos , &params);
+		d_text(root->text, pos , &params);
 	}
 	
 	ED_Tab *tab = panel->active_tab;
@@ -381,7 +377,7 @@ function void ed_draw_children(ED_Panel *panel, UI_Widget *root)
 			Rect selected_slot_rect = rect(tab->selected_slot->pos, tab->selected_slot->size);
 			R_Rect *slot = d_rect(selected_slot_rect, D_COLOR_WHITE);
 			slot->src = rect(0, 0, 2, 2);
-			slot->tex = a_get_alpha_bg_tex();
+			slot->tex = a_getAlphaBGTex();
 		}
 		
 		root->custom_draw(root, root->custom_draw_data);
@@ -389,19 +385,19 @@ function void ed_draw_children(ED_Panel *panel, UI_Widget *root)
 	
 	for(UI_Widget *child = root->first; child; child = child->next)
 	{
-		ed_draw_children(panel, child);
+		ed_drawChildren(panel, child);
 	}
 }
 
-function void ed_draw_panel(ED_Window *window, UI_Widget *root)
+function void ed_drawPanel(ED_Window *window, UI_Widget *root)
 {
 	for(ED_Panel *panel = window->first_panel; panel; panel = panel->next)
 	{
-		ed_draw_children(panel, root);
+		ed_drawChildren(panel, root);
 	}
 }
 
-function void ed_draw_window(ED_Window *window)
+function void ed_drawWindow(ED_Window *window)
 {
 	UI_Widget *parent = window->root;
 	
@@ -427,13 +423,13 @@ function void ed_draw_window(ED_Window *window)
 	
 	if((window->flags & ED_WindowFlags_ChildrenSum) || (window->flags & ED_WindowFlags_Hidden))
 	{
-		os_set_window_size(window->win, parent->size);
+		os_setWindowSize(window->win, parent->size);
 	}
 	else
 	{
-		os_set_window_size(window->win, window->size);
+		os_setWindowSize(window->win, window->size);
 	}
-	ed_draw_panel(window, parent);
+	ed_drawPanel(window, parent);
 }
 
 function void ed_update(f32 delta)
@@ -443,18 +439,18 @@ function void ed_update(f32 delta)
 		ED_Window *window = ed_state->windows + i;
 		
 		window->bucket = d_bucket();
-		d_push_bucket(window->bucket);
+		d_pushBucket(window->bucket);
 		d_push_proj_view(m4f_identity());
 		
 		ui_begin(window->cxt, window->win);
 		
 		ui_set_next_child_layout_axis(window->cxt, Axis2_X);
-		UI_Widget *dad = ui_make_widget(window->cxt, str8_lit(""));
+		UI_Widget *dad = ui_makeWidget(window->cxt, str8_lit(""));
 		ui_parent(window->cxt, dad)
 		{
 			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 			{
-				window->root = ui_make_widget(window->cxt, str8_lit("bridget"));
+				window->root = ui_makeWidget(window->cxt, str8_lit("bridget"));
 				
 				window->color = ED_THEME_BG;
 				
@@ -541,12 +537,12 @@ function void ed_update(f32 delta)
 							
 						}
 						
-						if(os_mouse_held(window->win, SDL_BUTTON_LEFT) && (window->flags & ED_WindowFlags_Grabbed))
+						if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (window->flags & ED_WindowFlags_Grabbed))
 						{
 							f32 x, y;
 							SDL_GetGlobalMouseState(&x, &y);
 							window->pos += v2f{{x, y}} - window->old_pos;
-							os_set_window_pos(window->win, window->pos);
+							os_setWindowPos(window->win, window->pos);
 						}
 						else
 						{
@@ -586,135 +582,7 @@ function void ed_update(f32 delta)
 								{
 									tab->custom_draw(window, tab, delta, tab->custom_drawData);
 								}break;
-								
-								// sometimes I get bored so I try to learn 3d
-								case ED_TabKind_ModelViewer:
-								{
-									d_push_target(tab->target);
-									
-									local_persist b32 done = 0;
-									local_persist GLTF_Model model = {};
-									local_persist R_Model rodel = {};
-									local_persist Arena *arena = 0;
-									if(!done)
-									{
-										arena = arena_create();
-										model = gltf_load_mesh(arena, str8_lit("gltf_test/asuka/asuka.gltf"));
-										rodel = upload_model(arena, &model);
-										
-										done = 1;
-									}
-									
-									static v3f pos = {{0, 0, -1}};
-									f32 speed = 3;
-									
-									m4f proj_view = m4f_make_perspective(90, 16.f / 9, 0.001, 1000);
-									
-									m4f cam = m4f_identity();
-									//cam = m4f_translate(cam, {{0, 0, 1}});
-									//cam = m4f_rot(cam, {{0, 0, 1}});
-									
-									m4f trans = m4f_make_trans(pos);
-									m4f rot = m4f_make_rot_x(DEG_TO_RAD(0));
-									//m4f rot_z = m4f_make_rot_y(DEG_TO_RAD(90));
-									cam = rot * trans;
-									cam = proj_view * cam;
-									
-									if(os_key_press(window->win, SDLK_A))
-									{
-										pos.x += delta * speed;
-									}
-									
-									if(os_key_press(window->win, SDLK_D))
-									{
-										pos.x -= delta * speed;
-									}
-									
-									if(os_key_press(window->win, SDLK_S))
-									{
-										pos.z -= delta * speed;
-									}
-									
-									if(os_key_press(window->win, SDLK_W))
-									{
-										pos.z += delta * speed;
-									}
-									
-									if(os_key_press(window->win, SDLK_Q))
-									{
-										pos.y -= delta * speed;
-									}
-									
-									if(os_key_press(window->win, SDLK_E))
-									{
-										pos.y += delta * speed;
-									}
-									
-									glUseProgram(r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH]);
-									glBindFramebuffer(GL_FRAMEBUFFER, tab->target.u32_m[2]);
-									
-									glEnable(GL_DEPTH_TEST);
-									glDepthFunc(GL_LESS);
-									
-									f32 color[3] = {1,0,1};
-									f32 clear_value = 1;
-									
-									glClearNamedFramebufferfv(tab->target.u32_m[2], GL_COLOR, 0, color);
-									glClearNamedFramebufferfv(tab->target.u32_m[2], GL_DEPTH, 0, &clear_value);
-									
-									static f32 rotty = 0;
-									rotty += delta * 5;
-									
-									m4f model_mat = m4f_identity();
-									model_mat = m4f_make_trans({{0, -0.8, 0}}) * m4f_make_rot_x(DEG_TO_RAD(90)) * m4f_make_rot_z(rotty);
-									
-									for(u32 j = 0; j < rodel.num_meshes; j++)
-									{
-										R_Mesh* mesh = &rodel.meshes[j];
-										
-										glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, mesh->vert);
-										glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
-										
-										glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index);         
-										
-										for (u64 k = 0; k < mesh->num_primitives; ++k) 
-										{
-											R_Primitive* primitive = &mesh->primitives[k];
-											
-											void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH], 0, sizeof(m4f) * 2 + sizeof(u64) * 2, GL_MAP_WRITE_BIT | 
-																																																			GL_MAP_INVALIDATE_BUFFER_BIT);
-											
-											u64 tex_id = primitive->tex.u64_m[0];
-											
-											memcpy(ssbo_data, &cam, sizeof(m4f));
-											memcpy((u8*)ssbo_data + sizeof(m4f), &model_mat, sizeof(m4f));
-											memcpy((u8*)ssbo_data + sizeof(m4f) + sizeof(m4f), &tex_id, sizeof(u64));
-											
-											glUnmapNamedBuffer(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH]);
-											
-											glDrawElements(GL_TRIANGLES, primitive->count, GL_UNSIGNED_INT, (void*)(primitive->start * sizeof(u32)));
-										}
-									}
-									
-									glDisable(GL_DEPTH_TEST);
-									glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-									
-									ui_pref_width(window->cxt, 960)
-										ui_pref_height(window->cxt, 540)
-										ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-									{
-										ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "model image");
-									}
-									
-									ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-									{
-										ui_labelf(window->cxt, "crapfest 3000");
-									}
-									
-									d_pop_target();
-									
-								}break;
-								
+																
 								case ED_TabKind_TileSetViewer:
 								{
 									struct spritesheet
@@ -738,7 +606,7 @@ function void ed_update(f32 delta)
 											for(s32 j = 0; j < 2; j++)
 											{
 												s32 index = i*2 + j;
-												ed_draw_spritesheet(tab, sheets[index].x, sheets[index].y, sheets[index].path);
+												ed_drawSpritesheet(tab, sheets[index].x, sheets[index].y, sheets[index].path);
 												
 												ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 													ui_pref_width(window->cxt, 45)
@@ -849,11 +717,11 @@ function void ed_update(f32 delta)
 		SDL_GetGlobalMouseState(&window->old_pos.x, &window->old_pos.y);
 		
 		ui_layout(dad);
-		ed_draw_window(window);
+		ed_drawWindow(window);
 		ui_end(window->cxt);
 		
 		d_pop_proj_view();
-		d_pop_bucket();
+		d_popBucket();
 		
 	}
 }

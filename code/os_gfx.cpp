@@ -30,19 +30,19 @@ global OS_GfxState *os_gfx_state;
 
 function void os_init()
 {
-  if(SDL_Init(SDL_INIT_VIDEO) < 0)
+		if(SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
 		printf("%s\n\r", SDL_GetError());
 		printf("[Quitting Fatal]\n\r");
 		INVALID_CODE_PATH();
 	}
 	
-	Arena *arena = arena_create();
+	Arena *arena = arenaAlloc();
 	os_gfx_state = push_struct(arena, OS_GfxState);
 	os_gfx_state->arena = arena;
 }
 
-function OS_Window *os_win_from_event(SDL_Event *event)
+function OS_Window *os_winFromEvent(SDL_Event *event)
 {
 	SDL_Window *sdl_win = SDL_GetWindowFromID(event->window.windowID);
 	
@@ -61,56 +61,55 @@ function OS_Window *os_win_from_event(SDL_Event *event)
 	return out;
 }
 
-function void os_set_window_size(OS_Window *win, v2f size)
+function void os_setWindowSize(OS_Window *win, v2f size)
 {
-  SDL_SetWindowSize(win->raw, size.x, size.y);
+		SDL_SetWindowSize(win->raw, size.x, size.y);
 }
 
-function void os_set_window_pos(OS_Window *win, v2f pos)
+function void os_setWindowPos(OS_Window *win, v2f pos)
 {
-  SDL_SetWindowPosition(win->raw, pos.x, pos.y);
+		SDL_SetWindowPosition(win->raw, pos.x, pos.y);
 }
 
-function b32 os_mouse_held(OS_Window *win, u32 key)
+function b32 os_mouseHeld(OS_Window *win, u32 key)
 {
-  //printf("%d\n", win->mdown[key]);
-  return win->mdown[key];
+		//printf("%d\n", win->mdown[key]);
+		return win->mdown[key];
 }
 
-function b32 os_mouse_pressed(OS_Window *win, u32 key)
+function b32 os_mousePressed(OS_Window *win, u32 key)
 {
-  //printf("%d, %d\n", win->mdown[key] , win->mdown_old[key]);
-  return win->mdown[key] && !win->mdown_old[key];
+		//printf("%d, %d\n", win->mdown[key] , win->mdown_old[key]);
+		return win->mdown[key] && !win->mdown_old[key];
 }
 
-function b32 os_mouse_released(OS_Window *win, u32 key)
+function b32 os_mouseReleased(OS_Window *win, u32 key)
 {
-  return !win->mdown[key] && win->mdown_old[key];
+		return !win->mdown[key] && win->mdown_old[key];
 }
 
-function b32 os_key_press(OS_Window *win, u32 key)
+function b32 os_keyPress(OS_Window *win, u32 key)
 {
-  return win->keys[key];
+		return win->keys[key];
 }
 
-function void os_poll_events()
+function void os_pollEvents()
 {
 	for(s32 i = 0; i < os_gfx_state->window_num; i++)
 	{
-    OS_Window *window = os_gfx_state->windows + i;
-		
-    for(s32 j = 0; j < 8; j++)
-    {
-      window->mdown_old[j] = window->mdown[j];
-    }
-  }
+		OS_Window *window = os_gfx_state->windows + i;
+		for(s32 j = 0; j < 8; j++)
+		{
+			window->mdown_old[j] = window->mdown[j];
+		}
+	}
 	
 	SDL_Event sdl_event;
 	while (SDL_PollEvent(&sdl_event)) 
 	{
-		OS_Window *win = os_win_from_event(&sdl_event);
+		OS_Window *win = os_winFromEvent(&sdl_event);
 		
-    switch (sdl_event.type) 
+		switch (sdl_event.type) 
 		{
 			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
 			{
@@ -132,7 +131,7 @@ function void os_poll_events()
 				
 				if(key >= SDLK_A && key <= SDLK_Z)
 				{
-          win->keys[key] = pressed;;
+					win->keys[key] = pressed;;
 				}
 				
 				if ((mod & SDL_KMOD_CTRL) && key == SDLK_F && pressed) 
@@ -172,9 +171,8 @@ function void os_poll_events()
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			{
 				b32 pressed = sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? 1 : 0;
-				
-        win->mdown[sdl_event.button.button] = pressed;
-        
+				win->mdown[sdl_event.button.button] = pressed;
+								
 				//printf("hi %d %s\n", pressed, win->title);
 				
 			}break;
@@ -182,36 +180,36 @@ function void os_poll_events()
 	}
 }
 
-function OS_Window *os_window_open(const char *title, s32 w, s32 h)
+function OS_Window *os_windowOpen(const char *title, s32 w, s32 h)
 {
 	OS_Window *out = os_gfx_state->windows + os_gfx_state->window_num++;
 	*out = {};
-  
-  out->w = w;
+		
+	out->w = w;
 	out->h = h;
 	
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-  SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-  
-  out->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
-  out->gl_cxt = SDL_GL_CreateContext(out->raw);
-  SDL_GL_MakeCurrent(out->raw, out->gl_cxt);
-  
-  gladLoadGL();
-  
-  GLuint default_rubbish_bs_vao;
-  glCreateVertexArrays(1,&default_rubbish_bs_vao);
-  glBindVertexArray(default_rubbish_bs_vao);
-  
-  if(!out->gl_cxt)
-  {
-    printf("%s\n\r", SDL_GetError());
-    printf("[Quitting Fatal]\n\r");
-    INVALID_CODE_PATH();
-  }
-  
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+	
+	out->raw = SDL_CreateWindow(title, w, h, SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
+	out->gl_cxt = SDL_GL_CreateContext(out->raw);
+	SDL_GL_MakeCurrent(out->raw, out->gl_cxt);
+	
+	gladLoadGL();
+	
+	GLuint default_rubbish_bs_vao;
+	glCreateVertexArrays(1,&default_rubbish_bs_vao);
+	glBindVertexArray(default_rubbish_bs_vao);
+	
+	if(!out->gl_cxt)
+	{
+		printf("%s\n\r", SDL_GetError());
+		printf("[Quitting Fatal]\n\r");
+		INVALID_CODE_PATH();
+	}
+	
 	out->title = title;
 	
 	return out;

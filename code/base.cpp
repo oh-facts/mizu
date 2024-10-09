@@ -29,17 +29,17 @@ struct Arena
 #define ClampTop(A,X) Min(A,X)
 #define ClampBot(X,B) Max(X,B)
 
-typedef struct Arena_temp Arena_temp;
-struct Arena_temp
+typedef struct ArenaTemp ArenaTemp;
+struct ArenaTemp
 {
 	Arena *arena;
 	size_t pos;
 };
 
-#define push_struct(arena, type) (type*)_arena_alloc(arena, sizeof(type))
-#define push_array(arena,type,count) (type*)_arena_alloc(arena, sizeof(type) * count)
+#define push_struct(arena, type) (type*)_arenaPushImpl(arena, sizeof(type))
+#define push_array(arena,type,count) (type*)_arenaPushImpl(arena, sizeof(type) * count)
 
-function void* _arena_alloc(Arena* arena, size_t size)
+function void* _arenaPushImpl(Arena* arena, size_t size)
 {
 	u64 pos_mem = AlignPow2(arena->used, arena->align);
 	u64 pos_new = pos_mem + size;
@@ -72,16 +72,16 @@ function void* _arena_alloc(Arena* arena, size_t size)
 	return memory;
 }
 
-function Arena_temp arena_temp_begin(Arena *arena)
+function ArenaTemp arenaTempBegin(Arena *arena)
 {
-	Arena_temp out = {
+	ArenaTemp out = {
 		.arena = arena,
 		.pos = arena->used,
 	};
 	return out;
 }
 
-function void arena_temp_end(Arena_temp *temp)
+function void arenaTempEnd(ArenaTemp *temp)
 {
 	for(u32 i = temp->pos; i < temp->arena->used; i ++)
 	{
@@ -91,7 +91,7 @@ function void arena_temp_end(Arena_temp *temp)
 	temp->arena->used = temp->pos;
 }
 
-function Arena *arena_create(u64 cmt, u64 res)
+function Arena *arenaAlloc(u64 cmt, u64 res)
 {
 	Arena *arena = 0;
 	
@@ -102,15 +102,15 @@ function Arena *arena_create(u64 cmt, u64 res)
 	arena->used = ARENA_HEADER_SIZE;
 	arena->align = DEFAULT_ALIGN;
 	
-	arena->cmt = AlignPow2(cmt, os_get_page_size());
+	arena->cmt = AlignPow2(cmt, os_getPageSize());
 	arena->res = res;
 	
 	return arena;
 }
 
-function Arena *arena_create()
+function Arena *arenaAlloc()
 {
-	return arena_create(ARENA_COMMIT_SIZE, ARENA_RESERVE_SIZE);
+	return arenaAlloc(ARENA_COMMIT_SIZE, ARENA_RESERVE_SIZE);
 }
 
 #include <math.h>
@@ -675,110 +675,6 @@ function m4f m4f_look_at(v3f eye, v3f center, v3f up)
 	return mat;
 }
 
-function f32 determinant3x3(f32 a, f32 b, f32 c,
-                            f32 d, f32 e, f32 f,
-                            f32 g, f32 h, f32 i) {
-	return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
-}
-
-function m4f adjugate(const m4f& mat) {
-	m4f adj;
-	
-	adj.e[0][0] =  determinant3x3(mat.e[1][1], mat.e[1][2], mat.e[1][3],
-																															mat.e[2][1], mat.e[2][2], mat.e[2][3],
-																															mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-	adj.e[1][0] = -determinant3x3(mat.e[1][0], mat.e[1][2], mat.e[1][3],
-																															mat.e[2][0], mat.e[2][2], mat.e[2][3],
-																															mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-	adj.e[2][0] =  determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][3],
-																															mat.e[2][0], mat.e[2][1], mat.e[2][3],
-																															mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-	adj.e[3][0] = -determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][2],
-																															mat.e[2][0], mat.e[2][1], mat.e[2][2],
-																															mat.e[3][0], mat.e[3][1], mat.e[3][2]);
-	
-	adj.e[0][1] = -determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
-																															mat.e[2][1], mat.e[2][2], mat.e[2][3],
-																															mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-	adj.e[1][1] =  determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
-																															mat.e[2][0], mat.e[2][2], mat.e[2][3],
-																															mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-	adj.e[2][1] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
-																															mat.e[2][0], mat.e[2][1], mat.e[2][3],
-																															mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-	adj.e[3][1] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
-																															mat.e[2][0], mat.e[2][1], mat.e[2][2],
-																															mat.e[3][0], mat.e[3][1], mat.e[3][2]);
-	
-	adj.e[0][2] =  determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
-																															mat.e[1][1], mat.e[1][2], mat.e[1][3],
-																															mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-	adj.e[1][2] = -determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
-																															mat.e[1][0], mat.e[1][2], mat.e[1][3],
-																															mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-	adj.e[2][2] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
-																															mat.e[1][0], mat.e[1][1], mat.e[1][3],
-																															mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-	adj.e[3][2] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
-																															mat.e[1][0], mat.e[1][1], mat.e[1][2],
-																															mat.e[3][0], mat.e[3][1], mat.e[3][2]);
-	
-	adj.e[0][3] = -determinant3x3(mat.e[0][1], mat.e[0][2], mat.e[0][3],
-																															mat.e[1][1], mat.e[1][2], mat.e[1][3],
-																															mat.e[2][1], mat.e[2][2], mat.e[2][3]);
-	adj.e[1][3] =  determinant3x3(mat.e[0][0], mat.e[0][2], mat.e[0][3],
-																															mat.e[1][0], mat.e[1][2], mat.e[1][3],
-																															mat.e[2][0], mat.e[2][2], mat.e[2][3]);
-	adj.e[2][3] = -determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][3],
-																															mat.e[1][0], mat.e[1][1], mat.e[1][3],
-																															mat.e[2][0], mat.e[2][1], mat.e[2][3]);
-	adj.e[3][3] =  determinant3x3(mat.e[0][0], mat.e[0][1], mat.e[0][2],
-																															mat.e[1][0], mat.e[1][1], mat.e[1][2],
-																															mat.e[2][0], mat.e[2][1], mat.e[2][2]);
-	
-	return adj;
-}
-
-function f32 determinant(const m4f& mat) {
-	f32 det = 0;
-	
-	det += mat.e[0][0] * determinant3x3(mat.e[1][1], mat.e[1][2], mat.e[1][3],
-																																					mat.e[2][1], mat.e[2][2], mat.e[2][3],
-																																					mat.e[3][1], mat.e[3][2], mat.e[3][3]);
-	det -= mat.e[0][1] * determinant3x3(mat.e[1][0], mat.e[1][2], mat.e[1][3],
-																																					mat.e[2][0], mat.e[2][2], mat.e[2][3],
-																																					mat.e[3][0], mat.e[3][2], mat.e[3][3]);
-	det += mat.e[0][2] * determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][3],
-																																					mat.e[2][0], mat.e[2][1], mat.e[2][3],
-																																					mat.e[3][0], mat.e[3][1], mat.e[3][3]);
-	det -= mat.e[0][3] * determinant3x3(mat.e[1][0], mat.e[1][1], mat.e[1][2],
-																																					mat.e[2][0], mat.e[2][1], mat.e[2][2],
-																																					mat.e[3][0], mat.e[3][1], mat.e[3][2]);
-	
-	return det;
-}
-
-function m4f inverse(const m4f& mat) {
-	m4f inv;
-	
-	f32 det = determinant(mat);
-	if (det == 0) {
-		
-		return inv;
-	}
-	
-	m4f adj = adjugate(mat);
-	
-	f32 inv_det = 1.0f / det;
-	for (int r = 0; r < 4; ++r) {
-		for (int c = 0; c < 4; ++c) {
-			inv.e[r][c] = adj.e[r][c] * inv_det;
-		}
-	}
-	
-	return inv;
-}
-
 function m4f operator*(m4f a, m4f b)
 {
 	m4f out = {};
@@ -815,7 +711,8 @@ union quat
 
 function quat operator*(quat x, quat y)
 {
-	return (quat){
+	return (quat)
+	{
 		.r = x.r * y.r - x.i * y.i - x.j * y.j - x.k * y.k,
 		.i = x.r * y.i + x.i * y.r + x.j * y.k - x.k * y.j,
 		.j = x.r * y.j - x.i * y.k + x.j * y.r + x.k * y.i,
@@ -855,7 +752,7 @@ struct Str8
 
 #define str8_lit(c) Str8{(u8*)c, sizeof(c) - 1}
 
-function u64 str8_len(char *c)
+function u64 cstr8Len(char *c)
 {
 	u64 out = 0;
 	while(*c++)
@@ -982,12 +879,12 @@ global TCXT *tcxt;
 
 function void tcxt_init()
 {
-	Arena *arena = arena_create();
+	Arena *arena = arenaAlloc();
 	tcxt = push_struct(arena, TCXT);
 	tcxt->arena = arena;
 	for(u32 i = 0; i < ARRAY_LEN(tcxt->arenas); i ++)
 	{
-		tcxt->arenas[i] = arena_create(Megabytes(10), Megabytes(64));
+		tcxt->arenas[i] = arenaAlloc(Megabytes(10), Megabytes(64));
 	}
 }
 
@@ -1040,8 +937,8 @@ function Arena *tcxt_get_scratch(Arena **conflicts, u64 count)
 	return out;
 }
 
-#define scratch_begin(conflicts, count) arena_temp_begin(tcxt_get_scratch(conflicts, count))
-#define scratch_end(scratch) arena_temp_end(scratch);
+#define scratch_begin(conflicts, count) arenaTempBegin(tcxt_get_scratch(conflicts, count))
+#define scratch_end(scratch) arenaTempEnd(scratch);
 
 struct Rect
 {
@@ -1237,7 +1134,7 @@ function Bitmap bitmap(Str8 path)
 	return out;
 }
 
-function Glyph *glyph_from_codepoint(Atlas *atlas, char c)
+function Glyph *glyphFromCodepoint(Atlas *atlas, char c)
 {
 	Glyph *out = atlas->glyphs + (u32)c;
 	return out;

@@ -33,14 +33,14 @@ function void os_win32_release(void *ptr, u64 size)
 	VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
-function u64 os_win32_get_page_size()
+function u64 os_win32_getPageSize()
 {
 	SYSTEM_INFO sysinfo = {};
 	GetSystemInfo(&sysinfo);
 	return sysinfo.dwPageSize;
 }
 
-function Str8 os_win32_get_app_dir(Arena *arena)
+function Str8 os_win32_getAppDir(Arena *arena)
 {
 	char buffer[256];
 	DWORD len = GetModuleFileName(0, buffer, 256);
@@ -51,7 +51,7 @@ function Str8 os_win32_get_app_dir(Arena *arena)
 		*c = 0;
 		--len;
 	}
-  
+	
 	u8 *str = push_array(arena, u8, len);
 	memcpy(str, buffer, len);
 	
@@ -60,7 +60,7 @@ function Str8 os_win32_get_app_dir(Arena *arena)
 	return out;
 }
 
-function OS_Api os_win32_get_api()
+function OS_Api os_win32_getApi()
 {
 	OS_Api out = {};
 	out.os_reserve = os_win32_reserve;

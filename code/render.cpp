@@ -123,7 +123,7 @@ struct R_Sprite
 	s32 layer; //causes epic crash
 };
 
-int r_sprite_sort(const void* a, const void* b) 
+int r_spriteSort(const void* a, const void* b) 
 {
 	R_Sprite *first = (R_Sprite*)a;
 	R_Sprite *sec = (R_Sprite*)b;
@@ -139,35 +139,6 @@ int r_sprite_sort(const void* a, const void* b)
 	return (pos_1 > pos_2) - (pos_1 < pos_2);
 }
 
-struct R_MeshInst
-{
-	m4f model;
-};
-
-struct R_Primitive
-{
-	u32 start;
-	u32 count;
-	
-	R_Handle tex;
-};
-
-struct R_Mesh
-{
-	R_Primitive *primitives;
-	u64 num_primitives;
-	
-	GLuint index;
-	GLuint vert;
-	u32 num_indices;
-};
-
-struct R_Model
-{
-	R_Mesh *meshes;
-	u64 num_meshes;
-};
-
 struct R_Batch
 {
 	R_Batch *next;
@@ -177,7 +148,7 @@ struct R_Batch
 	u32 count;
 };
 
-struct R_Batch_list
+struct R_BatchList
 {
 	R_Batch *first;
 	R_Batch *last;
@@ -185,35 +156,23 @@ struct R_Batch_list
 	u32 num;
 };
 
-struct R_Rect_pass
+struct R_RectPass
 {
-	R_Batch_list rects;
+	R_BatchList rects;
 	m4f proj_view;
 	R_Handle target;
 };
 
-struct R_Sprite_pass
+struct R_SpritePass
 {
-	R_Batch_list sprites;
+	R_BatchList sprites;
 	m4f proj_view;
 	R_Handle target;
-};
-
-struct R_Mesh_pass
-{
-	R_Batch_list mesh;
-	R_Handle target;
-	m4f proj_view;
-	
-	GLuint index;
-	u32 num_indices;
-	GLuint vert;
 };
 
 enum R_PASS_KIND
 {
 	R_PASS_KIND_UI,
-	R_PASS_KIND_MESH,
 	R_PASS_KIND_SPRITE,
 	R_PASS_KIND_COUNT,
 };
@@ -224,27 +183,26 @@ struct R_Pass
 	
 	union
 	{
-		R_Rect_pass rect_pass;
-		R_Mesh_pass mesh_pass;
-		R_Sprite_pass sprite_pass;
+		R_RectPass rect_pass;
+		R_SpritePass sprite_pass;
 	};
 };
 
-struct R_Pass_node
+struct R_PassNode
 {
-	R_Pass_node *next;
+	R_PassNode *next;
 	R_Pass pass;
 };
 
-struct R_Pass_list
+struct R_PassList
 {
-	R_Pass_node *first;
-	R_Pass_node *last;
+	R_PassNode *first;
+	R_PassNode *last;
 	
 	u32 num;
 };
 
-function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list)
+function R_Batch *r_pushBatchList(Arena *arena, R_BatchList *list)
 {
 	R_Batch *node = push_struct(arena, R_Batch);
 	list->num ++;
@@ -260,15 +218,15 @@ function R_Batch *r_push_batch_list(Arena *arena, R_Batch_list *list)
 	return node;
 }
 
-#define r_push_batch(arena,batch, type) (type*)r_push_batch_(arena, batch, sizeof(type))
+#define r_pushBatch(arena,batch, type) (type*)r_pushBatch_(arena, batch, sizeof(type))
 
-function void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size)
+function void *r_pushBatch_(Arena *arena, R_BatchList *list, u64 size)
 {
 	R_Batch *batch = list->last;
 	
 	if(!batch || (batch->used + size > batch->size))
 	{
-		batch = r_push_batch_list(arena, list);
+		batch = r_pushBatchList(arena, list);
 	}
 	
 	if(!batch->base)
@@ -284,9 +242,9 @@ function void *r_push_batch_(Arena *arena, R_Batch_list *list, u64 size)
 	return out;
 }
 
-function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND kind)
+function R_Pass *r_pushPassList(Arena *arena, R_PassList *list, R_PASS_KIND kind)
 {
-	R_Pass_node *node = push_struct(arena, R_Pass_node);
+	R_PassNode *node = push_struct(arena, R_PassNode);
 	list->num ++;
 	if(list->last)
 	{
@@ -302,8 +260,8 @@ function R_Pass *r_push_pass_list(Arena *arena, R_Pass_list *list, R_PASS_KIND k
 }
 
 // backend hooks
-function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
-function void r_free_texture(R_Handle handle);
-function R_Handle r_alloc_frame_buffer(s32 w, s32 h);
-function void r_submit(OS_Window win, R_Pass_list *list);
-function v2s r_tex_size_from_handle(R_Handle handle);
+function R_Handle r_allocTexture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p);
+function void r_freeTexture(R_Handle handle);
+function R_Handle r_allocFramebuffer(s32 w, s32 h);
+function void r_submit(OS_Window win, R_PassList *list);
+function v2s r_texSizeFromHandle(R_Handle handle);

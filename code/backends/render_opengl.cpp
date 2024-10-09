@@ -40,35 +40,35 @@ R"(
 
 struct Vertex
 {
-vec2 pos;
-vec2 uv;
+	vec2 pos;
+	vec2 uv;
 };
 
 layout (std430, binding = 1) buffer ssbo {
-uvec2 tex_id;
-    uvec2 screen_size;
+	uvec2 tex_id;
+	uvec2 screen_size;
 };
 
 flat out uvec2 a_texId;
 out vec2 a_uv;
 void main()
 {
-    
-    Vertex vertices[] = {
-        {{ 0, 0}, {0, 1}},
-        {{ 2, 0}, {1, 1}},
-        {{ 2, 2}, {1, 0}},
-        {{ 0, 2}, {0, 0}},
-    };
+	
+	Vertex vertices[] = {
+		{{ 0, 0}, {0, 1}},
+		{{ 2, 0}, {1, 1}},
+		{{ 2, 2}, {1, 0}},
+		{{ 0, 2}, {0, 0}},
+	};
 
-a_texId = tex_id;
-    Vertex vertex = vertices[gl_VertexID];
-a_uv = vertex.uv;
-    
-vec2 norm_pos = (vertex.pos - 1);// / screen_size.xy * 2.0 - 1.0;
-    norm_pos.y =  - norm_pos.y;
+	a_texId = tex_id;
+	Vertex vertex = vertices[gl_VertexID];
+	a_uv = vertex.uv;
+	
+	vec2 norm_pos = (vertex.pos - 1);// / screen_size.xy * 2.0 - 1.0;
+	norm_pos.y =  - norm_pos.y;
 
-    gl_Position = vec4(norm_pos, 0.5, 1.0);
+	gl_Position = vec4(norm_pos, 0.5, 1.0);
 }
 
 )";
@@ -78,15 +78,15 @@ R"(
 	#version 450 core
 	#extension GL_ARB_bindless_texture: require
 
-flat in uvec2 a_texId;
-in vec2 a_uv;
-out vec4 FragColor;
+	flat in uvec2 a_texId;
+	in vec2 a_uv;
+	out vec4 FragColor;
 
 void main()
 {
-		vec4 tex_col = texture(sampler2D(a_texId), a_uv);
+	vec4 tex_col = texture(sampler2D(a_texId), a_uv);
 
-FragColor = tex_col;
+	FragColor = tex_col;
 }
 )"
 ;
@@ -103,43 +103,43 @@ R"(
 
 struct R_Handle
 {
-uvec2 sprite_id;
-uint pad1;
-uint w;
-uint h;
-uint pad2;
-uvec2 pad3;
+	uvec2 sprite_id;
+	uint pad1;
+	uint w;
+	uint h;
+	uint pad2;
+	uvec2 pad3;
 };
 
 struct Rect
 {
-    vec2 tl;
-    vec2 br;
+	vec2 tl;
+	vec2 br;
 };
 
 struct Vertex 
 {
-    vec2 pos;
-    vec2 uv;
-vec4 fade;
+	vec2 pos;
+	vec2 uv;
+	vec4 fade;
 };
 
 struct TextObject
 {
-    Rect src;
-    Rect dst;
-    vec4 border_color;
-vec4 fade[Corner_COUNT];
-    R_Handle handle;
-float border_thickness;
-float radius;
-float pad[2];
+	Rect src;
+	Rect dst;
+	vec4 border_color;
+	vec4 fade[Corner_COUNT];
+	R_Handle handle;
+	float border_thickness;
+	float radius;
+	float pad[2];
 };
 
 layout (std430, binding = 0) buffer ssbo {
-    vec4 screen_size;
-    mat4 proj;
-TextObject objects[];
+	vec4 screen_size;
+	mat4 proj;
+	TextObject objects[];
 };
 
 out vec4 border_color;
@@ -154,39 +154,41 @@ out vec2 norm_tex;
 
 void main()
 {
-    TextObject obj = objects[gl_InstanceID];
+	TextObject obj = objects[gl_InstanceID];
 
-vec2 base_uv[] = {
-{0, 1},
-        {1, 1},
-        {1, 0},
-        {0, 0},
-    };
+	vec2 base_uv[] = 
+	{
+		{0, 1},
+		{1, 1},
+		{1, 0},
+		{0, 0},
+	};
 
-norm_tex = base_uv[gl_VertexID];
+	norm_tex = base_uv[gl_VertexID];
 
-    Vertex vertices[] = {
-        {{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}, obj.fade[Corner_00]},
-        {{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}, obj.fade[Corner_10]},
-        {{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}, obj.fade[Corner_11]},
-        {{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_01]},
-    };
+	Vertex vertices[] = 
+	{
+		{{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}, obj.fade[Corner_00]},
+		{{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}, obj.fade[Corner_10]},
+		{{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}, obj.fade[Corner_11]},
+		{{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_01]},
+	};
 
- half_size = vec2((obj.dst.br.x - obj.dst.tl.x) * 0.5, (obj.dst.br.y - obj.dst.tl.y) * 0.5);
+	half_size = vec2((obj.dst.br.x - obj.dst.tl.x) * 0.5, (obj.dst.br.y - obj.dst.tl.y) * 0.5);
 
-    Vertex vertex = vertices[gl_VertexID];
+	Vertex vertex = vertices[gl_VertexID];
 
-    texId = obj.handle.sprite_id;
-tex_size.x = obj.handle.w;
-    tex_size.y = obj.handle.h;
-  border_color = obj.border_color;
-    fade = vertex.fade;
-border_thickness = obj.border_thickness;
-radius = obj.radius;
-tex = vertex.uv;
-    vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
-    norm_pos.y =  - norm_pos.y;
-gl_Position = vec4(norm_pos, 0.5, 1.0) * proj;
+	texId = obj.handle.sprite_id;
+	tex_size.x = obj.handle.w;
+	tex_size.y = obj.handle.h;
+	border_color = obj.border_color;
+	fade = vertex.fade;
+	border_thickness = obj.border_thickness;
+	radius = obj.radius;
+	tex = vertex.uv;
+	vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
+	norm_pos.y =  - norm_pos.y;
+	gl_Position = vec4(norm_pos, 0.5, 1.0) * proj;
 }
 
 )"
@@ -197,36 +199,36 @@ R"(
 	#version 450 core
 	#extension GL_ARB_bindless_texture: require
 
-in vec4 border_color;
- in vec4 fade;
-in vec2 tex;
-flat in uvec2 texId;
-flat in vec2 tex_size;
-flat in float border_thickness;
-flat in vec2 half_size;
-flat in float radius;
-in vec2 norm_tex;
+	in vec4 border_color;
+	in vec4 fade;
+	in vec2 tex;
+	flat in uvec2 texId;
+	flat in vec2 tex_size;
+	flat in float border_thickness;
+	flat in vec2 half_size;
+	flat in float radius;
+	in vec2 norm_tex;
 
-out vec4 FragColor;
+	out vec4 FragColor;
 
 float RectSDF(vec2 p, vec2 b, float r)
 {
-    vec2 d = abs(p) - b + vec2(r);
-    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;   
+	vec2 d = abs(p) - b + vec2(r);
+	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;   
 }
 
 void main() 
 {
-vec4 tex_col = texture(sampler2D(texId), tex);
+	vec4 tex_col = texture(sampler2D(texId), tex);
 
-vec2 pos = half_size * 2 * norm_tex;
-        
-float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
-  float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
+	vec2 pos = half_size * 2 * norm_tex;
+		
+	float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
+	float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
   
-  vec4 v4FromColor = border_color;
-  vec4 v4ToColor = (fDist < 0.0) ? fade * tex_col : vec4(0);
-FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
+	vec4 v4FromColor = border_color;
+	vec4 v4ToColor = (fDist < 0.0) ? fade * tex_col : vec4(0);
+	FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
 }
 
 
@@ -247,45 +249,45 @@ R"(
 
 struct R_Handle
 {
-uvec2 sprite_id;
-uint pad1;
-uint w;
-uint h;
-uint pad2;
-uvec2 pad3;
+	uvec2 sprite_id;
+	uint pad1;
+	uint w;
+	uint h;
+	uint pad2;
+	uvec2 pad3;
 };
 
 struct Rect
 {
-    vec2 tl;
-    vec2 br;
+	vec2 tl;
+	vec2 br;
 };
 
 struct Vertex 
 {
-    vec2 pos;
-    vec2 uv;
-vec4 fade;
+	vec2 pos;
+	vec2 uv;
+	vec4 fade;
 };
 
 struct Sprite
 {
-    Rect src;
-    Rect dst;
-    vec4 border_color;
-vec4 fade[Corner_COUNT];
-    R_Handle handle;
-float border_thickness;
-float radius;
-vec2 basis;
-float pad[3];
-float depth; // epic crash
+	Rect src;
+	Rect dst;
+	vec4 border_color;
+	vec4 fade[Corner_COUNT];
+	R_Handle handle;
+	float border_thickness;
+	float radius;
+	vec2 basis;
+	float pad[3];
+	float depth; // epic crash
 };
 
 layout (std430, binding = 0) buffer ssbo {
-    vec4 screen_size;
-    mat4 proj;
-Sprite objects[];
+	vec4 screen_size;
+	mat4 proj;
+	Sprite objects[];
 };
 
 out vec4 border_color;
@@ -300,44 +302,46 @@ out vec2 norm_tex;
 
 void main()
 {
-    Sprite obj = objects[gl_InstanceID];
+	Sprite obj = objects[gl_InstanceID];
 
-vec2 base_uv[] = {
-{0, 1},
-        {1, 1},
-        {1, 0},
-        {0, 0},
-    };
+	vec2 base_uv[] = 
+	{
+		{0, 1},
+		{1, 1},
+		{1, 0},
+		{0, 0},
+	};
 
-norm_tex = base_uv[gl_VertexID];
+	norm_tex = base_uv[gl_VertexID];
 
-    Vertex vertices[] = {
-        {{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}, obj.fade[Corner_00]},
-        {{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}, obj.fade[Corner_10]},
-        {{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}, obj.fade[Corner_11]},
-        {{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_01]},
-    };
+	Vertex vertices[] = 
+	{
+		{{ obj.dst.tl.x, obj.dst.tl.y}, {obj.src.tl.x, obj.src.br.y}, obj.fade[Corner_00]},
+		{{ obj.dst.br.x, obj.dst.tl.y}, {obj.src.br.x, obj.src.br.y}, obj.fade[Corner_10]},
+		{{ obj.dst.br.x, obj.dst.br.y}, {obj.src.br.x, obj.src.tl.y}, obj.fade[Corner_11]},
+		{{ obj.dst.tl.x, obj.dst.br.y}, {obj.src.tl.x, obj.src.tl.y}, obj.fade[Corner_01]},
+	};
 
- half_size = vec2((obj.dst.br.x - obj.dst.tl.x) * 0.5, (obj.dst.br.y - obj.dst.tl.y) * 0.5);
+	half_size = vec2((obj.dst.br.x - obj.dst.tl.x) * 0.5, (obj.dst.br.y - obj.dst.tl.y) * 0.5);
 
-    Vertex vertex = vertices[gl_VertexID];
+	Vertex vertex = vertices[gl_VertexID];
 
-    texId = obj.handle.sprite_id;
-tex_size.x = obj.handle.w;
-    tex_size.y = obj.handle.h;
-  border_color = obj.border_color;
-    fade = vertex.fade;
-border_thickness = obj.border_thickness;
-radius = obj.radius;
-tex = vertex.uv;
-    
-// if we use screen size to normalize, we are basically saying fuck you to the
-// projection / view matrix. camera is doing this math specifically for us
-// for ui its ok since everything is wrt the screen, but for the game world, its not
-vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
-    norm_pos.y =  - norm_pos.y;
-norm_pos = vertex.pos;
-gl_Position = vec4(norm_pos, 0, 1) * proj;
+	texId = obj.handle.sprite_id;
+	tex_size.x = obj.handle.w;
+	tex_size.y = obj.handle.h;
+	border_color = obj.border_color;
+	fade = vertex.fade;
+	border_thickness = obj.border_thickness;
+	radius = obj.radius;
+	tex = vertex.uv;
+	
+	// if we use screen size to normalize, we are basically saying fuck you to the
+	// projection / view matrix. camera is doing this math specifically for us
+	// for ui its ok since everything is wrt the screen, but for the game world, its not
+	vec2 norm_pos = vertex.pos / screen_size.xy * 2.0 - 1.0;
+	norm_pos.y =  - norm_pos.y;
+	norm_pos = vertex.pos;
+	gl_Position = vec4(norm_pos, 0, 1) * proj;
 }
 
 )"
@@ -345,11 +349,11 @@ gl_Position = vec4(norm_pos, 0, 1) * proj;
 
 global char* r_fs_sprite_src = 
 R"(
-	#version 450 core
-	#extension GL_ARB_bindless_texture: require
+#version 450 core
+#extension GL_ARB_bindless_texture: require
 
 in vec4 border_color;
- in vec4 fade;
+in vec4 fade;
 in vec2 tex;
 flat in uvec2 texId;
 flat in vec2 tex_size;
@@ -362,29 +366,29 @@ out vec4 FragColor;
 
 float RectSDF(vec2 p, vec2 b, float r)
 {
-    vec2 d = abs(p) - b + vec2(r);
-    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;   
+	vec2 d = abs(p) - b + vec2(r);
+	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;   
 }
 
 void main() 
 {
-vec4 tex_col = texture(sampler2D(texId), tex);
+	vec4 tex_col = texture(sampler2D(texId), tex);
 
-vec2 pos = half_size * 2 * norm_tex;
-        
-float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
+	vec2 pos = half_size * 2 * norm_tex;
+		
+	float fDist = RectSDF(pos - half_size, half_size - border_thickness/2.0, radius);
   
-if(tex_col.a < 0.1 || fDist > 1)
-{
-discard;
-}
+	if(tex_col.a < 0.1 || fDist > 1)
+	{
+		discard;
+	}
 
-float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
+	float fBlendAmount = smoothstep(-1.0, 0.0, abs(fDist) - border_thickness / 2.0);
   
-  vec4 v4FromColor = border_color;
-  vec4 v4ToColor = (fDist < 0.0) ? fade * tex_col : vec4(0);
+	vec4 v4FromColor = border_color;
+	vec4 v4ToColor = (fDist < 0.0) ? fade * tex_col : vec4(0);
 
-FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
+	FragColor = mix(v4FromColor, v4ToColor, fBlendAmount);
 }
 
 
@@ -399,22 +403,24 @@ R"(
 
 struct Vertex 
 {
-    vec3 pos;
-    float uv_x;
-vec3 norm;
-float uv_y;
-vec4 color;
+	vec3 pos;
+	float uv_x;
+	vec3 norm;
+	float uv_y;
+	vec4 color;
 };
 
-layout (std430, binding = 0) buffer ssbo {
-    Vertex vertices[];
+layout (std430, binding = 0) buffer ssbo 
+{
+	Vertex vertices[];
 };
 
-layout (std430, binding = 1) buffer ssbo1 {
-    mat4 proj_view;
-mat4 model;
-uvec2 sprite_id;
-uvec2 pad;
+layout (std430, binding = 1) buffer ssbo1 
+{
+	mat4 proj_view;
+	mat4 model;
+	uvec2 sprite_id;
+	uvec2 pad;
 };
 
 out vec3 a_norm;
@@ -423,14 +429,14 @@ flat out uvec2 a_sprite_id;
 out vec4 a_color;
 void main()
 {
-    Vertex vtx = vertices[gl_VertexID];
-a_norm = vtx.norm;
-a_tex.x = vtx.uv_x;
-a_tex.y = vtx.uv_y;
-a_sprite_id = sprite_id;
-a_color = vtx.color;
+	Vertex vtx = vertices[gl_VertexID];
+	a_norm = vtx.norm;
+	a_tex.x = vtx.uv_x;
+	a_tex.y = vtx.uv_y;
+	a_sprite_id = sprite_id;
+	a_color = vtx.color;
 
-gl_Position = vec4(vtx.pos, 1) *  model * proj_view;
+	gl_Position = vec4(vtx.pos, 1) *  model * proj_view;
 }
 
 )"
@@ -438,21 +444,21 @@ gl_Position = vec4(vtx.pos, 1) *  model * proj_view;
 
 global char* r_fs_mesh_src = 
 R"(
-	#version 450 core
-	#extension GL_ARB_bindless_texture: require
+#version 450 core
+#extension GL_ARB_bindless_texture: require
 
 out vec4 FragColor;
 in vec3 a_norm;
- in vec2 a_tex;
+in vec2 a_tex;
 flat in uvec2 a_sprite_id;
 in vec4 a_color;
 void main() 
 {
-vec4 tex_col = texture(sampler2D(a_sprite_id), a_tex);
+	vec4 tex_col = texture(sampler2D(a_sprite_id), a_tex);
 
-//FragColor = a_color;
-FragColor = tex_col;
-//FragColor = vec4(a_tex.x, a_tex.y, 0, 1);
+	//FragColor = a_color;
+	FragColor = tex_col;
+	//FragColor = vec4(a_tex.x, a_tex.y, 0, 1);
 }
 
 )"
@@ -488,7 +494,7 @@ return linearCol;
 
 if (tex.x < border_thickness || tex.x > (1 - border_thickness) || tex.y < border_thickness || tex.y > (1 - border_thickness)) 
 {
-    FragColor = fade * tex_col;
+	FragColor = fade * tex_col;
 }
 */
 
@@ -496,12 +502,12 @@ if (tex.x < border_thickness || tex.x > (1 - border_thickness) || tex.y < border
 // ============= //
 
 function void APIENTRY glDebugOutput(GLenum source, 
-                                     GLenum type, 
-                                     unsigned int id, 
-                                     GLenum severity, 
-                                     GLsizei length, 
-                                     const char *message, 
-                                     const void *userParam)
+                            		 GLenum type, 
+								     unsigned int id, 
+									 GLenum severity, 
+									 GLsizei length, 
+									 const char *message, 
+									 const void *userParam)
 {
 	if(id == 131169 || id == 131185 || id == 131218 || id == 131204) return; 
 	
@@ -612,7 +618,7 @@ function void APIENTRY glDebugOutput(GLenum source,
 	printf("\n");
 }
 
-function void check_compile_errors(GLuint shader, const char *type)
+function void checkCompileErrors(GLuint shader, const char *type)
 {
 	int success;
 	char infoLog[1024];
@@ -626,7 +632,7 @@ function void check_compile_errors(GLuint shader, const char *type)
 	}
 }
 
-function void check_link_errors(GLuint shader, const char *type)
+function void checkLinkErrors(GLuint shader, const char *type)
 {
 	int success;
 	char infoLog[1024];
@@ -639,24 +645,24 @@ function void check_link_errors(GLuint shader, const char *type)
 	}
 }
 
-function GLuint r_opengl_make_shader_program(char *vertexShaderSource, char *fragmentShaderSource)
+function GLuint r_opengl_makeShaderProgram(char *vertexShaderSource, char *fragmentShaderSource)
 {
 	GLuint vert_shader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vert_shader, 1, &vertexShaderSource, 0);
 	glCompileShader(vert_shader);
-	check_compile_errors(vert_shader, "vertex shader");
+	checkCompileErrors(vert_shader, "vertex shader");
 	
 	GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(frag_shader, 1, &fragmentShaderSource, 0);
 	glCompileShader(frag_shader);
-	check_compile_errors(frag_shader, "fragment shader");
+	checkCompileErrors(frag_shader, "fragment shader");
 	
 	GLuint shader_prog = glCreateProgram();
 	glAttachShader(shader_prog, vert_shader);
 	glAttachShader(shader_prog, frag_shader);
 	
 	glLinkProgram(shader_prog);
-	check_link_errors(shader_prog, "vert/frag shader");
+	checkLinkErrors(shader_prog, "vert/frag shader");
 	
 	glDeleteShader(vert_shader);
 	glDeleteShader(frag_shader);
@@ -672,7 +678,7 @@ enum R_BufferKind
 	R_BufferKind_COUNT
 };
 
-function GLuint r_opengl_make_buffer(size_t size)
+function GLuint r_opengl_makeBuffer(size_t size)
 {
 	GLuint ssbo = 0;
 	
@@ -685,7 +691,7 @@ function GLuint r_opengl_make_buffer(size_t size)
 	return ssbo;
 }
 
-function GLuint r_opengl_make_buffer(void *data, size_t size)
+function GLuint r_opengl_makeBuffer(void *data, size_t size)
 {
 	GLuint buffer = 0;
 	
@@ -697,7 +703,7 @@ function GLuint r_opengl_make_buffer(void *data, size_t size)
 
 function void r_opengl_init()
 {
-	Arena *arena = arena_create();
+	Arena *arena = arenaAlloc();
 	r_opengl_state = push_struct(arena, R_Opengl_state);
 	r_opengl_state->arena = arena;
 	
@@ -708,17 +714,17 @@ function void r_opengl_init()
 	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
 #endif
 	
-	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_make_shader_program(r_vs_ui_src, r_fs_ui_src);
-	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_make_buffer(Megabytes(8));
+	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_makeShaderProgram(r_vs_ui_src, r_fs_ui_src);
+	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_makeBuffer(Megabytes(8));
 	
-	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH] = r_opengl_make_shader_program(r_vs_mesh_src, r_fs_mesh_src);
-	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH] = r_opengl_make_buffer(Megabytes(8));
+	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_MESH] = r_opengl_makeShaderProgram(r_vs_mesh_src, r_fs_mesh_src);
+	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_MESH] = r_opengl_makeBuffer(Megabytes(8));
 	
-	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE] = r_opengl_make_shader_program(r_vs_sprite_src, r_fs_sprite_src);
-	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE] = r_opengl_make_buffer(Megabytes(8));
+	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE] = r_opengl_makeShaderProgram(r_vs_sprite_src, r_fs_sprite_src);
+	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE] = r_opengl_makeBuffer(Megabytes(8));
 }
 
-function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
+function R_Handle r_allocTexture(void *data, s32 w, s32 h, s32 n, R_Texture_params *p)
 {
 	R_Handle out = {};
 	
@@ -770,7 +776,7 @@ function R_Handle r_alloc_texture(void *data, s32 w, s32 h, s32 n, R_Texture_par
 	return out;
 }
 
-function void r_free_texture(R_Handle handle)
+function void r_freeTexture(R_Handle handle)
 {
 	glMakeTextureHandleNonResidentARB(handle.u64_m[0]);
 	
@@ -778,7 +784,7 @@ function void r_free_texture(R_Handle handle)
 	glDeleteTextures(1, &tex);
 }
 
-function R_Handle r_alloc_frame_buffer(s32 w, s32 h)
+function R_Handle r_allocFramebuffer(s32 w, s32 h)
 {
 	GLuint fbo;
 	glCreateFramebuffers(1, &fbo);
@@ -823,7 +829,7 @@ function R_Handle r_alloc_frame_buffer(s32 w, s32 h)
 	return out;
 }
 
-function void r_submit(OS_Window *win, R_Pass_list *list)
+function void r_submit(OS_Window *win, R_PassList *list)
 {
 	SDL_GL_MakeCurrent(win->raw, win->gl_cxt);
 	
@@ -833,7 +839,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	
-	for(R_Pass_node *node = list->first; node; node = node->next)
+	for(R_PassNode *node = list->first; node; node = node->next)
 	{
 		R_Pass *pass = &node->pass;
 		
@@ -842,7 +848,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 			default:{}break;
 			case R_PASS_KIND_UI:
 			{
-				R_Batch_list *batches = &pass->rect_pass.rects;
+				R_BatchList *batches = &pass->rect_pass.rects;
 				
 				v4f win_size_float = {};
 				
@@ -890,7 +896,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 			
 			case R_PASS_KIND_SPRITE:
 			{
-				R_Batch_list *batches = &pass->sprite_pass.sprites;
+				R_BatchList *batches = &pass->sprite_pass.sprites;
 				
 				v4f win_size_float = {};
 				
@@ -927,7 +933,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 				{
 					R_Sprite *first = (R_Sprite*)batch->base;
 					
-					qsort(first, batch->count, sizeof(R_Sprite), r_sprite_sort);
+					qsort(first, batch->count, sizeof(R_Sprite), r_spriteSort);
 					
 					void *ssbo_data = glMapNamedBufferRange(r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE], 0, sizeof(v4f) + sizeof(m4f) + batch->count * sizeof(R_Sprite), GL_MAP_WRITE_BIT | 
 																																													GL_MAP_INVALIDATE_BUFFER_BIT);
@@ -949,7 +955,7 @@ function void r_submit(OS_Window *win, R_Pass_list *list)
 	SDL_GL_SwapWindow(win->raw);
 }
 
-function v2s r_tex_size_from_handle(R_Handle handle)
+function v2s r_texSizeFromHandle(R_Handle handle)
 {
 	v2s out = {};
 	out.x = handle.u32_m[3];

@@ -29,39 +29,39 @@ function void os_api_init(OS_Api *api)
 	os_release = api->os_release;
 }
 
-function OS_Api os_get_api()
+function OS_Api os_getApi()
 {
 #if defined(OS_WIN32)
-	return os_win32_get_api();
+	return os_win32_getApi();
 #else
 	return os_linux_get_api();
 #endif
 }
 
-function u64 os_get_page_size()
+function u64 os_getPageSize()
 {
 #if defined(OS_WIN32)
-	return os_win32_get_page_size();
+	return os_win32_getPageSize();
 #else
 	return os_linux_get_page_size();
 #endif
 }
 
-function Str8 os_get_app_dir(Arena *arena)
+function Str8 os_getAppDir(Arena *arena)
 {
 #if defined(OS_WIN32)
-	return os_win32_get_app_dir(arena);
+	return os_win32_getAppDir(arena);
 #else
 	return os_linux_get_app_dir(arena);
 #endif
 }
 
-function u64 os_get_perf_counter()
+function u64 os_getPerfCounter()
 {
 	return SDL_GetPerformanceCounter();
 }
 
-function u64 os_get_perf_freq()
+function u64 os_getPerfFreq()
 {
 	return SDL_GetPerformanceFrequency();
 }

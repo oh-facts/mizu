@@ -99,7 +99,7 @@ global os_commit_fn os_commit;
 global os_decommit_fn os_decommit;
 global os_release_fn os_release;
 
-function u64 os_get_page_size();
+function u64 os_getPageSize();
 
 struct OS_Api
 {

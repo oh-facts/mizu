@@ -1,7 +1,141 @@
 /* date = September 27th 2024 4:22 pm */
 
 // TODO(mizu): Clean up this file
-// Have a temp arena to save start checkpoint
+// Have a temp arena to save start and end checkpoints.
+
+typedef u32 EntityFlags;
+
+enum
+{
+	EntityFlags_Control = 1 << 0,
+	EntityFlags_Follow = 1 << 1,
+	EntityFlags_Friendly = 1 << 2,
+	EntityFlags_Enemy = 1 << 3,
+	EntityFlags_Dead = 1 << 4,
+	EntityFlags_Dynamic = 1 << 5,
+	EntityFlags_Static = 1 << 6,
+	
+};
+
+#define EntityFlags_Physics (EntityFlags_Static | EntityFlags_Dynamic)
+
+enum Art
+{
+	ArtKind_Null,
+	ArtKind_Fox,
+	ArtKind_Impolo,
+	ArtKind_Trees,
+	ArtKind_COUNT
+};
+
+global Str8 art_paths[ArtKind_COUNT] = 
+{
+	str8_lit(""),
+	str8_lit("fox/fox.png"),
+	str8_lit("impolo/impolo-east.png"),
+	str8_lit("tree/trees.png"),
+};
+
+struct Entity;
+struct EntityHandle
+{
+	u64 gen;
+	Entity *v;
+};
+
+struct Entity
+{
+	Str8 name;
+	u64 gen;
+	
+	EntityFlags flags;
+	v2f pos;
+	v2f old_pos;
+	v2f size;
+	s32 layer;
+	v2f mv;
+	
+	f32 speed;
+	f32 health;
+	f32 max_health;
+	f32 damage;
+	
+	v4f tint;
+	
+	Art art;
+	s32 x;
+	s32 y;
+	s32 n;
+	v2f basis;
+	
+	b2BodyId body;
+	b2Polygon box;
+	b2Capsule caps;
+	
+	EntityHandle target;
+	Entity *next;
+};
+
+function Entity *entityFromHandle(EntityHandle handle)
+{
+	Entity *out = 0;
+	
+	if(handle.v && handle.gen == handle.v->gen)
+	{
+		out = handle.v;
+	}
+	
+	return out;
+}
+
+function EntityHandle handleFromEntity(Entity *entity)
+{
+	EntityHandle out = {};
+	out.v = entity;
+	out.gen = entity->gen;
+	return out;
+}
+
+#define MAX_ENTITIES 100
+
+struct EntityStore
+{
+	Entity entities[MAX_ENTITIES];
+	s32 num_entities;
+	
+	Entity *free;
+};
+
+function Entity *entity_alloc(EntityStore *store, EntityFlags flags)
+{
+	Entity *out = store->free;
+	
+	if(!out)
+	{
+		out = store->entities + store->num_entities++;
+	}
+	
+	*out = {};
+	
+	out->flags = flags;
+	out->gen ++;
+	
+	return out;
+}
+
+function void entity_free(EntityStore *store, EntityHandle handle)
+{
+	handle.v->gen++;
+	if(!store->free)
+	{
+		store->free = handle.v;
+	}
+	else
+	{
+		handle.v->next = store->free;
+		store->free = handle.v;
+	}
+}
 
 #define WORLD_UP (v3f){{0,1,0}}
 #define WORLD_FRONT (v3f){{0,0,-1}}
@@ -285,7 +419,7 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 			
 			for (AS_Node *iter = rev.last; iter; iter = iter->prev) 
 			{
-    as_pushNode(arena, &out, *iter);
+				as_pushNode(arena, &out, *iter);
 			}
 			
 			return out;
@@ -442,14 +576,14 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	if(!game->initialized)
 	{
 		game->initialized = 1;
-		game->arena = arena_create();
-		ED_Window *test = ed_open_window(ED_WindowFlags_HasSurface, v2f{{1230, 50}}, v2f{{400,800}});
+		game->arena = arenaAlloc();
+		ED_Window *test = ed_openWindow(ED_WindowFlags_HasSurface, v2f{{1230, 50}}, v2f{{400,800}});
 		
-		ED_Panel *panel2 = ed_open_panel(test, Axis2_X, 1);
-		ed_open_tab(panel2, ED_TabKind_Debug);
+		ED_Panel *panel2 = ed_openPanel(test, Axis2_X, 1);
+		ed_openTab(panel2, ED_TabKind_Debug);
 		
 		// lister tab
-		ED_Tab *tab = ed_open_tab(panel2, ED_TabKind_Custom, {{400, 800}});
+		ED_Tab *tab = ed_openTab(panel2, ED_TabKind_Custom, {{400, 800}});
 		tab->custom_draw = lister_panel;
 		
 		Lister *lister = push_struct(game->arena, Lister);
@@ -549,7 +683,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			b2MassData mass = {};
 			mass.mass = 1000;
 			b2Body_SetMassData(fox->body, mass);
-			fox->caps = b2Capsule{-10, 10, 10};
+			fox->caps = b2Capsule{{-10, 10}, {10}};
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
 			shapeDef.density = 1.f;
 			//shapeDef.friction = 0.3f;
@@ -711,7 +845,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					
 					R_Sprite *sprite = d_sprite(dst, color);
 					sprite->layer = 0;
-					sprite->tex = a_get_alpha_bg_tex();
+					sprite->tex = a_getAlphaBGTex();
 				}
 			}
 		}
@@ -763,22 +897,22 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			{
 				v2f dir = {};
 				
-				if(os_key_press(window->win, SDLK_A))
+				if(os_keyPress(window->win, SDLK_A))
 				{
 					dir.x = -1;
 				}
 				
-				if(os_key_press(window->win, SDLK_D))
+				if(os_keyPress(window->win, SDLK_D))
 				{
 					dir.x = 1;
 				}
 				
-				if(os_key_press(window->win, SDLK_S))
+				if(os_keyPress(window->win, SDLK_S))
 				{
 					dir.y = 1;
 				}
 				
-				if(os_key_press(window->win, SDLK_W))
+				if(os_keyPress(window->win, SDLK_W))
 				{
 					dir.y = -1;
 				}
@@ -794,13 +928,13 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			
 			if(e->flags & EntityFlags_Follow)
 			{
-				Arena_temp temp = arena_temp_begin(game->arena);
+				ArenaTemp temp = arenaTempBegin(game->arena);
 				Entity *target = entityFromHandle(e->target);
 				
 				if(target)
 				{
 					v2f pos = e->pos;
-					v2f dir2 = {pos.x - target->pos.x, pos.y - target->pos.y};
+					v2f dir2 = {{pos.x - target->pos.x, pos.y - target->pos.y}};
 					float length2 = sqrt(dir2.x * dir2.x + dir2.y * dir2.y);
 					
 					if (length2 > 50)
@@ -811,7 +945,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 						{
 							v2f next_pos = as_worldPosFromNode(&game->as_grid, *list.first) + v2f{{8, 8}};
 							
-							v2f dir = { next_pos.x - pos.x, next_pos.y - pos.y };
+							v2f dir = {{ next_pos.x - pos.x, next_pos.y - pos.y }};
 							float length = sqrt(dir.x * dir.x + dir.y * dir.y);
 							
 							
@@ -845,7 +979,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 							}
 						}
 						
-						arena_temp_end(&temp);
+						arenaTempEnd(&temp);
 					}
 					else
 					{
@@ -914,7 +1048,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				
 				if(e->art == ArtKind_Null)
 				{
-					sprite->tex = a_get_checker_tex();
+					sprite->tex = a_getCheckerTex();
 				}
 				else
 				{
@@ -983,7 +1117,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	
 	end_of_sim:
 	
-	v2s size = r_tex_size_from_handle(tab->target);
+	v2s size = r_texSizeFromHandle(tab->target);
 	
 	ui_pref_width(window->cxt, size.x)
 		ui_pref_height(window->cxt, size.y)

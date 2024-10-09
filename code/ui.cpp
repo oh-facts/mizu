@@ -176,7 +176,7 @@ function UI_Signal ui_signal(UI_Context *cxt, UI_Widget *widget)
 	return out;
 }
 
-function UI_Widget *ui_alloc_widget(UI_Context *cxt)
+function UI_Widget *ui_allocWidget(UI_Context *cxt)
 {
 	UI_Widget *out = cxt->widget_free_list;
 	
@@ -193,7 +193,7 @@ function UI_Widget *ui_alloc_widget(UI_Context *cxt)
 	return out;
 }
 
-function void ui_free_widget(UI_Context *cxt, UI_Widget *node)
+function void ui_freeWidget(UI_Context *cxt, UI_Widget *node)
 {
 	node->next = cxt->widget_free_list;
 	cxt->widget_free_list = node;
@@ -205,9 +205,9 @@ ui_push_size_kind_y(cxt, kind);
 #define ui_pop_size_kind(cxt) ui_pop_size_kind_x(cxt); \
 ui_pop_size_kind_y(cxt);
 
-function UI_Context *ui_alloc_cxt()
+function UI_Context *ui_allocCxt()
 {
-	Arena *arena = arena_create();
+	Arena *arena = arenaAlloc();
 	
 	UI_Context *cxt = push_struct(arena, UI_Context);
 	
@@ -215,7 +215,7 @@ function UI_Context *ui_alloc_cxt()
 	
 	cxt->hash_table_size = 1024;
 	cxt->hash_slots = push_array(arena, UI_Hash_slot, cxt->hash_table_size);
-	cxt->frame_arena = arena_create();
+	cxt->frame_arena = arenaAlloc();
 	
 	ui_push_text_color(cxt, D_COLOR_WHITE);
 	ui_push_bg_color(cxt, D_COLOR_WHITE);
@@ -251,7 +251,7 @@ function unsigned long ui_hash(Str8 str)
 	return hash;
 }
 
-function UI_Widget *ui_widget_from_hash(UI_Context *cxt, u64 hash)
+function UI_Widget *ui_widgetFromHash(UI_Context *cxt, u64 hash)
 {
 	UI_Widget *widget = 0;
 	
@@ -272,7 +272,7 @@ function UI_Widget *ui_widget_from_hash(UI_Context *cxt, u64 hash)
 	return widget;
 }
 
-function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
+function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 {
 	u64 hash = ui_hash(text);
 	UI_Widget *widget = 0;
@@ -284,7 +284,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	}
 	else
 	{
-		widget = ui_widget_from_hash(cxt, hash);
+		widget = ui_widgetFromHash(cxt, hash);
 		
 		// TODO(mizu): stop hardcoding time duration. use timer_max. Do something more descriptive
 		// later to handle other kinds of transitions. (cold->hot , hot->active, active->hot
@@ -292,7 +292,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		
 		if(widget)
 		{
-			if(widget->hot && os_mouse_pressed(cxt->win, SDL_BUTTON_LEFT))
+			if(widget->hot && os_mousePressed(cxt->win, SDL_BUTTON_LEFT))
 			{
 				widget->toggle = !widget->toggle;
 				widget->active = 1;
@@ -317,7 +317,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 		}
 		else
 		{
-			widget = ui_alloc_widget(cxt);
+			widget = ui_allocWidget(cxt);
 			
 			u64 slot = hash % cxt->hash_table_size;
 			
@@ -366,7 +366,7 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 	widget->border_thickness = cxt->border_thickness_stack.top->v;
 	widget->radius = cxt->radius_stack.top->v;
 	
-	Rect extent = ui_text_spacing_stats(font->atlas.glyphs, text, FONT_SIZE);
+	Rect extent = ui_rectFromString(font->atlas.glyphs, text, FONT_SIZE);
 	
 	widget->pref_size[Axis2_X].kind = cxt->size_kind_x_stack.top->v;
 	
@@ -424,16 +424,16 @@ function UI_Widget *ui_make_widget(UI_Context *cxt, Str8 text)
 
 function UI_Signal ui_begin_named_rowf(UI_Context *cxt, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
 	ui_set_next_child_layout_axis(cxt, Axis2_X);
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	ui_push_parent(cxt, widget);
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	
 	UI_Signal out = ui_signal(cxt, widget);
 	
@@ -454,16 +454,16 @@ function UI_Signal ui_begin_row(UI_Context *cxt)
 
 function UI_Signal ui_begin_named_colf(UI_Context *cxt, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
 	ui_set_next_child_layout_axis(cxt, Axis2_Y);
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	ui_push_parent(cxt, widget);
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	
 	UI_Signal out = ui_signal(cxt, widget);
 	
@@ -482,7 +482,7 @@ function void ui_end_col(UI_Context *cxt)
 
 function UI_Signal ui_label(UI_Context *cxt, Str8 text)
 {
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	widget->flags = UI_Flags_has_text;
 	
 	UI_Signal out = ui_signal(cxt, widget);
@@ -492,14 +492,14 @@ function UI_Signal ui_label(UI_Context *cxt, Str8 text)
 
 function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
 	UI_Signal out = ui_label(cxt, text); 
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	return out;
 }
 
@@ -617,7 +617,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 
 function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, Str8 text)
 {
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
 	
 	UI_SatPickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_SatPickerDrawData);
@@ -628,7 +628,7 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, S
 	widget->custom_draw = ui_sat_picker_draw;
 	widget->custom_draw_data = draw_data;
 	
-	if(widget->hot && os_mouse_held(cxt->win, SDL_BUTTON_LEFT))
+	if(widget->hot && os_mouseHeld(cxt->win, SDL_BUTTON_LEFT))
 	{
 		v2f mpos = cxt->win->mpos;
 		f32 _sat, _val;
@@ -652,7 +652,7 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, S
 
 function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
@@ -660,7 +660,7 @@ function UI_Signal ui_sat_pickerf(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, 
 	
 	UI_Signal out = ui_sat_picker(cxt, hue, sat, val, text);
 	
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	
 	return out;
 }
@@ -692,7 +692,7 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 		v2f dim = size_from_rect(w_rect);
 		R_Rect *checker = d_rect(w_rect, D_COLOR_WHITE);
 		checker->src = rect(0, 0, dim.x / 10, dim.y / 10);
-		checker->tex = a_get_alpha_bg_tex();
+		checker->tex = a_getAlphaBGTex();
 	}
 	
 	// alpha fade
@@ -731,7 +731,7 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 
 function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 text)
 {
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
 	
 	UI_AlphaPickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_AlphaPickerDrawData);
@@ -741,7 +741,7 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 	widget->custom_draw = ui_alpha_picker_draw;
 	widget->custom_draw_data = draw_data;
 	
-	if(widget->hot && os_mouse_held(cxt->win, SDL_BUTTON_LEFT))
+	if(widget->hot && os_mouseHeld(cxt->win, SDL_BUTTON_LEFT))
 	{
 		v2f mpos = cxt->win->mpos;
 		
@@ -760,7 +760,7 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 
 function UI_Signal ui_alpha_pickerf(UI_Context *cxt, v3f hsv, f32 *alpha, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
@@ -768,7 +768,7 @@ function UI_Signal ui_alpha_pickerf(UI_Context *cxt, v3f hsv, f32 *alpha, char *
 	
 	UI_Signal out = ui_alpha_picker(cxt, hsv, alpha, text);
 	
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	
 	return out;
 }
@@ -830,7 +830,7 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 
 function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
 {
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
 	
 	UI_HuePickerDrawData *draw_data = push_struct(cxt->frame_arena, UI_HuePickerDrawData);
@@ -839,7 +839,7 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
 	widget->custom_draw = ui_hue_picker_draw;
 	widget->custom_draw_data = draw_data;
 	
-	if(widget->hot && os_mouse_held(cxt->win, SDL_BUTTON_LEFT))
+	if(widget->hot && os_mouseHeld(cxt->win, SDL_BUTTON_LEFT))
 	{
 		v2f mpos = cxt->win->mpos;
 		
@@ -858,7 +858,7 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
 
 function UI_Signal ui_hue_pickerf(UI_Context *cxt, f32 *hue, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
@@ -866,7 +866,7 @@ function UI_Signal ui_hue_pickerf(UI_Context *cxt, f32 *hue, char *fmt, ...)
 	
 	UI_Signal out = ui_hue_picker(cxt, hue, text);
 	
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	
 	return out;
 }
@@ -898,7 +898,7 @@ function UI_CUSTOM_DRAW(ui_image_draw)
 
 function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, Str8 text)
 {
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	widget->flags = UI_Flags_has_custom_draw;
 	
 	UI_ImageDrawData *draw_data = push_struct(cxt->frame_arena, UI_ImageDrawData);
@@ -916,7 +916,7 @@ function UI_Signal ui_image(UI_Context *cxt, R_Handle img, Rect src, v4f color, 
 
 function UI_Signal ui_imagef(UI_Context *cxt, R_Handle img, Rect src, v4f color, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
@@ -924,14 +924,14 @@ function UI_Signal ui_imagef(UI_Context *cxt, R_Handle img, Rect src, v4f color,
 	
 	UI_Signal out = ui_image(cxt, img, src, color, text);
 	
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	
 	return out;
 }
 
 function UI_Signal ui_named_spacer(UI_Context *cxt, Str8 text)
 {
-	UI_Widget *widget = ui_make_widget(cxt, text);
+	UI_Widget *widget = ui_makeWidget(cxt, text);
 	
 	UI_Signal out = ui_signal(cxt, widget);
 	
@@ -940,14 +940,14 @@ function UI_Signal ui_named_spacer(UI_Context *cxt, Str8 text)
 
 function UI_Signal ui_named_spacerf(UI_Context *cxt, char *fmt, ...)
 {
-	Arena_temp temp = scratch_begin(0,0);
+	ArenaTemp temp = scratch_begin(0,0);
 	va_list args;
 	va_start(args, fmt);
 	Str8 text = push_str8fv(temp.arena, fmt, args);
 	va_end(args);
 	
 	UI_Signal out = ui_named_spacer(cxt, text); 
-	arena_temp_end(&temp);
+	arenaTempEnd(&temp);
 	return out;
 }
 
@@ -1201,7 +1201,7 @@ function void ui_end(UI_Context *cxt)
 					
 					UI_Widget *to_free = cur;
 					cur = cur->hash_next;
-					ui_free_widget(cxt, to_free);
+					ui_freeWidget(cxt, to_free);
 				}
 				else
 				{

@@ -31,7 +31,7 @@ struct D_Viewport_node;
 struct D_Bucket
 {
 	D_Bucket *next;
-	R_Pass_list list;
+	R_PassList list;
 	
 	u64 stack_gen;
 	u64 last_stack_gen;
@@ -47,7 +47,7 @@ struct D_State
 	R_Handle white_square;
 	D_Bucket *top;
 	D_Text_params default_text_params;
-	Arena_temp temp;
+	ArenaTemp temp;
 };
 
 global D_State *d_state;
@@ -56,16 +56,16 @@ global D_State *d_state;
 
 function void d_init()
 {
-	Arena *arena = arena_create();
+	Arena *arena = arenaAlloc();
 	d_state = push_struct(arena, D_State);
 	d_state->arena = arena;
 	u32 white_square[1] = {0xFFFFFFFF};
-	d_state->white_square = r_alloc_texture(white_square, 1, 1, 4, &tiled_params);
+	d_state->white_square = r_allocTexture(white_square, 1, 1, 4, &tiled_params);
 }
 
 function void d_begin()
 {
-	d_state->temp = arena_temp_begin(d_state->arena);
+	d_state->temp = arenaTempBegin(d_state->arena);
 	d_state->default_text_params =
 	(D_Text_params){
 		(v4f){{1,1,1,1}},
@@ -77,7 +77,7 @@ function void d_begin()
 
 function void d_end()
 {
-	arena_temp_end(&d_state->temp);
+	arenaTempEnd(&d_state->temp);
 }
 
 function D_Bucket *d_bucket()
@@ -86,7 +86,7 @@ function D_Bucket *d_bucket()
 	return out;
 }
 
-function void d_push_bucket(D_Bucket *bucket)
+function void d_pushBucket(D_Bucket *bucket)
 {
 	if(!d_state->top)
 	{
@@ -99,19 +99,19 @@ function void d_push_bucket(D_Bucket *bucket)
 	}
 }
 
-function void d_pop_bucket()
+function void d_popBucket()
 {
 	d_state->top = d_state->top->next;
 }
 
-function R_Pass *d_push_pass(Arena *arena, D_Bucket *bucket, R_PASS_KIND kind)
+function R_Pass *d_pushPass(Arena *arena, D_Bucket *bucket, R_PASS_KIND kind)
 {
-	R_Pass_node *node = bucket->list.last;
+	R_PassNode *node = bucket->list.last;
 	R_Pass *pass = 0;
 	
 	if(!node || node->pass.kind != kind || bucket->stack_gen != bucket->last_stack_gen)
 	{
-		pass = r_push_pass_list(arena, &bucket->list, kind);
+		pass = r_pushPassList(arena, &bucket->list, kind);
 		
 		if(bucket->target_top)
 		{
@@ -134,9 +134,9 @@ function R_Rect *d_rect(Rect dst, v4f color)
 {
 	D_Bucket *bucket = d_state->top;
 	
-	R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_UI);
+	R_Pass *pass = d_pushPass(d_state->arena, bucket, R_PASS_KIND_UI);
 	
-	R_Rect *out = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
+	R_Rect *out = r_pushBatch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 	
 	out->dst = dst;
 	out->src = rect(0, 0, 1, 1);
@@ -158,9 +158,9 @@ function R_Sprite *d_sprite(Rect dst, v4f color)
 {
 	D_Bucket *bucket = d_state->top;
 	
-	R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_SPRITE);
+	R_Pass *pass = d_pushPass(d_state->arena, bucket, R_PASS_KIND_SPRITE);
 	
-	R_Sprite *out = r_push_batch(d_state->arena, &pass->sprite_pass.sprites, R_Sprite);
+	R_Sprite *out = r_pushBatch(d_state->arena, &pass->sprite_pass.sprites, R_Sprite);
 	
 	out->dst = dst;
 	out->src = rect(0, 0, 1, 1);
@@ -183,11 +183,11 @@ function inline R_Sprite *d_spriteCenter(v2f pos, v2f size, v4f color)
 	return d_sprite(rect(pos - size / 2, size), color);
 }
 
-function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
+function void d_text(Str8 text, v2f pos, D_Text_params *p)
 {
 	D_Bucket *bucket = d_state->top;
 	
-	Rect ex = ui_text_spacing_stats(p->atlas->glyphs, text, p->scale);
+	Rect ex = ui_rectFromString(p->atlas->glyphs, text, p->scale);
 	
 	v2f text_pos = pos;
 	text_pos.y += ex.tl.y;
@@ -197,7 +197,7 @@ function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 	{
 		char c = text.c[i];
 		
-		Glyph *ch = glyph_from_codepoint(p->atlas, c);
+		Glyph *ch = glyphFromCodepoint(p->atlas, c);
 		f32 xpos = text_pos.x + ch->bearing.x * p->scale;
 		
 		f32 ypos = text_pos.y + (ch->bearing.y - (ch->y1 + ch->y0)) * p->scale;
@@ -215,8 +215,8 @@ function void d_draw_text(Str8 text, v2f pos, D_Text_params *p)
 		
 		text_pos.x += ch->advance * p->scale;
 		
-		R_Pass *pass = d_push_pass(d_state->arena, bucket, R_PASS_KIND_UI);
-		R_Rect *rect = r_push_batch(d_state->arena, &pass->rect_pass.rects, R_Rect);
+		R_Pass *pass = d_pushPass(d_state->arena, bucket, R_PASS_KIND_UI);
+		R_Rect *rect = r_pushBatch(d_state->arena, &pass->rect_pass.rects, R_Rect);
 		
 		rect->dst.tl.x = xpos;
 		rect->dst.tl.y = ypos;
