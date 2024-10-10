@@ -1,4 +1,5 @@
 #include "ui_gen.h"
+#include "meta.h"
 
 #define ui_make_alloc_node(Name, name) \
 function UI_##Name##_node *ui_alloc_##name##_node(UI_Context *cxt) \

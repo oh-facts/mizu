@@ -153,7 +153,8 @@ function void ed_drawSpritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
 			ui_label(window->cxt, path);
 		}
 		
-		R_Handle img = a_handleFromPath(path);
+		A_Key key = a_keyFromPath(path, pixel_tiled_params);
+		R_Handle img = a_handleFromKey(key);
 		
 		f32 width = 1.f/x;
 		f32 height = 1.f/y;
@@ -305,7 +306,7 @@ function void ed_drawChildren(ED_Panel *panel, UI_Widget *root)
 		{
 			color = root->color;
 		}
-
+		
 		v2f pos = root->pos;
 		
 #if 0
@@ -427,7 +428,8 @@ function void ed_update(f32 delta)
 					ui_named_rowf(window->cxt, "%d editor title bar")
 					{
 						window->menu_bar = window->cxt->parent_stack.top->v;
-						R_Handle titlebar_img = a_handleFromPath(str8_lit("editor/xp_titlebar.png"));
+						A_Key key = a_keyFromPath(str8_lit("editor/xp_titlebar.png"), font_params);
+						R_Handle titlebar_img = a_handleFromKey(key);
 						
 						// hide button
 						ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))

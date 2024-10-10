@@ -1,7 +1,5 @@
 //Alloc nodes
 
-//2024-10-09 19:26:47
-
 function UI_Parent_node *ui_alloc_parent_node(UI_Context *cxt)
 {
 	UI_Parent_node *node = cxt->parent_stack.free;

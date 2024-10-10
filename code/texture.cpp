@@ -1,13 +1,55 @@
 #define A_MAX_TEXTURE_MEM Megabytes(64)
 
-const Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
+read_only Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
+
+// djb2
+u64 a_hash(Str8 str)
+{
+	u64 hash = 5381;
+	int c;
+	
+	for(u32 i = 0; i < str.len; i++)
+	{
+		c = str.c[i];
+		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+	}
+	
+	return hash;
+}
+
+struct A_Key
+{
+	u64 v;
+	Str8 path;
+	R_Texture_params params;
+};
+
+A_Key a_keyFromPath(Str8 path, R_Texture_params params)
+{
+	A_Key out = {};
+	out.v = a_hash(path);
+	out.path = path;
+	out.params = params;
+	return out;
+}
+
+b32 a_keysAreSame(A_Key a, A_Key b)
+{
+	b32 out = 0;
+	
+	if((memcmp(&a.params, &b.params, sizeof(R_Texture_params)) == 0) && a.v == b.v)
+	{
+		out = 1;
+	}
+	
+	return out;
+}
 
 struct A_TextureCache
 {
 	// used as hash link when in map, used as free list link when freed
 	A_TextureCache *next;
-	u64 key;
-	Str8 path;
+	A_Key key;
 	R_Handle v;
 	b32 loaded;
 	u64 last_touched;
@@ -23,6 +65,10 @@ struct A_State
 {
 	Arena *arena;
 	A_TextureCacheSlot *slots;
+	
+	// I am thinking I use this to store bitmap hashes so i can asset reload?
+	A_TextureCacheSlot *bitmaps;
+	
 	A_TextureCache *free;
 	u32 num_slots;
 	Str8 asset_dir;
@@ -47,7 +93,7 @@ void a_init()
 	Arena *arena = arenaAlloc(100, Megabytes(1));
 	a_state = push_struct(arena, A_State);
 	a_state->arena = arena;
-	a_state->num_slots = 1;
+	a_state->num_slots = 100;
 	a_state->slots = push_array(arena, A_TextureCacheSlot, a_state->num_slots); 
 	
 	ArenaTemp temp = scratch_begin(0, 0);
@@ -72,22 +118,6 @@ void a_init()
 	};
 	
 	a_state->alpha_bg_tex = r_allocTexture(alpha_bg, 2, 2, 4, &pixel_tiled_params);
-	
-}
-
-// djb2
-u64 a_hash(Str8 str)
-{
-	u64 hash = 5381;
-	int c;
-	
-	for(u32 i = 0; i < str.len; i++)
-	{
-		c = str.c[i];
-		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-	}
-	
-	return hash;
 }
 
 A_TextureCache *a_allocTextureCache()
@@ -114,8 +144,7 @@ void a_freeTextureCache(A_TextureCache *tex)
 
 void a_addToHash(A_TextureCache *tex)
 {
-	u64 hash = tex->key;
-	u64 slot = hash % a_state->num_slots;
+	u64 slot = tex->key.v % a_state->num_slots;
 	
 	if(a_state->slots[slot].last)
 	{
@@ -137,6 +166,7 @@ R_Handle a_getAlphaBGTex()
 	return a_state->alpha_bg_tex;
 }
 
+// NOTE(mizu): it is important i wait until the end of the frame
 void a_evict()
 {
 	for(u32 i = 0; i < a_state->num_slots; i++)
@@ -154,7 +184,7 @@ void a_evict()
 			{
 				if(cur->last_touched != a_state->frame_count)
 				{
-					printf("pruned %.*s\n", str8_varg(cur->path));
+					printf("pruned %.*s\n", str8_varg(cur->key.path));
 					--a_state->num_tex;
 					v2s tex_size = r_texSizeFromHandle(cur->v);
 					a_state->tex_mem -= tex_size.x * tex_size.y * 4; 
@@ -181,7 +211,6 @@ void a_evict()
 					A_TextureCache *to_free = cur;
 					cur = cur->next;
 					a_freeTextureCache(to_free);
-					// free to_free
 				}
 				else
 				{
@@ -193,16 +222,15 @@ void a_evict()
 	}
 }
 
-R_Handle a_handleFromPath(Str8 path)
+R_Handle a_handleFromKey(A_Key key)
 {
-	u64 hash = a_hash(path);
-	u64 slot = hash % a_state->num_slots;
+	u64 slot = key.v % a_state->num_slots;
 	
 	A_TextureCache *tex_cache = a_state->slots[slot].first;
 	
 	while(tex_cache)
 	{
-		if(hash == tex_cache->key)
+		if(a_keysAreSame(key, tex_cache->key))
 		{
 			break;
 		}
@@ -212,7 +240,7 @@ R_Handle a_handleFromPath(Str8 path)
 	
 	if(!tex_cache)
 	{
-		printf("Added %.*s\n", str8_varg(path));
+		printf("Added %.*s\n", str8_varg(key.path));
 		
 		if(a_state->tex_mem > A_MAX_TEXTURE_MEM)
 		{
@@ -221,32 +249,35 @@ R_Handle a_handleFromPath(Str8 path)
 		
 		tex_cache = a_allocTextureCache();
 		ArenaTemp temp = scratch_begin(0, 0);
-		Str8 abs_path = str8_join(temp.arena, a_state->asset_dir, path);
+		Str8 abs_path = str8_join(temp.arena, a_state->asset_dir, key.path);
 		Bitmap bmp = bitmap(abs_path);
 		
 		// if bmp not found, use checkerboard art
 		if(bmp.data)
 		{
-			tex_cache->v = r_allocTexture(bmp.data, bmp.w, bmp.h, bmp.n, &pixel_params);
+			tex_cache->v = r_allocTexture(bmp.data, bmp.w, bmp.h, bmp.n, &key.params);
 		}
 		else
 		{
 			tex_cache->v = a_getCheckerTex();
 		}
 		
-		tex_cache->key = hash;
 		tex_cache->loaded = 1;
-		
+		tex_cache->key = key;
 		a_addToHash(tex_cache);
 		
 		scratch_end(&temp);
 		a_state->tex_mem += bmp.w * bmp.h * 4; 
 		++a_state->num_tex;
+		
+		// TODO(mizu): Must make it use my own memory. Modify this library or parse png yourself
+		// or load with stbi and then copy it to your own buffer and then free it.
+		stbi_image_free(bmp.data);
 	}
 	
 	a_state->frame_count++;
 	tex_cache->last_touched = a_state->frame_count;
-	tex_cache->path = path;
+	
 	R_Handle out = tex_cache->v;
 	return out;
 }

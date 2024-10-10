@@ -681,7 +681,7 @@ function ED_CUSTOM_TAB(profiler_panel)
 		tab->ft = delta;
 		tab->update_timer = 0;
 	}
-
+	
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
 		if(ui_labelf(window->cxt, "cc : %.f K", tab->cc).active)
@@ -700,20 +700,21 @@ function ED_CUSTOM_TAB(profiler_panel)
 			ui_labelf(window->cxt, "[%.f %.f]", w->pos.x, w->pos.y);
 		}
 	}
-
-	R_Handle face = a_handleFromPath(str8_lit("debug/toppema.png"));
-
+	
+	A_Key key = a_keyFromPath(str8_lit("debug/toppema.png"), font_params);
+	R_Handle face = a_handleFromKey(key);
+	
 	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		ui_pref_size(window->cxt, 100)
 	{
 		ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
 	}
 	d_pop_target();
-
+	
 	v2s size = r_texSizeFromHandle(tab->target);
 	ui_pref_width(window->cxt, size.x)
-	ui_pref_height(window->cxt, size.y)
-	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+		ui_pref_height(window->cxt, size.y)
+		ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 	{
 		ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
 	}
@@ -758,7 +759,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			ui_pref_size(window->cxt, 60)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		{
-			R_Handle pause_play = a_handleFromPath(str8_lit("editor/pause_play.png"));
+			A_Key key = a_keyFromPath(str8_lit("editor/pause_play.png"), font_params);
+			R_Handle pause_play = a_handleFromKey(key);
 			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.5, 1), ED_THEME_TEXT, "restart").active;
 			
 			game->paused = ui_imagef(window->cxt, pause_play, rect(0.5, 0, 1, 1), ED_THEME_TEXT, "paused").toggle;
@@ -1208,7 +1210,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				}
 				else
 				{
-					sprite->tex = a_handleFromPath(art_paths[e->art]);
+					A_Key key = a_keyFromPath(art_paths[e->art], pixel_params);
+					sprite->tex = a_handleFromKey(key);
 				}
 				sprite->basis.y = e->basis.y;
 				sprite->layer = e->layer;
@@ -1281,7 +1284,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	{
 		ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
 	}
-
+	
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
 		ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
@@ -1293,14 +1296,14 @@ int main(int argc, char **argv)
 {
 	Arena *arena = arenaAlloc();
 	Arena *trans = arenaAlloc();
-		
+	
 	Str8 app_dir = os_getAppDir(arena);
 	u64 start = os_getPerfCounter();
 	u64 freq = os_getPerfFreq();
 	
 	f64 time_elapsed = 0;
 	f64 delta = 0;
-
+	
 	gladLoadGL();
 	tcxt_init();
 	ed_init();
@@ -1319,7 +1322,7 @@ int main(int argc, char **argv)
 	
 	d_init();
 	a_init();
-
+	
 	char codepoints[] =
 	{
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 
@@ -1360,7 +1363,7 @@ int main(int argc, char **argv)
 		font->atlas.glyphs[c].y0 = temp_font[i].y0;
 		font->atlas.glyphs[c].y1 = temp_font[i].y1;
 	}
-		
+	
 	arenaTempEnd(&temp);
 	
 	for (;;)
@@ -1369,26 +1372,26 @@ int main(int argc, char **argv)
 		
 		BEGIN_TIMED_BLOCK(UPDATE_AND_RENDER);
 		ArenaTemp temp = arenaTempBegin(trans);
-	
+		
 		os_pollEvents();
 		d_begin();
-	
+		
 		ed_update(delta);
 		ed_submit();
-	
+		
 		d_end();
-	
+		
 		
 		arenaTempEnd(&temp);
 		END_TIMED_BLOCK(UPDATE_AND_RENDER);
-	
+		
 		tcxt_process_debug_counters();
 		
 		u64 end = os_getPerfCounter();
 		time_elapsed = (double)(end - start) / freq;
 		
 		delta = time_elapsed - time_since_last;
-			
+		
 		if (ed_state->main_window->win->close_requested)
 		{
 			return 0;

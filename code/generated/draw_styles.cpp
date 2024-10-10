@@ -1,7 +1,5 @@
 // Draw Cmd Style Structs
 
-//2024-10-09 19:26:46
-
 struct D_Proj_view_node
 {
 	D_Proj_view_node *next;

@@ -1,7 +1,5 @@
 // Style Structs
 
-//2024-10-09 19:26:47
-
 struct UI_Parent_node
 {
 	UI_Parent_node *next;

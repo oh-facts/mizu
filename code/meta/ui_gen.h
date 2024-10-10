@@ -2,8 +2,6 @@
 
 #ifndef UI_GEN_H
 #define UI_GEN_H
-#include <stdio.h>
-#include <time.h>
 
 struct Style
 {
@@ -72,18 +70,5 @@ static Stacks stacks[num_stacks] =
 	{"SizeKind_y", "size_kind_y", "UI_SizeKind"},
 	{"AlignKind_x", "align_kind_x", "UI_AlignKind"},
 };
-
-static void print_now()
-{
-  time_t t;
-  struct tm tm_info;
-  char buffer[128];
-  
-  time(&t);
-  localtime_s(&tm_info, &t);
-  
-  strftime(buffer, 128, "%Y-%m-%d %H:%M:%S", &tm_info);
-  printf("//%s\n\n", buffer);
-}
 
 #endif //UI_GEN_H
