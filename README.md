@@ -24,33 +24,34 @@ Hi, this is my game engine. Nice to meet you. Goodnight.
 
 ## Build
 If `main` doesn't work, `stable` probably will
-Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`
+
+Arguments: `clean`, `platform`, `release`, `debug`, `app`, `cloc`, `run`, `meta`
 
 ### Windows
 ```
 ./build.bat meta debug platform app
 ```
 ### Linux / Mac
-**SDL3** needs to be installed. Also, this doesn't compile on linux/mac yet. I am fixing the compiler errors one by one. I get bored sometimes. Give it a crack if you want. Its all platform related.
+**SDL3** and **box2d 3.1** need to be installed. Also, this doesn't compile on linux/mac yet. I am fixing the compiler errors one by one. I get bored sometimes. Give it a crack if you want. Its all platform related.
 `clang` and `gcc` are also valid args. 
 ```
-./build.bat release clang platform app
+./build.sh meta debug clang platform app
 ```
 
 ## Contributions
-Open issue and make pr for anything. Off the top of my head, nothing comes to mind. If you wan't, you can attempt a linux / mac port. Linux port will require making sure it compiles and updating `build.sh` to match the current
-`build.bat`. For a mac port, you'd likely have to make an opengl 3.3 backend for the renderer. This would be quite a bit of work since the 4.5 backend is about 900 loc.
+Open issue and make pr for anything. Off the top of my head, nothing comes to mind. If you want, you can attempt a linux / mac port. Linux port will require making sure it compiles and updating `build.sh` to match the current `build.bat`. For a mac port, you'd likely have to make an opengl 3.3 backend for the renderer. This would be quite a bit of work since the 4.5 backend is about 900 loc.
 
 ## Project Structure
-- `asset_cache.cpp` : texture cache and asset system
-- `base.cpp` : common utility functions.
-- `draw.cpp` : high level renderer layer
-- `editor.cpp` : engine editor layer
-- `entity.cpp` : entity system
-- `context_cracking.cpp` : platform / compiler context
-- `game.cpp` : game stuff
-- `third_party/` : libraries, currently SDL, cgltf, glad and stb 
-- `os_core.cpp` : Core OS utility, like memory function
-- `os_gfx.cpp` : Graphics related OS utility, like opening a window
 - `backends/` : opengl, win32 and linux backend code
-- `ui.cpp` : immediate mode UI layer. Used for game and engine tools
+- `generated/` : Generated code. Usually implicit params and templates.
+- `meta/` : Metaprograms
+- `third_party/` : external libraries, currently SDL, glad, box2d and stb 
+- `base.cpp` : utility functions.
+- `context.cpp` : libc replacements + platform context cracking
+- `draw.cpp` : high level renderer layer. Handles batching.
+- `editor.cpp` : ui abstraction to make gfx tools
+- `main.cpp` : entry + game
+- `os.cpp` : OS abstraction. Mainly windowing and memory.
+- `render.cpp` : low level renderer layer
+- `texture.cpp` : texture cache
+- `ui.cpp` : immediate mode UI layer.
