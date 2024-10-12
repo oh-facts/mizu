@@ -16,14 +16,13 @@ UI_##Name##_node *next; \
 Type v;\
 };
 
-#define num_styles 10
+#define num_styles 9
 static Style styles[num_styles] =
 { 
 	{"Parent", "UI_Widget *"},
 	{"Color", "v4f"},
 	{"Pref_width", "f32"},
 	{"Pref_height", "f32"},
-	{"Fixed_pos", "v2f"},
 	{"float_value", "f32"},
 	
 	{"AlignKind_x", "UI_AlignKind"},
@@ -49,7 +48,7 @@ UI_##Name##_node *free;\
 b32 auto_pop;\
 }name##_stack;
 
-#define num_stacks 16
+#define num_stacks 15
 static Stacks stacks[num_stacks] =
 {
 	{"Parent", "parent", "UI_Widget*"},
@@ -64,7 +63,6 @@ static Stacks stacks[num_stacks] =
 	
 	{"Pref_width", "pref_width", "f32"},
 	{"Pref_height", "pref_height", "f32"},
-	{"Fixed_pos", "fixed_pos", "v2f"},
 	{"Axis2", "child_layout_axis", "Axis2"},
 	{"SizeKind_x", "size_kind_x", "UI_SizeKind"},
 	{"SizeKind_y", "size_kind_y", "UI_SizeKind"},

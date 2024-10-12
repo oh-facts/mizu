@@ -154,20 +154,6 @@ function UI_Pref_height_node *ui_alloc_pref_height_node(UI_Context *cxt)
 	}
 	return node;
 }
-function UI_Fixed_pos_node *ui_alloc_fixed_pos_node(UI_Context *cxt)
-{
-	UI_Fixed_pos_node *node = cxt->fixed_pos_stack.free;
-	if(node)
-	{
-		cxt->fixed_pos_stack.free = cxt->fixed_pos_stack.free->next;
-		*node = {};
-	}
-	else
-	{
-		node = push_struct(cxt->arena, UI_Fixed_pos_node);
-	}
-	return node;
-}
 function UI_Axis2_node *ui_alloc_child_layout_axis_node(UI_Context *cxt)
 {
 	UI_Axis2_node *node = cxt->child_layout_axis_stack.free;
@@ -280,11 +266,6 @@ function void ui_free_pref_height_node(UI_Context *cxt, UI_Pref_height_node *nod
 {
 	node->next = cxt->pref_height_stack.free;
 	cxt->pref_height_stack.free = node;
-}
-function void ui_free_fixed_pos_node(UI_Context *cxt, UI_Fixed_pos_node *node)
-{
-	node->next = cxt->fixed_pos_stack.free;
-	cxt->fixed_pos_stack.free = node;
 }
 function void ui_free_child_layout_axis_node(UI_Context *cxt, UI_Axis2_node *node)
 {
@@ -470,21 +451,6 @@ function void ui_push_pref_height(UI_Context *cxt, f32 val)
 	{
 		node->next = cxt->pref_height_stack.top;
 		cxt->pref_height_stack.top = node;
-	}
-}
-
-function void ui_push_fixed_pos(UI_Context *cxt, v2f val)
-{
-	UI_Fixed_pos_node *node = ui_alloc_fixed_pos_node(cxt);
-	node->v = val;
-	if (!cxt->fixed_pos_stack.top)
-	{
-		cxt->fixed_pos_stack.top = node;
-	}
-	else
-	{
-		node->next = cxt->fixed_pos_stack.top;
-		cxt->fixed_pos_stack.top = node;
 	}
 }
 
@@ -726,22 +692,6 @@ function void ui_set_next_pref_height(UI_Context *cxt, f32 val)
 	cxt->pref_height_stack.auto_pop = 1;
 }
 
-function void ui_set_next_fixed_pos(UI_Context *cxt, v2f val)
-{
-	UI_Fixed_pos_node *node = ui_alloc_fixed_pos_node(cxt);
-	node->v = val;
-	if (!cxt->fixed_pos_stack.top)
-	{
-		cxt->fixed_pos_stack.top = node;
-	}
-	else
-	{
-		node->next = cxt->fixed_pos_stack.top;
-		cxt->fixed_pos_stack.top = node;
-	}
-	cxt->fixed_pos_stack.auto_pop = 1;
-}
-
 function void ui_set_next_child_layout_axis(UI_Context *cxt, Axis2 val)
 {
 	UI_Axis2_node *node = ui_alloc_child_layout_axis_node(cxt);
@@ -883,13 +833,6 @@ function void ui_pop_pref_height(UI_Context *cxt)
 	UI_Pref_height_node *pop = cxt->pref_height_stack.top;
 	cxt->pref_height_stack.top = cxt->pref_height_stack.top->next;
 	ui_free_pref_height_node(cxt, pop);
-}
-
-function void ui_pop_fixed_pos(UI_Context *cxt)
-{
-	UI_Fixed_pos_node *pop = cxt->fixed_pos_stack.top;
-	cxt->fixed_pos_stack.top = cxt->fixed_pos_stack.top->next;
-	ui_free_fixed_pos_node(cxt, pop);
 }
 
 function void ui_pop_child_layout_axis(UI_Context *cxt)

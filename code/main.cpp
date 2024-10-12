@@ -1,4 +1,11 @@
 #define _CRT_SECURE_NO_WARNINGS
+// TODO(mizu): arbitrary tile sizes
+// TODO(mizu): better visualization
+// TODO(mizu): astar anti fuckup
+// TODO(mizu): flexible astar
+// TODO(mizu): neglect ui like u neglects i. This is deeper than the economic
+// and financial state of the world
+// TODO(mizu): combat
 
 #define ED_THEME_BG v4f{{0.643, 0, 0.357, 1}}
 #define ED_THEME_BG_DARKER v4f{{0, 0, 0, 0.2}}
@@ -586,7 +593,7 @@ struct Game
 	EntityStore e_store;
 	Camera cam;
 	b32 initialized;
-	
+	ED_Tab *lister_tab;
 	s32 *tilemap;
 	s32 col;
 	s32 row;
@@ -629,8 +636,8 @@ function ED_CUSTOM_TAB(lister_panel)
 		ui_text_color(window->cxt, D_COLOR_WHITE)
 			//ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-			ui_pref_height(window->cxt, 45)
 			ui_pref_width(window->cxt, 256)
+			ui_pref_height(window->cxt, 25)
 		{
 			ui_labelf(window->cxt, "%s", (char*)entity->name.c);
 		}
@@ -738,16 +745,18 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			ED_Tab *debug_tab = ed_openTab(panel2, "Profiler");
 			debug_tab->custom_draw = profiler_panel;
 		}
+		
 		// lister tab
 		{
-			ED_Tab *lister_tab = ed_openTab(panel2, "Lister", {{400, 800}});
-			lister_tab->custom_draw = lister_panel;
+			game->lister_tab = ed_openTab(panel2, "Lister", {{400, 800}});
+			game->lister_tab->custom_draw = lister_panel;
 			Lister *lister = push_struct(game->arena, Lister);
 			lister->game = game;
-			lister_tab->custom_drawData = lister;
+			game->lister_tab->custom_drawData = lister;
 		}
 	}
 	
+	// pause play ui
 	b32 restart = 0;
 	
 	ui_hover_color(window->cxt, (v4f{{0.8, 0.8, 0.8, 1}}))
@@ -1290,6 +1299,103 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
 		ui_labelf(window->cxt, "Except for you, you can stay");
 	}
+	
+	{
+		static v2f pos = {{300, 300}};
+		static v2f old_pos = pos;
+		
+		ui_set_next_size_kind_x(window->cxt, UI_SizeKind_ChildrenSum);
+		ui_set_next_size_kind_y(window->cxt, UI_SizeKind_ChildrenSum);
+		
+		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating window"));
+		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg;
+		floating->computed_rel_position[0] = pos.x;
+		floating->computed_rel_position[1] = pos.y;
+		floating->bg_color = ED_THEME_BG;
+		ui_scale(window->cxt, FONT_SIZE * 0.6)
+			ui_parent(window->cxt, floating)
+			ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
+			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+			ui_col(window->cxt)
+		{
+			static b32 close = 0;
+			static b32 hide = 0;
+			static b32 grab = 0;
+			
+			v2f size = {{300, 300}};
+			
+			ed_titlebar(str8_lit("Lister"), 3, window->cxt, size, &close, &hide, &grab);
+			
+			if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (grab))
+			{
+				f32 x, y;
+				SDL_GetGlobalMouseState(&x, &y);
+				
+				pos += v2f{{x, y}} - old_pos;
+				//os_setWindowPos(window->win, window->pos);
+			}
+			else
+			{
+				grab = 0;
+			}
+			ui_col(window->cxt)
+				lister_panel(window, game->lister_tab, delta, game->lister_tab->custom_drawData);
+			old_pos = pos;
+			
+			SDL_GetGlobalMouseState(&old_pos.x, &old_pos.y);
+			
+		}
+	}
+	
+#if 0
+	{
+		static v2f pos = {{10, 300}};
+		static v2f old_pos = pos;
+		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating windowq"));
+		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg;
+		floating->fixed_position = pos;
+		floating->bg_color = ED_THEME_BG;
+		ui_scale(window->cxt, FONT_SIZE * 0.6)
+			ui_parent(window->cxt, floating)
+			ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
+			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+			ui_col(window->cxt)
+		{
+			static b32 close = 0;
+			static b32 hide = 0;
+			static b32 grab = 0;
+			
+			v2f size = {{300, 300}};
+			
+			ed_titlebar(str8_lit("Lister2"), 45, window->cxt, size, &close, &hide, &grab);
+			
+			if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (grab))
+			{
+				//f32 x, y;
+				//SDL_GetGlobalMouseState(&x, &y);
+				
+				pos += window->win->mpos - old_pos - v2f{{150, 10}};
+				//os_setWindowPos(window->win, window->pos);
+			}
+			else
+			{
+				grab = 0;
+			}
+			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+				ui_col(window->cxt)
+			{
+				ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+				{
+					ui_labelf(window->cxt, "hi");
+					ui_labelf(window->cxt, "bye");
+				}
+			}
+			
+			old_pos = pos;
+			
+		}
+	}
+#endif
 }
 
 int main(int argc, char **argv)
@@ -1366,7 +1472,7 @@ int main(int argc, char **argv)
 	
 	arenaTempEnd(&temp);
 	
-	for (;;)
+	for (;!game_win->win->close_requested;)
 	{		
 		f64 time_since_last = time_elapsed;
 		
@@ -1381,7 +1487,6 @@ int main(int argc, char **argv)
 		
 		d_end();
 		
-		
 		arenaTempEnd(&temp);
 		END_TIMED_BLOCK(UPDATE_AND_RENDER);
 		
@@ -1391,11 +1496,6 @@ int main(int argc, char **argv)
 		time_elapsed = (double)(end - start) / freq;
 		
 		delta = time_elapsed - time_since_last;
-		
-		if (ed_state->main_window->win->close_requested)
-		{
-			return 0;
-		}
 	}
 	
 	return 0;

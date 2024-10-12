@@ -1,26 +1,3 @@
-// TODO(mizu): Make an OS gfx state, and core OS.
-// I am sick of abstracting over SDL
-// inside OS gfx state, just call sdl stuff directly. And let other files call sdl
-// stuff directly, rather than wrapping it over, since I have very little intention
-// of abstracting windows and linux and mac for gfx stuff.
-
-// put memory functions inside OS core
-// And see if you can remove source / header files co-existance. It is crap design.
-// Working on the editor has gotten easier now that I don't have to update function
-// declarations. C is so crappy to write in. But there is too much inertia 
-// (thus I won't use alternatives like odin) and until I get around to making
-// my own language / language editor, I will need to use this crap. C is for Crap.
-// C++ is Crap ++
-// Also, consider raylib.
-// I have spent an insane amt of time wrapping over sdl so that in the future, I can
-// potentially use other libraries. Not worth it. I am clearly targetting 64 bit desktop 
-// OS (I am reserving insane amounts of memory) so I am not going to put any effort in
-// abstracting stuff. Once I have hundreds of programmers, I will make them rewrite the OS
-// backend so we can do SDL for desktop, and other OS apis for other platforms.
-// I can't imagine nintendo, ps or xbox would send me their devkits, so SDL is really fine
-// making an OS gfx abstraction is a waste of time (unless you wan't to learn, then its a very
-// good reason). I don't want to learn (I have mangled w/ msdn enough), I want to ship a game.
-
 function void *os_reserve(u64 size)
 {
 	return os_win32_reserve(size);
@@ -101,7 +78,7 @@ global OS_GfxState *os_gfx_state;
 
 function void os_init()
 {
-		if(SDL_Init(SDL_INIT_VIDEO) < 0)
+	if(SDL_Init(SDL_INIT_VIDEO) < 0)
 	{
 		printf("%s\n\r", SDL_GetError());
 		printf("[Quitting Fatal]\n\r");
@@ -134,34 +111,34 @@ function OS_Window *os_winFromEvent(SDL_Event *event)
 
 function void os_setWindowSize(OS_Window *win, v2f size)
 {
-		SDL_SetWindowSize(win->raw, size.x, size.y);
+	SDL_SetWindowSize(win->raw, size.x, size.y);
 }
 
 function void os_setWindowPos(OS_Window *win, v2f pos)
 {
-		SDL_SetWindowPosition(win->raw, pos.x, pos.y);
+	SDL_SetWindowPosition(win->raw, pos.x, pos.y);
 }
 
 function b32 os_mouseHeld(OS_Window *win, u32 key)
 {
-		//printf("%d\n", win->mdown[key]);
-		return win->mdown[key];
+	//printf("%d\n", win->mdown[key]);
+	return win->mdown[key];
 }
 
 function b32 os_mousePressed(OS_Window *win, u32 key)
 {
-		//printf("%d, %d\n", win->mdown[key] , win->mdown_old[key]);
-		return win->mdown[key] && !win->mdown_old[key];
+	//printf("%d, %d\n", win->mdown[key] , win->mdown_old[key]);
+	return win->mdown[key] && !win->mdown_old[key];
 }
 
 function b32 os_mouseReleased(OS_Window *win, u32 key)
 {
-		return !win->mdown[key] && win->mdown_old[key];
+	return !win->mdown[key] && win->mdown_old[key];
 }
 
 function b32 os_keyPress(OS_Window *win, u32 key)
 {
-		return win->keys[key];
+	return win->keys[key];
 }
 
 function void os_pollEvents()
@@ -243,7 +220,7 @@ function void os_pollEvents()
 			{
 				b32 pressed = sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? 1 : 0;
 				win->mdown[sdl_event.button.button] = pressed;
-								
+				
 				//printf("hi %d %s\n", pressed, win->title);
 				
 			}break;
@@ -255,7 +232,7 @@ function OS_Window *os_windowOpen(const char *title, s32 w, s32 h)
 {
 	OS_Window *out = os_gfx_state->windows + os_gfx_state->window_num++;
 	*out = {};
-		
+	
 	out->w = w;
 	out->h = h;
 	

@@ -46,6 +46,8 @@ enum
 	UI_Flags_is_floating_y = 1 << 6,
 };
 
+#define UI_Flags_is_floating (UI_Flags_is_floating_x | UI_Flags_is_floating_y)
+
 struct UI_Widget;
 
 struct UI_Signal
@@ -84,7 +86,7 @@ struct UI_Widget
 	Str8 text;
 	f32 scale;
 	UI_Size pref_size[Axis2_COUNT];
-
+	
 	v4f color;
 	v4f bg_color;
 	v4f hover_color;
@@ -97,8 +99,6 @@ struct UI_Widget
 	Axis2 child_layout_axis;
 	UI_AlignKind alignKind;
 	
-	v2f fixed_position;
-	
 	UI_WidgetCustomDrawFunctionType *custom_draw;
 	void *custom_draw_data;
 	
@@ -106,9 +106,10 @@ struct UI_Widget
 	f32 computed_rel_position[Axis2_COUNT];
 	f32 computed_size[Axis2_COUNT];
 	
+	
 	// persistant
-	v2f pos;
-	v2f size;
+	// use rect since ui shader uses rect anyways
+	Rect dst;
 	
 	b32 hot;
 	b32 active;
@@ -153,17 +154,10 @@ struct UI_Context
 function UI_Signal ui_signal(UI_Context *cxt, UI_Widget *widget)
 {
 	UI_Signal out = {};
-	
-	v2f tl = {};
-	tl.x = widget->pos.x;
-	tl.y = widget->pos.y;
-	
-	v2f br = {};
-	br.x = tl.x + widget->size.x;
-	br.y = tl.y + widget->size.y;
+	Rect dst = widget->dst;
 	
 	v2f mpos = cxt->win->mpos;
-	if(mpos.x > tl.x && mpos.x < br.x && mpos.y > tl.y && mpos.y < br.y)
+	if(mpos.x > dst.tl.x && mpos.x < dst.br.x && mpos.y > dst.tl.y && mpos.y < dst.br.y)
 	{
 		out.hot = true;
 	}
@@ -205,38 +199,6 @@ ui_push_size_kind_y(cxt, kind);
 
 #define ui_pop_size_kind(cxt) ui_pop_size_kind_x(cxt); \
 ui_pop_size_kind_y(cxt);
-
-function UI_Context *ui_allocCxt()
-{
-	Arena *arena = arenaAlloc();
-	
-	UI_Context *cxt = push_struct(arena, UI_Context);
-	
-	cxt->arena = arena;
-	
-	cxt->hash_table_size = 1024;
-	cxt->hash_slots = push_array(arena, UI_Hash_slot, cxt->hash_table_size);
-	cxt->frame_arena = arenaAlloc();
-	
-	ui_push_text_color(cxt, D_COLOR_WHITE);
-	ui_push_bg_color(cxt, D_COLOR_WHITE);
-	ui_push_hover_color(cxt, D_COLOR_WHITE);
-	ui_push_press_color(cxt, D_COLOR_WHITE);
-	ui_push_border_color(cxt, (v4f{{}}));
-	ui_push_border_thickness(cxt, 0);
-	ui_push_radius(cxt, 0);
-	
-	ui_push_pref_width(cxt, 0);
-	ui_push_pref_height(cxt, 0);
-	ui_push_fixed_pos(cxt, v2f{{0,0}});
-	ui_push_size_kind(cxt, UI_SizeKind_Null);
-	ui_push_align_kind_x(cxt, UI_AlignKind_Left);
-	ui_push_scale(cxt, FONT_SIZE);
-	
-	cxt->frames = 0;
-	
-	return cxt;
-}
 
 // djb2
 function unsigned long ui_hash(Str8 str)
@@ -414,8 +376,6 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 		}break;
 	}
 	
-	widget->fixed_position = cxt->fixed_pos_stack.top->v;
-	
 	if(cxt->child_layout_axis_stack.auto_pop)
 	{
 		widget->child_layout_axis = cxt->child_layout_axis_stack.top->v;
@@ -423,6 +383,37 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 		ui_pop_child_layout_axis(cxt);
 	}
 	return widget;
+}
+
+function UI_Context *ui_allocCxt()
+{
+	Arena *arena = arenaAlloc();
+	
+	UI_Context *cxt = push_struct(arena, UI_Context);
+	
+	cxt->arena = arena;
+	
+	cxt->hash_table_size = 1024;
+	cxt->hash_slots = push_array(arena, UI_Hash_slot, cxt->hash_table_size);
+	cxt->frame_arena = arenaAlloc();
+	
+	ui_push_text_color(cxt, D_COLOR_WHITE);
+	ui_push_bg_color(cxt, D_COLOR_WHITE);
+	ui_push_hover_color(cxt, D_COLOR_WHITE);
+	ui_push_press_color(cxt, D_COLOR_WHITE);
+	ui_push_border_color(cxt, (v4f{{}}));
+	ui_push_border_thickness(cxt, 0);
+	ui_push_radius(cxt, 0);
+	
+	ui_push_pref_width(cxt, 0);
+	ui_push_pref_height(cxt, 0);
+	ui_push_size_kind(cxt, UI_SizeKind_Null);
+	ui_push_align_kind_x(cxt, UI_AlignKind_Left);
+	ui_push_scale(cxt, FONT_SIZE);
+	
+	cxt->frames = 0;
+	
+	return cxt;
 }
 
 function UI_Signal ui_begin_named_rowf(UI_Context *cxt, char *fmt, ...)
@@ -559,8 +550,6 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 {
 	UI_SatPickerDrawData *draw_data = (UI_SatPickerDrawData *)user_data;
 	
-	Rect w_rect = rect(widget->pos, widget->size);
-	
 	{
 		//static f32 red = 0;
 		//red += delta * 100;
@@ -572,7 +561,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		col.z = rgb.z;
 		col.w = 1;
 		
-		R_Rect *recty = d_rect(w_rect, {{0,0,0,0.1}});
+		R_Rect *recty = d_rect(widget->dst, {{0,0,0,0.1}});
 		
 		recty->fade[Corner_00] = v4f{{1, 1, 1, 1}};
 		recty->fade[Corner_01] = v4f{{1, 1, 1, 1}};
@@ -583,7 +572,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 	}
 	
 	{
-		R_Rect *recty = d_rect(w_rect, {{0,0,0,0}});
+		R_Rect *recty = d_rect(widget->dst, {{0,0,0,0}});
 		
 		recty->fade[Corner_00] = v4f{{0,0,0,0}};
 		recty->fade[Corner_01] = v4f{{0, 0, 0, 1}};
@@ -591,7 +580,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		recty->fade[Corner_11] = v4f{{0, 0, 0, 1}};
 		recty->radius = 10;
 	}
-	
+#if 0
 	// indicator
 	{
 		v2f size = {.x = 20, .y = 20};
@@ -615,7 +604,7 @@ function UI_CUSTOM_DRAW(ui_sat_picker_draw)
 		indi->border_color = color;
 		indi->border_thickness = 5;
 	}
-	
+#endif
 }
 
 function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, Str8 text)
@@ -633,10 +622,18 @@ function UI_Signal ui_sat_picker(UI_Context *cxt, s32 hue, f32 *sat, f32 *val, S
 	
 	if(widget->hot && os_mouseHeld(cxt->win, SDL_BUTTON_LEFT))
 	{
+		v2f pos = {};
+		pos.x = widget->computed_rel_position[0];
+		pos.y = widget->computed_rel_position[1];
+		
+		v2f size = {};
+		size.x = widget->computed_size[0];
+		size.y = widget->computed_size[1];
+		
 		v2f mpos = cxt->win->mpos;
 		f32 _sat, _val;
-		_sat = (mpos.x - widget->pos.x) / widget->size.x;
-		_val = 1 - (mpos.y - widget->pos.y) / widget->size.y;
+		_sat = (mpos.x - pos.x) / size.x;
+		_val = 1 - (mpos.y - pos.y) / size.y;
 		
 		_sat = ClampTop(_sat, 1);
 		_sat = ClampBot(_sat, 0);
@@ -688,8 +685,7 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 {
 	UI_AlphaPickerDrawData *draw_data = (UI_AlphaPickerDrawData *)user_data;
 	
-	Rect w_rect = rect(widget->pos, widget->size);
-	
+	Rect w_rect = widget->dst;
 	// checker pattern
 	{
 		v2f dim = size_from_rect(w_rect);
@@ -709,7 +705,7 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 		recty->fade[Corner_10] = col;
 		recty->fade[Corner_11] = col;
 	}
-	
+#if 0
 	// indicator
 	{
 		v2f size = {.x = 20, .y = 20};
@@ -723,13 +719,12 @@ function UI_CUSTOM_DRAW(ui_alpha_picker_draw)
 		
 		v4f color = D_COLOR_WHITE;
 		
-		
 		R_Rect *indi = d_rect(recty, {});
 		indi->radius = 5;
 		indi->border_color = color;
 		indi->border_thickness = 5;
 	}
-	
+#endif
 }
 
 function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 text)
@@ -747,9 +742,16 @@ function UI_Signal ui_alpha_picker(UI_Context *cxt, v3f hsv, f32 *alpha, Str8 te
 	if(widget->hot && os_mouseHeld(cxt->win, SDL_BUTTON_LEFT))
 	{
 		v2f mpos = cxt->win->mpos;
+		v2f pos = {};
+		pos.x = widget->computed_rel_position[0];
+		pos.y = widget->computed_rel_position[1];
+		
+		v2f size = {};
+		size.x = widget->computed_size[0];
+		size.y = widget->computed_size[1];
 		
 		f32 _alpha;
-		_alpha = (mpos.x - widget->pos.x) / widget->size.x;
+		_alpha = (mpos.x - pos.x) / size.x;
 		_alpha = ClampTop(_alpha, 1);
 		_alpha = ClampBot(_alpha, 0);
 		
@@ -783,7 +785,7 @@ struct UI_HuePickerDrawData
 
 function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 {
-	Rect box_rect = rect(widget->pos, widget->size);
+	Rect box_rect = widget->dst;
 	f32 samples = 360;
 	
 	f32 segment = size_from_rect(box_rect).x / samples;
@@ -811,8 +813,8 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		segment_rect.br.x += segment;
 	}
 	
+#if 0
 	UI_HuePickerDrawData *draw_data = (UI_HuePickerDrawData*)user_data;
-	
 	// indicator
 	{
 		f32 size = 20;
@@ -828,7 +830,7 @@ function UI_CUSTOM_DRAW(ui_hue_picker_draw)
 		indi->border_color = D_COLOR_BLACK;
 		indi->border_thickness = 5;
 	}
-	
+#endif
 }
 
 function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
@@ -845,9 +847,16 @@ function UI_Signal ui_hue_picker(UI_Context *cxt, f32 *hue, Str8 text)
 	if(widget->hot && os_mouseHeld(cxt->win, SDL_BUTTON_LEFT))
 	{
 		v2f mpos = cxt->win->mpos;
+		v2f pos = {};
+		pos.x = widget->computed_rel_position[0];
+		pos.y = widget->computed_rel_position[1];
+		
+		v2f size = {};
+		size.x = widget->computed_size[0];
+		size.y = widget->computed_size[1];
 		
 		f32 _hue;
-		_hue = ((mpos.x - widget->pos.x) / widget->size.x) * 360;
+		_hue = ((mpos.x - pos.x) / size.x) * 360;
 		_hue = ClampTop(_hue, 360);
 		_hue = ClampBot(_hue, 0);
 		
@@ -891,7 +900,7 @@ function UI_CUSTOM_DRAW(ui_image_draw)
 		color = widget->hover_color;
 	}
 	
-	R_Rect *img = d_rect(rect(widget->pos, widget->size), color);
+	R_Rect *img = d_rect(widget->dst, color);
 	img->src = draw_data->src;
 	img->tex = draw_data->img;
 	img->border_thickness = widget->border_thickness;
@@ -1038,75 +1047,53 @@ function void ui_layout_downward_dependent(UI_Widget *root, Axis2 axis)
 	{
 		ui_layout_downward_dependent(child, axis);
 	}
-	UI_Widget *parent = root->parent;
-	if(parent)
+	
+	if(root->pref_size[axis].kind == UI_SizeKind_ChildrenSum)
 	{
-		if(parent->pref_size[axis].kind == UI_SizeKind_ChildrenSum)
+		f32 size = 0;
+		for(UI_Widget *child = root->first; child; child = child->next)
 		{
-			if(parent->child_layout_axis == axis)
+			if(child->flags & UI_Flags_is_floating)
 			{
-				parent->computed_size[axis] += root->computed_size[axis];
+				continue;
+			}
+			if(root->child_layout_axis == axis)
+			{
+				size += child->computed_size[axis];
 			}
 			else
 			{
-				if(parent->computed_size[axis] < root->computed_size[axis])
-				{
-					parent->computed_size[axis] = root->computed_size[axis];
-				}
+				size = Max(size, child->computed_size[axis]);
 			}
 		}
-		else if(parent->pref_size[axis].kind == UI_SizeKind_PercentOfParent)
-		{
-			if(axis == Axis2_X)
-			{
-				parent->computed_size[axis] = parent->parent->size.x;
-			}
-			//parent->computed_size[axis] = root->computed_size[axis];
-			//printf("%f\n", parent->parent->size.x);
-		}
+		root->computed_size[axis] += size;
 	}
 }
 
-// pre order
 function void ui_layout_pos(UI_Widget *root)
 {
-	if(root->parent)
-	{
-		root->computed_rel_position[0] = root->parent->computed_rel_position[0];
-		root->computed_rel_position[1] = root->parent->computed_rel_position[1];
-		
-		if(root->alignKind == UI_AlignKind_Center)
-		{
-			root->computed_rel_position[Axis2_X] += root->parent->size.x / 2 - root->size.x;
-		}
-		
-	}
-	
-	// TODO(mizu): Note how this just adds / subtracts instead of cumulatively adding 
-	// /subtracting. I get this weird distance bug where the distance is accounted for twice when I remove it. I will record the commit so its easier to understand / demonstrate. 
-	
-	if(root->prev)
-	{
-		if(root->parent->child_layout_axis == Axis2_X)
-		{
-			if(!(root->flags & UI_Flags_is_floating_x))
-			{
-				root->computed_rel_position[Axis2_X] = root->prev->computed_rel_position[Axis2_X] + root->prev->computed_size[Axis2_X];
-				
-				// NOTE(mizu): working on this rn
-				//root->computed_rel_position[Axis2_X] += root->parent->computed_size[Axis2_X];// * 0.5;
-			}
-		}
-		else if(root->parent->child_layout_axis == Axis2_Y)
-		{
-			if(!(root->flags & UI_Flags_is_floating_y))
-			{
-				root->computed_rel_position[Axis2_Y] = root->prev->computed_rel_position[Axis2_Y] + root->prev->computed_size[Axis2_Y];
-			}
-		}
-	}
+	f32 layout_pos = 0;
 	
 	for(UI_Widget *child = root->first; child; child = child->next)
+	{
+		child->computed_rel_position[0] += root->computed_rel_position[0];
+		child->computed_rel_position[1] += root->computed_rel_position[1];
+		
+		if(!(child->flags & UI_Flags_is_floating))
+		{
+			Axis2 axis = root->child_layout_axis;
+			child->computed_rel_position[axis] += layout_pos;
+			
+			layout_pos += child->computed_size[axis];
+		}
+		
+		v2f pos = {{child->computed_rel_position[0], child->computed_rel_position[1]}};
+		v2f size = {{child->computed_size[0], child->computed_size[1]}};
+		
+		child->dst = rect(pos, size);
+	}
+	
+	for (UI_Widget *child = root->first; child; child = child->next)
 	{
 		ui_layout_pos(child);
 	}

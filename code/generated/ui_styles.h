@@ -24,12 +24,6 @@ struct UI_Pref_height_node
 	f32 v;
 };
 
-struct UI_Fixed_pos_node
-{
-	UI_Fixed_pos_node *next;
-	v2f v;
-};
-
 struct UI_float_value_node
 {
 	UI_float_value_node *next;
@@ -129,12 +123,6 @@ struct\
 	UI_Pref_height_node *free;\
 	b32 auto_pop;\
 }pref_height_stack;\
-;struct\
-{\
-	UI_Fixed_pos_node *top;\
-	UI_Fixed_pos_node *free;\
-	b32 auto_pop;\
-}fixed_pos_stack;\
 ;struct\
 {\
 	UI_Axis2_node *top;\

@@ -3,7 +3,7 @@
 read_only Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
 
 // djb2
-u64 a_hash(Str8 str)
+function u64 a_hash(Str8 str)
 {
 	u64 hash = 5381;
 	int c;
@@ -24,7 +24,7 @@ struct A_Key
 	R_Texture_params params;
 };
 
-A_Key a_keyFromPath(Str8 path, R_Texture_params params)
+function A_Key a_keyFromPath(Str8 path, R_Texture_params params)
 {
 	A_Key out = {};
 	out.v = a_hash(path);
@@ -33,7 +33,7 @@ A_Key a_keyFromPath(Str8 path, R_Texture_params params)
 	return out;
 }
 
-b32 a_keysAreSame(A_Key a, A_Key b)
+function b32 a_keysAreSame(A_Key a, A_Key b)
 {
 	b32 out = 0;
 	
@@ -88,7 +88,7 @@ global A_State *a_state;
 // Should I only free as many as required, or as many as can be? Batch alloc / dealloc is better, no? I need to test this with massive textures to understand.
 // 3) Lastly, all alloc and eviction must happen on separate thread
 
-void a_init()
+function void a_init()
 {
 	Arena *arena = arenaAlloc(100, Megabytes(1));
 	a_state = push_struct(arena, A_State);
@@ -120,7 +120,7 @@ void a_init()
 	a_state->alpha_bg_tex = r_allocTexture(alpha_bg, 2, 2, 4, &pixel_tiled_params);
 }
 
-A_TextureCache *a_allocTextureCache()
+function A_TextureCache *a_allocTextureCache()
 {
 	A_TextureCache *out = a_state->free;
 	
@@ -136,13 +136,13 @@ A_TextureCache *a_allocTextureCache()
 	return out;
 }
 
-void a_freeTextureCache(A_TextureCache *tex)
+function void a_freeTextureCache(A_TextureCache *tex)
 {
 	tex->next = a_state->free;
 	a_state->free = tex;
 }
 
-void a_addToHash(A_TextureCache *tex)
+function void a_addToHash(A_TextureCache *tex)
 {
 	u64 slot = tex->key.v % a_state->num_slots;
 	
@@ -156,12 +156,12 @@ void a_addToHash(A_TextureCache *tex)
 	}
 }
 
-R_Handle a_getCheckerTex()
+function R_Handle a_getCheckerTex()
 {
 	return a_state->checker_tex;
 }
 
-R_Handle a_getAlphaBGTex()
+function R_Handle a_getAlphaBGTex()
 {
 	return a_state->alpha_bg_tex;
 }
@@ -222,7 +222,7 @@ void a_evict()
 	}
 }
 
-R_Handle a_handleFromKey(A_Key key)
+function R_Handle a_handleFromKey(A_Key key)
 {
 	u64 slot = key.v % a_state->num_slots;
 	
