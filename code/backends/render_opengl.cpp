@@ -433,12 +433,12 @@ if (tex.x < border_thickness || tex.x > (1 - border_thickness) || tex.y < border
 // ============= //
 
 function void APIENTRY glDebugOutput(GLenum source, 
-                            		 GLenum type, 
-								     unsigned int id, 
-									 GLenum severity, 
-									 GLsizei length, 
-									 const char *message, 
-									 const void *userParam)
+																																					GLenum type, 
+																																					unsigned int id, 
+																																					GLenum severity, 
+																																					GLsizei length, 
+																																					const char *message, 
+																																					const void *userParam)
 {
 	if(id == 131169 || id == 131185 || id == 131218 || id == 131204) return; 
 	
@@ -647,7 +647,7 @@ function void r_opengl_init()
 	
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_UI] = r_opengl_makeShaderProgram(r_vs_ui_src, r_fs_ui_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_UI] = r_opengl_makeBuffer(Megabytes(8));
-		
+	
 	r_opengl_state->shader_prog[R_OPENGL_SHADER_PROG_SPRITE] = r_opengl_makeShaderProgram(r_vs_sprite_src, r_fs_sprite_src);
 	r_opengl_state->inst_buffer[R_OPENGL_INST_BUFFER_SPRITE] = r_opengl_makeBuffer(Megabytes(8));
 }

@@ -39,11 +39,14 @@ enum
 {
 	UI_Flags_has_text = 1 << 0,
 	UI_Flags_has_bg = 1 << 1,
-	UI_Flags_clickable = 1 << 2,
-	UI_Flags_has_custom_draw = 1 << 3,
-	UI_Flags_has_scroll = 1 << 4,
-	UI_Flags_is_floating_x = 1 << 5,
-	UI_Flags_is_floating_y = 1 << 6,
+	UI_Flags_draw_border = 1 << 2,
+	UI_Flags_rounded_corners = 1 << 3,
+	UI_Flags_clickable = 1 << 4,
+	UI_Flags_has_custom_draw = 1 << 5,
+	UI_Flags_has_scroll = 1 << 6,
+	UI_Flags_is_floating_x = 1 << 7,
+	UI_Flags_is_floating_y = 1 << 8,
+	UI_Flags_text_centered = 1 << 9,
 };
 
 #define UI_Flags_is_floating (UI_Flags_is_floating_x | UI_Flags_is_floating_y)
@@ -86,6 +89,7 @@ struct UI_Widget
 	Str8 text;
 	f32 scale;
 	UI_Size pref_size[Axis2_COUNT];
+	f32 padding[Axis2_COUNT];
 	
 	v4f color;
 	v4f bg_color;
@@ -106,7 +110,6 @@ struct UI_Widget
 	f32 computed_rel_position[Axis2_COUNT];
 	f32 computed_size[Axis2_COUNT];
 	
-	
 	// persistant
 	// use rect since ui shader uses rect anyways
 	Rect dst;
@@ -116,6 +119,7 @@ struct UI_Widget
 	b32 toggle;
 	
 	f32 timer;
+	f32 hot_timer;
 };
 
 #include <generated/ui_styles.h>
@@ -261,14 +265,21 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 				widget->toggle = !widget->toggle;
 				widget->active = 1;
 				widget->timer = 3;
+				widget->hot_timer = 15;
 			}
 			else
 			{
 				widget->active = 0;
 			}
 			
-			widget->timer -= 0.1f;
-			
+			if(widget->timer > 0)
+			{
+				widget->timer -= 0.1f;
+			}
+			if(widget->hot_timer > 0)
+			{
+				widget->hot_timer -= 0.1f;
+			}
 			widget->prev = 0;
 			widget->last = 0;
 			widget->next = 0;
@@ -321,6 +332,7 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 		}
 	}
 	
+	// styling params
 	widget->alignKind = cxt->align_kind_x_stack.top->v;
 	widget->color = cxt->text_color_stack.top->v;
 	widget->bg_color = cxt->bg_color_stack.top->v;
@@ -330,6 +342,12 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 	widget->border_thickness = cxt->border_thickness_stack.top->v;
 	widget->radius = cxt->radius_stack.top->v;
 	widget->scale = cxt->scale_stack.top->v;
+	widget->padding[0] = cxt->padding_x_stack.top->v;
+	widget->padding[1] = cxt->padding_y_stack.top->v;
+	
+	widget->flags |= cxt->flags_stack.top->v;
+	
+	//widget->padding[1] = cxt->padding_x_stack.top->v;
 	
 	Rect extent = rectFromString(text, widget->scale);
 	
@@ -376,12 +394,26 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 		}break;
 	}
 	
+	// TODO(mizu): Do all auto pops bro ski. meta program them too?
 	if(cxt->child_layout_axis_stack.auto_pop)
 	{
 		widget->child_layout_axis = cxt->child_layout_axis_stack.top->v;
 		cxt->child_layout_axis_stack.auto_pop = 0;
 		ui_pop_child_layout_axis(cxt);
 	}
+	
+	if(cxt->size_kind_x_stack.auto_pop)
+	{
+		cxt->size_kind_x_stack.auto_pop = 0;
+		ui_pop_size_kind_x(cxt);
+	}
+	
+	if(cxt->size_kind_y_stack.auto_pop)
+	{
+		cxt->size_kind_y_stack.auto_pop = 0;
+		ui_pop_size_kind_y(cxt);
+	}
+	
 	return widget;
 }
 
@@ -410,6 +442,10 @@ function UI_Context *ui_allocCxt()
 	ui_push_size_kind(cxt, UI_SizeKind_Null);
 	ui_push_align_kind_x(cxt, UI_AlignKind_Left);
 	ui_push_scale(cxt, FONT_SIZE);
+	ui_push_padding_x(cxt, 0);
+	ui_push_padding_y(cxt, 0);
+	
+	ui_push_flags(cxt, 0);
 	
 	cxt->frames = 0;
 	
@@ -477,7 +513,7 @@ function void ui_end_col(UI_Context *cxt)
 function UI_Signal ui_label(UI_Context *cxt, Str8 text)
 {
 	UI_Widget *widget = ui_makeWidget(cxt, text);
-	widget->flags = UI_Flags_has_text;
+	widget->flags |= UI_Flags_has_text;
 	
 	UI_Signal out = ui_signal(cxt, widget);
 	
@@ -493,6 +529,29 @@ function UI_Signal ui_labelf(UI_Context *cxt, char *fmt, ...)
 	va_end(args);
 	
 	UI_Signal out = ui_label(cxt, text); 
+	arenaTempEnd(&temp);
+	return out;
+}
+
+function UI_Signal ui_button(UI_Context *cxt, Str8 text)
+{
+	UI_Widget *widget = ui_makeWidget(cxt, text);
+	widget->flags |= UI_Flags_has_text | UI_Flags_clickable;
+	
+	UI_Signal out = ui_signal(cxt, widget);
+	
+	return out;
+}
+
+function UI_Signal ui_buttonf(UI_Context *cxt, char *fmt, ...)
+{
+	ArenaTemp temp = scratch_begin(0,0);
+	va_list args;
+	va_start(args, fmt);
+	Str8 text = push_str8fv(temp.arena, fmt, args);
+	va_end(args);
+	
+	UI_Signal out = ui_button(cxt, text); 
 	arenaTempEnd(&temp);
 	return out;
 }
@@ -883,6 +942,93 @@ function UI_Signal ui_hue_pickerf(UI_Context *cxt, f32 *hue, char *fmt, ...)
 	return out;
 }
 
+struct UI_SliderDrawData
+{
+	f32 value;
+	f32 min;
+	f32 max;
+	v4f color;
+};
+
+function UI_CUSTOM_DRAW(ui_slider_draw)
+{
+	UI_SliderDrawData *draw_data = (UI_SliderDrawData *)user_data;
+	
+	{
+		R_Rect *slider = d_rect(widget->dst, {});
+		slider->border_color = draw_data->color;
+		slider->radius = 15 / 1.8f;
+		slider->border_thickness = 4;
+	}
+	
+	// indicator
+	{
+		v2f size = {{20, 20}};
+		
+		f32 pos_x = (draw_data->value - draw_data->min) / draw_data->max;
+		pos_x *= size_from_rect(widget->dst).x;
+		
+		v2f pos = v2f{{pos_x, size.y / 2}} + widget->dst.tl;
+		pos.x += draw_data->value;
+		
+		v4f color = draw_data->color;
+		Rect recty = rect(pos, size);
+		R_Rect *indi = d_rect(recty, {});
+		indi->radius = 10;
+		indi->border_color = color;
+		indi->border_thickness = 4;
+	}
+}
+
+function UI_Signal ui_slider(UI_Context *cxt, f32 *value, f32 min, f32 max, v4f color, Str8 text)
+{
+	UI_Widget *widget = ui_makeWidget(cxt, text);
+	widget->flags = UI_Flags_has_custom_draw;
+	
+	UI_SliderDrawData *draw_data = push_struct(cxt->frame_arena, UI_SliderDrawData);
+	draw_data->value = *value;
+	draw_data->min = min;
+	draw_data->max = max;
+	draw_data->color = color;
+	
+	widget->custom_draw = ui_slider_draw;
+	widget->custom_draw_data = draw_data;
+	
+	if(widget->hot && os_mouseHeld(cxt->win, SDL_BUTTON_LEFT))
+	{
+		v2f mpos = cxt->win->mpos;
+		v2f pos = widget->dst.tl;
+		
+		v2f size = size_from_rect(widget->dst);
+		
+		f32 _value;
+		_value = (mpos.x - pos.x) / size.x;
+		_value = min + _value * (max - min);
+		_value = ClampBot(ClampTop(_value, max), min);
+		
+		*value = _value;
+	}
+	
+	UI_Signal out = ui_signal(cxt, widget);
+	
+	return out;
+}
+
+function UI_Signal ui_sliderf(UI_Context *cxt, f32 *value, f32 min, f32 max, v4f color, char *fmt, ...)
+{
+	ArenaTemp temp = scratch_begin(0,0);
+	va_list args;
+	va_start(args, fmt);
+	Str8 text = push_str8fv(temp.arena, fmt, args);
+	va_end(args);
+	
+	UI_Signal out = ui_slider(cxt, value, min, max, color, text);
+	
+	arenaTempEnd(&temp);
+	
+	return out;
+}
+
 struct UI_ImageDrawData
 {
 	R_Handle img;
@@ -1004,6 +1150,11 @@ function UI_Signal ui_spacer(UI_Context *cxt)
 
 #define ui_scale(cxt, v) UI_DeferLoop(ui_push_scale(cxt, v), ui_pop_scale(cxt))
 
+#define ui_padding_x(cxt, v) UI_DeferLoop(ui_push_padding_x(cxt, v), ui_pop_padding_x(cxt))
+#define ui_padding_y(cxt, v) UI_DeferLoop(ui_push_padding_y(cxt, v), ui_pop_padding_y(cxt))
+
+#define ui_flags(cxt, v) UI_DeferLoop(ui_push_flags(cxt, v), ui_pop_flags(cxt))
+
 function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)
 {
 	for(UI_Widget *child = root->first; child; child = child->next)
@@ -1022,6 +1173,9 @@ function void ui_layout_fixed_size(UI_Widget *root, Axis2 axis)
 			root->computed_size[axis] = root->pref_size[axis].value;
 		}break;
 	}
+	
+	
+	root->computed_size[axis] += root->padding[axis];
 }
 
 function void ui_layout_upward_dependent(UI_Widget *root, Axis2 axis)
@@ -1055,6 +1209,7 @@ function void ui_layout_downward_dependent(UI_Widget *root, Axis2 axis)
 		{
 			if(child->flags & UI_Flags_is_floating)
 			{
+				child->computed_size[1] += 10;
 				continue;
 			}
 			if(root->child_layout_axis == axis)
@@ -1078,6 +1233,9 @@ function void ui_layout_pos(UI_Widget *root)
 	{
 		child->computed_rel_position[0] += root->computed_rel_position[0];
 		child->computed_rel_position[1] += root->computed_rel_position[1];
+		
+		child->computed_rel_position[0] += child->padding[0];
+		child->computed_rel_position[1] += child->padding[1];
 		
 		if(!(child->flags & UI_Flags_is_floating))
 		{

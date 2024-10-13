@@ -42,6 +42,12 @@ struct UI_Axis2_node
 	Axis2 v;
 };
 
+struct UI_Flags_node
+{
+	UI_Flags_node *next;
+	UI_Flags v;
+};
+
 struct UI_SizeKind_x_node
 {
 	UI_SizeKind_x_node *next;
@@ -131,6 +137,18 @@ struct\
 }child_layout_axis_stack;\
 ;struct\
 {\
+	UI_float_value_node *top;\
+	UI_float_value_node *free;\
+	b32 auto_pop;\
+}padding_x_stack;\
+;struct\
+{\
+	UI_float_value_node *top;\
+	UI_float_value_node *free;\
+	b32 auto_pop;\
+}padding_y_stack;\
+;struct\
+{\
 	UI_SizeKind_x_node *top;\
 	UI_SizeKind_x_node *free;\
 	b32 auto_pop;\
@@ -147,4 +165,10 @@ struct\
 	UI_AlignKind_x_node *free;\
 	b32 auto_pop;\
 }align_kind_x_stack;\
+;struct\
+{\
+	UI_Flags_node *top;\
+	UI_Flags_node *free;\
+	b32 auto_pop;\
+}flags_stack;\
 ;

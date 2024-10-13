@@ -90,6 +90,8 @@ struct ED_Panel
 	f32 pct_of_parent;
 };
 
+// child window for surface less window seems best idea
+
 struct ED_Window
 {
 	ED_WindowFlags flags;
@@ -154,7 +156,7 @@ function void ed_drawSpritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
 			ui_label(window->cxt, path);
 		}
 		
-		A_Key key = a_keyFromPath(path, pixel_tiled_params);
+		TEX_Handle key = a_keyFromPath(path, pixel_tiled_params);
 		R_Handle img = a_handleFromKey(key);
 		
 		f32 width = 1.f/x;
@@ -208,12 +210,11 @@ function ED_Window *ed_openWindow(ED_WindowFlags flags, v2f pos, v2f size)
 	out->pos = pos;
 	out->cxt = ui_allocCxt();
 	
-	out->win = os_windowOpen("alfia", out->size.x, out->size.y);
-	
-	os_setWindowPos(out->win, out->pos);
-	
 	if(ed_state->num_windows == 1)
 	{
+		out->win = os_windowOpen("alfia", out->size.x, out->size.y);
+		os_setWindowPos(out->win, out->pos);
+		
 		ed_state->main_window = out;
 	}
 	
@@ -277,16 +278,80 @@ function ED_Tab *ed_openTab(ED_Panel *panel, char *name, v2f size = {{960, 540}}
 	return out;
 }
 
+function ED_Tab *ed_openFloatingTab(ED_Panel *panel, char *name, v2f size = {{960, 540}})
+{
+	ED_Tab *out = push_struct(ed_state->arena, ED_Tab);
+	*out = {};
+	
+	out->parent = panel;
+	
+	//v2f size = ed_size_of_panel(panel);
+	
+	out->name = push_str8f(ed_state->arena, name);
+	
+	return out;
+}
+
 function void ed_drawChildren(ED_Panel *panel, UI_Widget *root)
 {
-	ED_Window *window = panel->parent;
-	
 	if(root->flags & UI_Flags_has_bg)
 	{
-		d_rect(root->dst, root->bg_color);
+		R_Rect *bg = d_rect(root->dst, root->bg_color);
+		bg->radius = root->radius;
+		bg->border_color = ED_THEME_TITLEBAR;
+		bg->border_thickness = 4;
+	}
+	
+	if(root->flags & UI_Flags_draw_border)
+	{
+		R_Rect *border = d_rect(root->dst, {{}});
+		border->radius = root->radius;
+		border->border_color = root->border_color;
+		border->border_thickness = 4;
 	}
 	
 	if(root->flags & UI_Flags_has_text)
+	{
+		v4f color = {};
+		v2f pos = {};
+		f32 scale = root->scale;
+		
+		if(root->timer > 0)
+		{
+			color = root->color - root->press_color * (root->timer / 3);
+			color.w = 1;
+			//scale *= 1.1;
+		}
+		else if(root->hot)
+		{
+			color = root->hover_color;
+			//scale *= 1.1;
+		}
+		else
+		{
+			color = root->color;
+		}
+		
+		if(root->flags & UI_Flags_text_centered)
+		{
+			Rect box_extent = root->dst;
+			Rect text_extent = rectFromString(root->text, root->scale);
+			
+			v2f box_size = size_from_rect(box_extent);
+			v2f text_size = size_from_rect(text_extent);
+			
+			pos.x += box_extent.tl.x + (box_size.x - text_size.x) / 2.f;
+			pos.y += box_extent.tl.y + (box_size.y - text_size.y) / 4.f;
+		}
+		else
+		{
+			pos += root->dst.tl;
+		}
+		
+		d_text(root->text, pos, color, scale);
+	}
+	
+	if(root->flags & UI_Flags_clickable)
 	{
 		v4f color = {};
 		if(root->timer > 0)
@@ -303,26 +368,10 @@ function void ed_drawChildren(ED_Panel *panel, UI_Widget *root)
 			color = root->color;
 		}
 		
-#if 0
-		R_Rect *bg = d_rect(rect(root->pos, root->size - v2f{.y = 2}), color * 0.1);
+		R_Rect *bg = d_rect(root->dst, {});
 		bg->radius = 4;
 		bg->border_color = color;
 		bg->border_thickness = 4;
-		
-		v2f size = root->size;
-		
-		Rect top_left = rect(pos, size);
-		Rect text_size = ui_text_spacing_stats(font->atlas.glyphs, root->text, FONT_SIZE);
-		
-		top_left.tl += text_size.tl / 2;
-		top_left.br += text_size.br / 2;
-		
-		pos.y = top_left.tl.y;
-		pos.x = top_left.tl.x + 4;
-#endif
-		
-		v2f pos = {{root->computed_rel_position[0], root->computed_rel_position[1]}}; 
-		d_text(root->text, pos, color, root->scale);
 	}
 	
 	ED_Tab *tab = panel->active_tab;
@@ -367,9 +416,10 @@ function UI_Widget *ed_titlebar(Str8 title, s32 i, UI_Context *cxt, v2f size, b3
 	ui_named_rowf(cxt, "%d editor title bar", i)
 	{
 		menu_bar = cxt->parent_stack.top->v;
-		menu_bar->flags |= UI_Flags_has_bg;
-		menu_bar->bg_color = {{0.902, 0.902, 0.902, 1}};
-		A_Key key = a_keyFromPath(str8_lit("editor/xp_titlebar.png"), font_params);
+		menu_bar->flags |= UI_Flags_has_bg | UI_Flags_rounded_corners;;
+		menu_bar->bg_color = ED_THEME_TITLEBAR;
+		menu_bar->radius = 15 / 1.8f;
+		TEX_Handle key = a_keyFromPath(str8_lit("editor/xp_titlebar.png"), font_params);
 		R_Handle titlebar_img = a_handleFromKey(key);
 		
 		// hide button
@@ -480,6 +530,7 @@ function void ed_update(f32 delta)
 		ui_begin(window->cxt, window->win);
 		
 		ui_set_next_child_layout_axis(window->cxt, Axis2_X);
+		
 		ui_set_next_size_kind_x(window->cxt, UI_SizeKind_ChildrenSum);
 		ui_set_next_size_kind_y(window->cxt, UI_SizeKind_ChildrenSum);
 		
@@ -506,6 +557,11 @@ function void ed_update(f32 delta)
 			else
 			{
 				window->grab = 0;
+			}
+			
+			if(window->close)
+			{
+				window->win->close_requested = 1;
 			}
 			
 			if(!window->hide)

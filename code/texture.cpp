@@ -17,23 +17,23 @@ function u64 a_hash(Str8 str)
 	return hash;
 }
 
-struct A_Key
+struct TEX_Handle
 {
 	u64 v;
 	Str8 path;
 	R_Texture_params params;
 };
 
-function A_Key a_keyFromPath(Str8 path, R_Texture_params params)
+function TEX_Handle a_keyFromPath(Str8 path, R_Texture_params params)
 {
-	A_Key out = {};
+	TEX_Handle out = {};
 	out.v = a_hash(path);
 	out.path = path;
 	out.params = params;
 	return out;
 }
 
-function b32 a_keysAreSame(A_Key a, A_Key b)
+function b32 a_keysAreSame(TEX_Handle a, TEX_Handle b)
 {
 	b32 out = 0;
 	
@@ -49,7 +49,7 @@ struct A_TextureCache
 {
 	// used as hash link when in map, used as free list link when freed
 	A_TextureCache *next;
-	A_Key key;
+	TEX_Handle key;
 	R_Handle v;
 	b32 loaded;
 	u64 last_touched;
@@ -222,7 +222,7 @@ void a_evict()
 	}
 }
 
-function R_Handle a_handleFromKey(A_Key key)
+function R_Handle a_handleFromKey(TEX_Handle key)
 {
 	u64 slot = key.v % a_state->num_slots;
 	

@@ -168,6 +168,34 @@ function UI_Axis2_node *ui_alloc_child_layout_axis_node(UI_Context *cxt)
 	}
 	return node;
 }
+function UI_float_value_node *ui_alloc_padding_x_node(UI_Context *cxt)
+{
+	UI_float_value_node *node = cxt->padding_x_stack.free;
+	if(node)
+	{
+		cxt->padding_x_stack.free = cxt->padding_x_stack.free->next;
+		*node = {};
+	}
+	else
+	{
+		node = push_struct(cxt->arena, UI_float_value_node);
+	}
+	return node;
+}
+function UI_float_value_node *ui_alloc_padding_y_node(UI_Context *cxt)
+{
+	UI_float_value_node *node = cxt->padding_y_stack.free;
+	if(node)
+	{
+		cxt->padding_y_stack.free = cxt->padding_y_stack.free->next;
+		*node = {};
+	}
+	else
+	{
+		node = push_struct(cxt->arena, UI_float_value_node);
+	}
+	return node;
+}
 function UI_SizeKind_x_node *ui_alloc_size_kind_x_node(UI_Context *cxt)
 {
 	UI_SizeKind_x_node *node = cxt->size_kind_x_stack.free;
@@ -207,6 +235,20 @@ function UI_AlignKind_x_node *ui_alloc_align_kind_x_node(UI_Context *cxt)
 	else
 	{
 		node = push_struct(cxt->arena, UI_AlignKind_x_node);
+	}
+	return node;
+}
+function UI_Flags_node *ui_alloc_flags_node(UI_Context *cxt)
+{
+	UI_Flags_node *node = cxt->flags_stack.free;
+	if(node)
+	{
+		cxt->flags_stack.free = cxt->flags_stack.free->next;
+		*node = {};
+	}
+	else
+	{
+		node = push_struct(cxt->arena, UI_Flags_node);
 	}
 	return node;
 }
@@ -272,6 +314,16 @@ function void ui_free_child_layout_axis_node(UI_Context *cxt, UI_Axis2_node *nod
 	node->next = cxt->child_layout_axis_stack.free;
 	cxt->child_layout_axis_stack.free = node;
 }
+function void ui_free_padding_x_node(UI_Context *cxt, UI_float_value_node *node)
+{
+	node->next = cxt->padding_x_stack.free;
+	cxt->padding_x_stack.free = node;
+}
+function void ui_free_padding_y_node(UI_Context *cxt, UI_float_value_node *node)
+{
+	node->next = cxt->padding_y_stack.free;
+	cxt->padding_y_stack.free = node;
+}
 function void ui_free_size_kind_x_node(UI_Context *cxt, UI_SizeKind_x_node *node)
 {
 	node->next = cxt->size_kind_x_stack.free;
@@ -286,6 +338,11 @@ function void ui_free_align_kind_x_node(UI_Context *cxt, UI_AlignKind_x_node *no
 {
 	node->next = cxt->align_kind_x_stack.free;
 	cxt->align_kind_x_stack.free = node;
+}
+function void ui_free_flags_node(UI_Context *cxt, UI_Flags_node *node)
+{
+	node->next = cxt->flags_stack.free;
+	cxt->flags_stack.free = node;
 }
 // Push style functions
 
@@ -469,6 +526,36 @@ function void ui_push_child_layout_axis(UI_Context *cxt, Axis2 val)
 	}
 }
 
+function void ui_push_padding_x(UI_Context *cxt, f32 val)
+{
+	UI_float_value_node *node = ui_alloc_padding_x_node(cxt);
+	node->v = val;
+	if (!cxt->padding_x_stack.top)
+	{
+		cxt->padding_x_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->padding_x_stack.top;
+		cxt->padding_x_stack.top = node;
+	}
+}
+
+function void ui_push_padding_y(UI_Context *cxt, f32 val)
+{
+	UI_float_value_node *node = ui_alloc_padding_y_node(cxt);
+	node->v = val;
+	if (!cxt->padding_y_stack.top)
+	{
+		cxt->padding_y_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->padding_y_stack.top;
+		cxt->padding_y_stack.top = node;
+	}
+}
+
 function void ui_push_size_kind_x(UI_Context *cxt, UI_SizeKind val)
 {
 	UI_SizeKind_x_node *node = ui_alloc_size_kind_x_node(cxt);
@@ -511,6 +598,21 @@ function void ui_push_align_kind_x(UI_Context *cxt, UI_AlignKind val)
 	{
 		node->next = cxt->align_kind_x_stack.top;
 		cxt->align_kind_x_stack.top = node;
+	}
+}
+
+function void ui_push_flags(UI_Context *cxt, UI_Flags val)
+{
+	UI_Flags_node *node = ui_alloc_flags_node(cxt);
+	node->v = val;
+	if (!cxt->flags_stack.top)
+	{
+		cxt->flags_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->flags_stack.top;
+		cxt->flags_stack.top = node;
 	}
 }
 
@@ -708,6 +810,38 @@ function void ui_set_next_child_layout_axis(UI_Context *cxt, Axis2 val)
 	cxt->child_layout_axis_stack.auto_pop = 1;
 }
 
+function void ui_set_next_padding_x(UI_Context *cxt, f32 val)
+{
+	UI_float_value_node *node = ui_alloc_padding_x_node(cxt);
+	node->v = val;
+	if (!cxt->padding_x_stack.top)
+	{
+		cxt->padding_x_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->padding_x_stack.top;
+		cxt->padding_x_stack.top = node;
+	}
+	cxt->padding_x_stack.auto_pop = 1;
+}
+
+function void ui_set_next_padding_y(UI_Context *cxt, f32 val)
+{
+	UI_float_value_node *node = ui_alloc_padding_y_node(cxt);
+	node->v = val;
+	if (!cxt->padding_y_stack.top)
+	{
+		cxt->padding_y_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->padding_y_stack.top;
+		cxt->padding_y_stack.top = node;
+	}
+	cxt->padding_y_stack.auto_pop = 1;
+}
+
 function void ui_set_next_size_kind_x(UI_Context *cxt, UI_SizeKind val)
 {
 	UI_SizeKind_x_node *node = ui_alloc_size_kind_x_node(cxt);
@@ -754,6 +888,22 @@ function void ui_set_next_align_kind_x(UI_Context *cxt, UI_AlignKind val)
 		cxt->align_kind_x_stack.top = node;
 	}
 	cxt->align_kind_x_stack.auto_pop = 1;
+}
+
+function void ui_set_next_flags(UI_Context *cxt, UI_Flags val)
+{
+	UI_Flags_node *node = ui_alloc_flags_node(cxt);
+	node->v = val;
+	if (!cxt->flags_stack.top)
+	{
+		cxt->flags_stack.top = node;
+	}
+	else
+	{
+		node->next = cxt->flags_stack.top;
+		cxt->flags_stack.top = node;
+	}
+	cxt->flags_stack.auto_pop = 1;
 }
 
 // Pop style functions
@@ -842,6 +992,20 @@ function void ui_pop_child_layout_axis(UI_Context *cxt)
 	ui_free_child_layout_axis_node(cxt, pop);
 }
 
+function void ui_pop_padding_x(UI_Context *cxt)
+{
+	UI_float_value_node *pop = cxt->padding_x_stack.top;
+	cxt->padding_x_stack.top = cxt->padding_x_stack.top->next;
+	ui_free_padding_x_node(cxt, pop);
+}
+
+function void ui_pop_padding_y(UI_Context *cxt)
+{
+	UI_float_value_node *pop = cxt->padding_y_stack.top;
+	cxt->padding_y_stack.top = cxt->padding_y_stack.top->next;
+	ui_free_padding_y_node(cxt, pop);
+}
+
 function void ui_pop_size_kind_x(UI_Context *cxt)
 {
 	UI_SizeKind_x_node *pop = cxt->size_kind_x_stack.top;
@@ -861,6 +1025,13 @@ function void ui_pop_align_kind_x(UI_Context *cxt)
 	UI_AlignKind_x_node *pop = cxt->align_kind_x_stack.top;
 	cxt->align_kind_x_stack.top = cxt->align_kind_x_stack.top->next;
 	ui_free_align_kind_x_node(cxt, pop);
+}
+
+function void ui_pop_flags(UI_Context *cxt)
+{
+	UI_Flags_node *pop = cxt->flags_stack.top;
+	cxt->flags_stack.top = cxt->flags_stack.top->next;
+	ui_free_flags_node(cxt, pop);
 }
 
 // =================

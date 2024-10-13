@@ -8,8 +8,9 @@
 // TODO(mizu): combat
 
 #define ED_THEME_BG v4f{{0.643, 0, 0.357, 1}}
+#define ED_THEME_BG_FROSTED v4f{{0.643, 0, 0.357, 0.83}}
 #define ED_THEME_BG_DARKER v4f{{0, 0, 0, 0.2}}
-
+#define ED_THEME_TITLEBAR v4f{{0.902, 0.902, 0.902, 1}}
 #define ED_THEME_TEXT v4f{{1, 0.576, 0.141, 1}}
 #define ED_THEME_IMG D_COLOR_WHITE
 
@@ -137,6 +138,7 @@ enum Art
 	ArtKind_Fox,
 	ArtKind_Impolo,
 	ArtKind_Trees,
+	ArtKind_One,
 	ArtKind_COUNT
 };
 
@@ -146,6 +148,7 @@ global Str8 art_paths[ArtKind_COUNT] =
 	str8_lit("fox/fox.png"),
 	str8_lit("impolo/impolo-east.png"),
 	str8_lit("tree/trees.png"),
+	str8_lit("demons/ONE.png"),
 };
 
 struct Entity;
@@ -594,6 +597,7 @@ struct Game
 	Camera cam;
 	b32 initialized;
 	ED_Tab *lister_tab;
+	ED_Tab *profiler_tab;
 	s32 *tilemap;
 	s32 col;
 	s32 row;
@@ -604,11 +608,13 @@ struct Game
 	
 	b32 start;
 	b32 paused;
+	b32 fullscreen;
 	
 	b32 draw_spiral;
 	b32 draw_health;
 	b32 draw_collision;
 	b32 draw_pathfinding;
+	f32 debug_zoom;
 };
 
 struct Lister
@@ -629,52 +635,142 @@ function ED_CUSTOM_TAB(lister_panel)
 		lister->initialized = 1;
 	}
 	
-	for(s32 i = 0; i < store->num_entities; i++)
+	b32 hide_entity_panel = 0;
+	
+	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+		ui_pref_height(window->cxt, 16)
 	{
-		Entity *entity = store->entities + i;
-		
-		ui_text_color(window->cxt, D_COLOR_WHITE)
-			//ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-			ui_pref_width(window->cxt, 256)
-			ui_pref_height(window->cxt, 25)
-		{
-			ui_labelf(window->cxt, "%s", (char*)entity->name.c);
-		}
-		
+		ui_spacer(window->cxt);
+	}
+	
+	ui_text_color(window->cxt, D_COLOR_BLACK)
+		ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	{
+		hide_entity_panel = ui_labelf(window->cxt, "Entity Panel").toggle;
+	}
+	
+	if(hide_entity_panel)
+	{
 		ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-			ui_row(window->cxt)
+			ui_col(window->cxt)
 		{
+			UI_Widget *col = window->cxt->parent_stack.top->v;
+			col->flags |= UI_Flags_draw_border;
+			col->border_color = D_COLOR_BLACK;
+			col->border_thickness = 4;
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-				ui_pref_width(window->cxt, 10)
+				ui_pref_height(window->cxt, 16)
 			{
 				ui_spacer(window->cxt);
 			}
 			
-			ui_press_color(window->cxt, D_COLOR_RED)
-				ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-				ui_col(window->cxt)
-				ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-				//ui_size_kind_y(window->cxt, UI_SizeKind_Pixels)
-				//ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-				//ui_pref_height(window->cxt, 45)
-				//ui_pref_width(window->cxt, 256)
+			for(s32 i = 0; i < store->num_entities; i++)
 			{
-				ui_labelf(window->cxt, "position: [%.f, %.f] #%d", entity->pos.x, entity->pos.y, i);
-				ui_labelf(window->cxt, "layer: %d #%d", entity->layer, i);
-				ui_labelf(window->cxt, "speed: %.f #%d", entity->speed, i);
-				ui_labelf(window->cxt, "health: %.f #%d", entity->health, i);
-				ui_labelf(window->cxt, "art: %.*s #%d", str8_varg(art_paths[entity->art]), i);
+				Entity *entity = store->entities + i;
+				
+				b32 hide_entity = 0;
+				
+				ui_text_color(window->cxt, D_COLOR_WHITE)
+					ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+				{
+					hide_entity = ui_labelf(window->cxt, "%s", (char*)entity->name.c).toggle;
+				}
+				
+				if(hide_entity)
+				{
+					ui_press_color(window->cxt, D_COLOR_WHITE)
+						ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+						ui_col(window->cxt)
+						ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+					{
+						UI_Widget *row = window->cxt->parent_stack.top->v;
+						row->padding[0] = 15;
+						
+						ui_labelf(window->cxt, "position: [%.f, %.f] #%d", entity->pos.x, entity->pos.y, i);
+						ui_labelf(window->cxt, "layer: %d #%d", entity->layer, i);
+						ui_labelf(window->cxt, "speed: %.f #%d", entity->speed, i);
+						ui_labelf(window->cxt, "health: %.f #%d", entity->health, i);
+						ui_labelf(window->cxt, "art: %.*s #%d", str8_varg(art_paths[entity->art]), i);
+						ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+							ui_pref_height(window->cxt, 16)
+						{
+							ui_spacer(window->cxt);
+						}
+						
+					}
+				}
 			}
+			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+				ui_pref_height(window->cxt, 16)
+			{
+				ui_spacer(window->cxt);
+			}
+			
 		}
 	}
 	
-	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+		ui_pref_height(window->cxt, 24)
 	{
-		game->draw_health = ui_labelf(window->cxt, "draw health").toggle;
-		game->draw_spiral = ui_labelf(window->cxt, "draw spiral").toggle;
-		game->draw_collision = ui_labelf(window->cxt, "draw collison").toggle;
-		game->draw_pathfinding = ui_labelf(window->cxt, "draw pathfinding").toggle;
+		ui_spacer(window->cxt);
+	}
+	
+	b32 show_settings = 0;
+	ui_text_color(window->cxt, D_COLOR_BLACK)
+		ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	{
+		show_settings = ui_labelf(window->cxt, "Settings").toggle;
+	}
+	
+	if(show_settings)
+	{
+		ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+			ui_col(window->cxt)
+		{
+			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+				ui_pref_height(window->cxt, 16)
+			{
+				ui_spacer(window->cxt);
+			}
+			
+			UI_Widget *col = window->cxt->parent_stack.top->v;
+			col->flags |= UI_Flags_draw_border;
+			col->border_color = D_COLOR_BLACK;
+			col->border_thickness = 4;
+			col->padding[0] = 15;
+			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+				ui_pref_height(window->cxt, 45)
+				ui_pref_width(window->cxt, 256)
+				ui_border_thickness(window->cxt, 4)
+				ui_border_color(window->cxt, ED_THEME_TEXT)
+				ui_flags(window->cxt, UI_Flags_text_centered)
+			{
+				game->draw_health = ui_buttonf(window->cxt, "draw health").toggle;
+				game->draw_spiral = ui_buttonf(window->cxt, "draw spiral").toggle;
+				game->draw_collision = ui_buttonf(window->cxt, "draw collison").toggle;
+				game->draw_pathfinding = ui_buttonf(window->cxt, "draw pathfinding").toggle;
+				//game->debug_zoom = ui_buttonf(window->cxt, "debug zoom").toggle;
+				
+				//ui_buttonf(window->cxt, "debug zoom");
+				
+				ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+					ui_pref_height(window->cxt, 16)
+				{
+					ui_spacer(window->cxt);
+				}
+				
+				ui_labelf(window->cxt, "debug zoom");
+				
+				ui_sliderf(window->cxt, &game->debug_zoom, 1, 10, ED_THEME_TEXT, "debug zoom slider");
+				
+			}
+			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+				ui_pref_height(window->cxt, 16)
+			{
+				ui_spacer(window->cxt);
+			}
+			
+		}
 	}
 }
 
@@ -708,7 +804,7 @@ function ED_CUSTOM_TAB(profiler_panel)
 		}
 	}
 	
-	A_Key key = a_keyFromPath(str8_lit("debug/toppema.png"), font_params);
+	TEX_Handle key = a_keyFromPath(str8_lit("debug/toppema.png"), font_params);
 	R_Handle face = a_handleFromKey(key);
 	
 	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
@@ -717,14 +813,6 @@ function ED_CUSTOM_TAB(profiler_panel)
 		ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
 	}
 	d_pop_target();
-	
-	v2s size = r_texSizeFromHandle(tab->target);
-	ui_pref_width(window->cxt, size.x)
-		ui_pref_height(window->cxt, size.y)
-		ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-	{
-		ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
-	}
 }
 
 function ED_CUSTOM_TAB(game_update_and_render)
@@ -738,22 +826,22 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	{
 		game->initialized = 1;
 		game->arena = arenaAlloc();
-		ED_Window *test = ed_openWindow(ED_WindowFlags_HasSurface, v2f{{1230, 50}}, v2f{{400,800}});
 		
-		ED_Panel *panel2 = ed_openPanel(test, Axis2_X, 1);
 		{
-			ED_Tab *debug_tab = ed_openTab(panel2, "Profiler");
-			debug_tab->custom_draw = profiler_panel;
+			game->profiler_tab = ed_openFloatingTab(window->first_panel, "Profiler");
+			game->profiler_tab->custom_draw = profiler_panel;
 		}
 		
 		// lister tab
 		{
-			game->lister_tab = ed_openTab(panel2, "Lister", {{400, 800}});
+			game->lister_tab = ed_openFloatingTab(window->first_panel, "Lister", {{400, 800}});
 			game->lister_tab->custom_draw = lister_panel;
 			Lister *lister = push_struct(game->arena, Lister);
 			lister->game = game;
 			game->lister_tab->custom_drawData = lister;
 		}
+		
+		game->debug_zoom = 1;
 	}
 	
 	// pause play ui
@@ -768,11 +856,13 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			ui_pref_size(window->cxt, 60)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		{
-			A_Key key = a_keyFromPath(str8_lit("editor/pause_play.png"), font_params);
+			TEX_Handle key = a_keyFromPath(str8_lit("editor/pause_play.png"), font_params);
 			R_Handle pause_play = a_handleFromKey(key);
-			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.5, 1), ED_THEME_TEXT, "restart").active;
+			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.33, 1), ED_THEME_TEXT, "restart").active;
 			
-			game->paused = ui_imagef(window->cxt, pause_play, rect(0.5, 0, 1, 1), ED_THEME_TEXT, "paused").toggle;
+			game->paused = ui_imagef(window->cxt, pause_play, rect(0.33, 0, 0.66, 1), ED_THEME_TEXT, "paused").toggle;
+			
+			game->fullscreen = ui_imagef(window->cxt, pause_play, rect(0.66, 0, 1, 1), ED_THEME_TEXT, "fullscreen").toggle;
 		}
 	}
 	
@@ -825,24 +915,24 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			
 			b2CreatePolygonShape(py->body, &shapeDef, &py->box);
 		}
-		
-		Entity *fox = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
-		fox->pos = {{270, 150}};
-		fox->size = {{32, 32}};
-		fox->tint = D_COLOR_WHITE;
-		fox->art = ArtKind_Fox;
-		fox->basis.y = 65;
-		fox->layer = 1;
-		fox->n = 3;
-		fox->x = 3;
-		fox->y = 2;
-		fox->speed = 180;
-		fox->target = handleFromEntity(py);
-		fox->health = 300;
-		fox->name = str8_lit("fox");
-		fox->damage = 0;
-		
+		Entity *fox = 0;
 		{
+			fox = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
+			fox->pos = {{270, 150}};
+			fox->size = {{32, 32}};
+			fox->tint = D_COLOR_WHITE;
+			fox->art = ArtKind_Fox;
+			fox->basis.y = 65;
+			fox->layer = 1;
+			fox->n = 3;
+			fox->x = 3;
+			fox->y = 2;
+			fox->speed = 180;
+			fox->target = handleFromEntity(py);
+			fox->health = 300;
+			fox->name = str8_lit("fox");
+			fox->damage = 0;
+			
 			b2BodyDef bodyDef = b2DefaultBodyDef();
 			bodyDef.type = b2_kinematicBody;
 			bodyDef.position = (b2Vec2){fox->pos.x, fox->pos.y};
@@ -858,10 +948,46 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			//b2CreatePolygonShape(fox->body, &shapeDef, &fox->box);
 		}
 		
+		// enemy
+#if 0
+		{
+			Entity *enemy = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
+			enemy->pos = {{500, 150}};
+			enemy->size = {{64, 64}};
+			enemy->tint = D_COLOR_WHITE;
+			enemy->art = ArtKind_One;
+			enemy->basis.y = 65;
+			enemy->layer = 1;
+			enemy->n = 0;
+			enemy->x = 1;
+			enemy->y = 1;
+			enemy->speed = 100;
+			enemy->target = handleFromEntity(fox);
+			enemy->health = 300;
+			enemy->name = str8_lit("enemy");
+			enemy->damage = 0;
+			
+			b2BodyDef bodyDef = b2DefaultBodyDef();
+			bodyDef.type = b2_kinematicBody;
+			bodyDef.position = (b2Vec2){enemy->pos.x, enemy->pos.y};
+			enemy->body = b2CreateBody(game->world, &bodyDef);
+			b2MassData mass = {};
+			mass.mass = 1000;
+			b2Body_SetMassData(enemy->body, mass);
+			enemy->caps = b2Capsule{{-10, 10}, {10}};
+			b2ShapeDef shapeDef = b2DefaultShapeDef();
+			shapeDef.density = 1.f;
+			//shapeDef.friction = 0.3f;
+			b2CreateCapsuleShape(enemy->body,&shapeDef, &enemy->caps);
+			//b2CreatePolygonShape(enemy->body, &shapeDef, &enemy->box);
+			
+		}
+#endif
+		
 		cam->follow = handleFromEntity(py);
 		cam->target = WORLD_FRONT;
 		cam->up = WORLD_UP;
-		cam->zoom = 135.f * 2;
+		cam->zoom = 135.f;// * 2;
 		cam->speed = 400;
 		cam->input_rot.x = 0;
 		cam->input_rot.y = 0;
@@ -964,7 +1090,9 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	
 	// update camera
 	{
+		cam->zoom = 135 * game->debug_zoom;
 		Entity *target = entityFromHandle(cam->follow);
+		
 		if(target)
 		{
 			cam->pos = v3f{{target->pos.x, -target->pos.y, -1}};// + v3f{{target->size.x / 2, - target->size.y / 2, 0}};
@@ -1219,7 +1347,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				}
 				else
 				{
-					A_Key key = a_keyFromPath(art_paths[e->art], pixel_params);
+					TEX_Handle key = a_keyFromPath(art_paths[e->art], pixel_params);
 					sprite->tex = a_handleFromKey(key);
 				}
 				sprite->basis.y = e->basis.y;
@@ -1275,8 +1403,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					pos = pos + size * 2;
 				}
 			}
-			
-			
 		}
 		
 		d_pop_target();
@@ -1285,36 +1411,69 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	
 	end_of_sim:
 	
-	v2s size = r_texSizeFromHandle(tab->target);
-	
-	ui_pref_width(window->cxt, size.x)
-		ui_pref_height(window->cxt, size.y)
-		ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+	if(game->fullscreen && window->win->fullscreen)
 	{
-		ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+		static v2f pos = {{}};
+		
+		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating window 2"));
+		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg | UI_Flags_draw_border | UI_Flags_rounded_corners;
+		floating->computed_rel_position[0] = pos.x;
+		floating->computed_rel_position[1] = pos.y;
+		floating->bg_color = ED_THEME_BG_FROSTED;
+		floating->border_color = ED_THEME_TITLEBAR;
+		floating->radius = 15 / 1.8f;
+		
+		ui_scale(window->cxt, FONT_SIZE * 0.8)
+			ui_parent(window->cxt, floating)
+			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+			ui_col(window->cxt)
+		{
+			v2s size = r_texSizeFromHandle(tab->target);
+			
+			ui_pref_width(window->cxt, size.x * 2)
+				ui_pref_height(window->cxt, size.y * 2)
+				ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+			{
+				ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+			}
+			ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+			{
+				ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
+				ui_labelf(window->cxt, "Except for you, you can stay");
+			}
+		}
 	}
-	
-	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	else
 	{
-		ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
-		ui_labelf(window->cxt, "Except for you, you can stay");
+		v2s size = r_texSizeFromHandle(tab->target);
+		
+		ui_pref_width(window->cxt, size.x)
+			ui_pref_height(window->cxt, size.y)
+			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
+		{
+			ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
+		}
+		ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+		{
+			ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
+			ui_labelf(window->cxt, "Except for you, you can stay");
+		}
 	}
 	
 	{
 		static v2f pos = {{300, 300}};
 		static v2f old_pos = pos;
 		
-		ui_set_next_size_kind_x(window->cxt, UI_SizeKind_ChildrenSum);
-		ui_set_next_size_kind_y(window->cxt, UI_SizeKind_ChildrenSum);
-		
 		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating window"));
-		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg;
+		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg | UI_Flags_draw_border | UI_Flags_rounded_corners;
 		floating->computed_rel_position[0] = pos.x;
 		floating->computed_rel_position[1] = pos.y;
-		floating->bg_color = ED_THEME_BG;
-		ui_scale(window->cxt, FONT_SIZE * 0.6)
+		floating->bg_color = ED_THEME_BG_FROSTED;
+		floating->border_color = ED_THEME_TITLEBAR;
+		floating->radius = 15 / 1.8f;
+		
+		ui_scale(window->cxt, FONT_SIZE * 0.8)
 			ui_parent(window->cxt, floating)
-			ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
 			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 			ui_col(window->cxt)
 		{
@@ -1322,7 +1481,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			static b32 hide = 0;
 			static b32 grab = 0;
 			
-			v2f size = {{300, 300}};
+			v2f size = {{400, 600}};
 			
 			ed_titlebar(str8_lit("Lister"), 3, window->cxt, size, &close, &hide, &grab);
 			
@@ -1338,26 +1497,37 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			{
 				grab = 0;
 			}
-			ui_col(window->cxt)
-				lister_panel(window, game->lister_tab, delta, game->lister_tab->custom_drawData);
-			old_pos = pos;
 			
+			if(!hide)
+			{
+				ui_padding_x(window->cxt, 5)
+					ui_col(window->cxt)
+				{
+					lister_panel(window, game->lister_tab, delta, game->lister_tab->custom_drawData);
+				}
+			}
+			old_pos = pos;
 			SDL_GetGlobalMouseState(&old_pos.x, &old_pos.y);
 			
 		}
 	}
 	
-#if 0
+#if 1
 	{
-		static v2f pos = {{10, 300}};
+		static v2f pos = {{700, 300}};
 		static v2f old_pos = pos;
-		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating windowq"));
-		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg;
-		floating->fixed_position = pos;
-		floating->bg_color = ED_THEME_BG;
-		ui_scale(window->cxt, FONT_SIZE * 0.6)
+		
+		
+		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating window 322"));
+		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg | UI_Flags_draw_border | UI_Flags_rounded_corners;
+		floating->computed_rel_position[0] = pos.x;
+		floating->computed_rel_position[1] = pos.y;
+		floating->bg_color = ED_THEME_BG_FROSTED;
+		floating->border_color = ED_THEME_TITLEBAR;
+		floating->radius = 15 / 1.8f;
+		
+		ui_scale(window->cxt, FONT_SIZE * 0.8)
 			ui_parent(window->cxt, floating)
-			ui_hover_color(window->cxt, (v4f{{0.4, 0.4, 0.4, 1}}))
 			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 			ui_col(window->cxt)
 		{
@@ -1365,36 +1535,37 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			static b32 hide = 0;
 			static b32 grab = 0;
 			
-			v2f size = {{300, 300}};
+			v2f size = {{400, 600}};
 			
-			ed_titlebar(str8_lit("Lister2"), 45, window->cxt, size, &close, &hide, &grab);
+			ed_titlebar(str8_lit("profiler"), 53, window->cxt, size, &close, &hide, &grab);
 			
 			if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (grab))
 			{
-				//f32 x, y;
-				//SDL_GetGlobalMouseState(&x, &y);
+				f32 x, y;
+				SDL_GetGlobalMouseState(&x, &y);
 				
-				pos += window->win->mpos - old_pos - v2f{{150, 10}};
+				pos += v2f{{x, y}} - old_pos;
 				//os_setWindowPos(window->win, window->pos);
 			}
 			else
 			{
 				grab = 0;
 			}
-			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-				ui_col(window->cxt)
+			
+			if(!hide)
 			{
-				ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+				ui_padding_x(window->cxt, 5)
+					ui_col(window->cxt)
 				{
-					ui_labelf(window->cxt, "hi");
-					ui_labelf(window->cxt, "bye");
+					profiler_panel(window, game->profiler_tab, delta, game->profiler_tab->custom_drawData);
 				}
 			}
-			
 			old_pos = pos;
+			SDL_GetGlobalMouseState(&old_pos.x, &old_pos.y);
 			
 		}
 	}
+	
 #endif
 }
 
@@ -1474,10 +1645,8 @@ int main(int argc, char **argv)
 	
 	for (;!game_win->win->close_requested;)
 	{		
-		f64 time_since_last = time_elapsed;
-		
 		BEGIN_TIMED_BLOCK(UPDATE_AND_RENDER);
-		ArenaTemp temp = arenaTempBegin(trans);
+		f64 time_since_last = time_elapsed;
 		
 		os_pollEvents();
 		d_begin();
@@ -1487,15 +1656,13 @@ int main(int argc, char **argv)
 		
 		d_end();
 		
-		arenaTempEnd(&temp);
-		END_TIMED_BLOCK(UPDATE_AND_RENDER);
-		
-		tcxt_process_debug_counters();
-		
 		u64 end = os_getPerfCounter();
 		time_elapsed = (double)(end - start) / freq;
 		
 		delta = time_elapsed - time_since_last;
+		
+		END_TIMED_BLOCK(UPDATE_AND_RENDER);
+		tcxt_process_debug_counters();
 	}
 	
 	return 0;
