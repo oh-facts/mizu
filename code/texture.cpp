@@ -33,7 +33,7 @@ function TEX_Handle a_keyFromPath(Str8 path, R_Texture_params params)
 	return out;
 }
 
-function b32 a_keysAreSame(TEX_Handle a, TEX_Handle b)
+function b32 tex_areKeysSame(TEX_Handle a, TEX_Handle b)
 {
 	b32 out = 0;
 	
@@ -230,7 +230,7 @@ function R_Handle a_handleFromKey(TEX_Handle key)
 	
 	while(tex_cache)
 	{
-		if(a_keysAreSame(key, tex_cache->key))
+		if(tex_areKeysSame(key, tex_cache->key))
 		{
 			break;
 		}

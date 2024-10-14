@@ -142,7 +142,7 @@ enum Art
 	ArtKind_COUNT
 };
 
-global Str8 art_paths[ArtKind_COUNT] = 
+read_only Str8 art_paths[ArtKind_COUNT] = 
 {
 	str8_lit(""),
 	str8_lit("fox/fox.png"),
@@ -774,34 +774,43 @@ function ED_CUSTOM_TAB(lister_panel)
 	}
 }
 
+struct Profiler
+{
+	f32 cc[DEBUG_CYCLE_COUNTER_COUNT];
+	f32 delta;
+	f32 update_timer;
+};
+
 function ED_CUSTOM_TAB(profiler_panel)
 {
+	Profiler *profiler = (Profiler*)user_data;
+	profiler->update_timer += delta;
+	
 	d_push_target(tab->target);
-	tab->update_timer += delta;
-	if(tab->update_timer > 1.f)
+	
+	if(profiler->update_timer > 1.f)
 	{
-		tab->cc = tcxt->counters_last[DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER].cycle_count * 0.001f;
-		tab->ft = delta;
-		tab->update_timer = 0;
+		for(u32 i = 0; i < DEBUG_CYCLE_COUNTER_COUNT; i++)
+		{
+			profiler->cc[i] = tcxt->counters_last[i].cycle_count;
+		}
+		
+		profiler->delta = delta;
+		
+		profiler->update_timer = 0;
 	}
 	
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
-		if(ui_labelf(window->cxt, "cc : %.f K", tab->cc).active)
+		for(u32 i = 0; i < DEBUG_CYCLE_COUNTER_COUNT; i++)
 		{
-			printf("pressed\n");
+			ui_labelf(window->cxt, "%s : %.f #%d", debug_cycle_to_str[i], profiler->cc[i]);
 		}
 		
-		ui_labelf(window->cxt, "ft : %.fms", tab->ft * 1000);
+		ui_labelf(window->cxt, "ft : %.fms", profiler->delta * 1000);
 		ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
 		ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
 		ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
-		
-		for(u32 i = 0; i < 2; i++)
-		{
-			ED_Window *w = ed_state->windows + i;
-			ui_labelf(window->cxt, "[%.f %.f]", w->pos.x, w->pos.y);
-		}
 	}
 	
 	TEX_Handle key = a_keyFromPath(str8_lit("debug/toppema.png"), font_params);
@@ -827,14 +836,18 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		game->initialized = 1;
 		game->arena = arenaAlloc();
 		
+		// profiler tab
 		{
-			game->profiler_tab = ed_openFloatingTab(window->first_panel, "Profiler");
+			game->profiler_tab = ed_openFloatingTab(window->first_panel, "Profiler", {{1513, 0}}, {{400, 600}});
 			game->profiler_tab->custom_draw = profiler_panel;
+			
+			Profiler *profiler = push_struct(game->arena, Profiler);
+			game->profiler_tab->custom_drawData = profiler;
 		}
 		
 		// lister tab
 		{
-			game->lister_tab = ed_openFloatingTab(window->first_panel, "Lister", {{400, 800}});
+			game->lister_tab = ed_openFloatingTab(window->first_panel, "Lister", {{1076, 0}}, {{400, 600}});
 			game->lister_tab->custom_draw = lister_panel;
 			Lister *lister = push_struct(game->arena, Lister);
 			lister->game = game;
@@ -919,14 +932,14 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		{
 			fox = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
 			fox->pos = {{270, 150}};
-			fox->size = {{32, 32}};
+			fox->size = {{12, 26}};
 			fox->tint = D_COLOR_WHITE;
 			fox->art = ArtKind_Fox;
 			fox->basis.y = 65;
 			fox->layer = 1;
-			fox->n = 3;
-			fox->x = 3;
-			fox->y = 2;
+			fox->n = 0;
+			fox->x = 1;
+			fox->y = 1;
 			fox->speed = 180;
 			fox->target = handleFromEntity(py);
 			fox->health = 300;
@@ -949,9 +962,9 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		}
 		
 		// enemy
-#if 0
+#if 1
 		{
-			Entity *enemy = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
+			Entity *enemy = entity_alloc(store, EntityFlags_Dynamic);
 			enemy->pos = {{500, 150}};
 			enemy->size = {{64, 64}};
 			enemy->tint = D_COLOR_WHITE;
@@ -1217,6 +1230,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		}
 		
 		// pathfind
+		
+		BEGIN_TIMED_BLOCK(PATHFINDING);
 		for(s32 i = 0; i < store->num_entities; i++)
 		{
 			Entity *e = store->entities + i;
@@ -1283,6 +1298,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				}
 			}
 		}
+		END_TIMED_BLOCK(PATHFINDING);
 		
 		// update positions
 		for(s32 i = 0; i < store->num_entities; i++)
@@ -1411,162 +1427,56 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	
 	end_of_sim:
 	
+	v2s size = r_texSizeFromHandle(tab->target);
+	
 	if(game->fullscreen && window->win->fullscreen)
 	{
-		static v2f pos = {{}};
-		
 		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating window 2"));
 		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg | UI_Flags_draw_border | UI_Flags_rounded_corners;
-		floating->computed_rel_position[0] = pos.x;
-		floating->computed_rel_position[1] = pos.y;
+		floating->computed_rel_position[0] = 0;
+		floating->computed_rel_position[1] = 0;
 		floating->bg_color = ED_THEME_BG_FROSTED;
 		floating->border_color = ED_THEME_TITLEBAR;
 		floating->radius = 15 / 1.8f;
 		
 		ui_scale(window->cxt, FONT_SIZE * 0.8)
 			ui_parent(window->cxt, floating)
-			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
 			ui_col(window->cxt)
 		{
-			v2s size = r_texSizeFromHandle(tab->target);
+			size.x *= 2;
+			size.y *= 2;
 			
-			ui_pref_width(window->cxt, size.x * 2)
-				ui_pref_height(window->cxt, size.y * 2)
+			ui_pref_width(window->cxt, size.x)
+				ui_pref_height(window->cxt, size.y)
 				ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 			{
 				ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
-			}
-			ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-			{
-				ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
-				ui_labelf(window->cxt, "Except for you, you can stay");
 			}
 		}
 	}
 	else
 	{
-		v2s size = r_texSizeFromHandle(tab->target);
-		
 		ui_pref_width(window->cxt, size.x)
 			ui_pref_height(window->cxt, size.y)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		{
 			ui_imagef(window->cxt, tab->target, rect(0,0,1,1), D_COLOR_WHITE, "game image");
 		}
+		
 		ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 		{
 			ui_labelf(window->cxt, "Do not enter is written on the doorway, why can't everyone just go away.");
 			ui_labelf(window->cxt, "Except for you, you can stay");
 		}
+		
 	}
 	
+	// render tabs
 	{
-		static v2f pos = {{300, 300}};
-		static v2f old_pos = pos;
-		
-		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating window"));
-		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg | UI_Flags_draw_border | UI_Flags_rounded_corners;
-		floating->computed_rel_position[0] = pos.x;
-		floating->computed_rel_position[1] = pos.y;
-		floating->bg_color = ED_THEME_BG_FROSTED;
-		floating->border_color = ED_THEME_TITLEBAR;
-		floating->radius = 15 / 1.8f;
-		
-		ui_scale(window->cxt, FONT_SIZE * 0.8)
-			ui_parent(window->cxt, floating)
-			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-			ui_col(window->cxt)
-		{
-			static b32 close = 0;
-			static b32 hide = 0;
-			static b32 grab = 0;
-			
-			v2f size = {{400, 600}};
-			
-			ed_titlebar(str8_lit("Lister"), 3, window->cxt, size, &close, &hide, &grab);
-			
-			if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (grab))
-			{
-				f32 x, y;
-				SDL_GetGlobalMouseState(&x, &y);
-				
-				pos += v2f{{x, y}} - old_pos;
-				//os_setWindowPos(window->win, window->pos);
-			}
-			else
-			{
-				grab = 0;
-			}
-			
-			if(!hide)
-			{
-				ui_padding_x(window->cxt, 5)
-					ui_col(window->cxt)
-				{
-					lister_panel(window, game->lister_tab, delta, game->lister_tab->custom_drawData);
-				}
-			}
-			old_pos = pos;
-			SDL_GetGlobalMouseState(&old_pos.x, &old_pos.y);
-			
-		}
+		ed_floatingTab(delta, str8_lit("lister"), game->lister_tab);
+		ed_floatingTab(delta, str8_lit("profiler"), game->profiler_tab);
 	}
 	
-#if 1
-	{
-		static v2f pos = {{700, 300}};
-		static v2f old_pos = pos;
-		
-		
-		UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit("floating window 322"));
-		floating->flags = UI_Flags_is_floating | UI_Flags_has_bg | UI_Flags_draw_border | UI_Flags_rounded_corners;
-		floating->computed_rel_position[0] = pos.x;
-		floating->computed_rel_position[1] = pos.y;
-		floating->bg_color = ED_THEME_BG_FROSTED;
-		floating->border_color = ED_THEME_TITLEBAR;
-		floating->radius = 15 / 1.8f;
-		
-		ui_scale(window->cxt, FONT_SIZE * 0.8)
-			ui_parent(window->cxt, floating)
-			ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-			ui_col(window->cxt)
-		{
-			static b32 close = 0;
-			static b32 hide = 0;
-			static b32 grab = 0;
-			
-			v2f size = {{400, 600}};
-			
-			ed_titlebar(str8_lit("profiler"), 53, window->cxt, size, &close, &hide, &grab);
-			
-			if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (grab))
-			{
-				f32 x, y;
-				SDL_GetGlobalMouseState(&x, &y);
-				
-				pos += v2f{{x, y}} - old_pos;
-				//os_setWindowPos(window->win, window->pos);
-			}
-			else
-			{
-				grab = 0;
-			}
-			
-			if(!hide)
-			{
-				ui_padding_x(window->cxt, 5)
-					ui_col(window->cxt)
-				{
-					profiler_panel(window, game->profiler_tab, delta, game->profiler_tab->custom_drawData);
-				}
-			}
-			old_pos = pos;
-			SDL_GetGlobalMouseState(&old_pos.x, &old_pos.y);
-			
-		}
-	}
-	
-#endif
 }
 
 int main(int argc, char **argv)

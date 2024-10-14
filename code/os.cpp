@@ -141,6 +141,21 @@ function b32 os_keyPress(OS_Window *win, u32 key)
 	return win->keys[key];
 }
 
+function void os_toggleFullscreen(OS_Window *win)
+{
+	if(win->fullscreen)
+	{
+		SDL_SetWindowFullscreen(win->raw, SDL_FALSE);
+		SDL_SetWindowSize(win->raw, 960, 540);
+	}
+	else
+	{
+		SDL_SetWindowFullscreen(win->raw, SDL_TRUE);
+	}
+	
+	win->fullscreen = !win->fullscreen;
+}
+
 function void os_pollEvents()
 {
 	for(s32 i = 0; i < os_gfx_state->window_num; i++)
@@ -177,24 +192,14 @@ function void os_pollEvents()
 				SDL_Keycode key = sdl_event.key.key;
 				SDL_Keymod mod = SDL_GetModState();
 				
-				if(key >= SDLK_A && key <= SDLK_Z)
+				if((key >= SDLK_A && key <= SDLK_Z) || (key == SDLK_ESCAPE))
 				{
-					win->keys[key] = pressed;;
+					win->keys[key] = pressed;
 				}
 				
 				if ((mod & SDL_KMOD_CTRL) && key == SDLK_F && pressed) 
 				{
-					if(win->fullscreen)
-					{
-						SDL_SetWindowFullscreen(win->raw, SDL_FALSE);
-						SDL_SetWindowSize(win->raw, 960, 540);
-					}
-					else
-					{
-						SDL_SetWindowFullscreen(win->raw, SDL_TRUE);
-					}
-					
-					win->fullscreen = !win->fullscreen;
+					os_toggleFullscreen(win);
 				} 
 				
 			}break;

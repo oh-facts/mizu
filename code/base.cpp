@@ -763,12 +763,14 @@ function Str8 str8_join(Arena *arena, Str8 a, Str8 b)
 enum DEBUG_CYCLE_COUNTER
 {
 	DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER,
+	DEBUG_CYCLE_COUNTER_PATHFINDING,
 	DEBUG_CYCLE_COUNTER_COUNT
 };
 
-global char *debug_cycle_to_str[DEBUG_CYCLE_COUNTER_COUNT] = 
+read_only char *debug_cycle_to_str[DEBUG_CYCLE_COUNTER_COUNT] = 
 {
 	"update & render",
+	"pathfinding",
 };
 
 struct debug_cycle_counter

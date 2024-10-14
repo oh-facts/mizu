@@ -54,20 +54,17 @@ struct ED_Tab
 	ED_Tab *prev;
 	ED_Panel *parent;
 	
+	v2f pos;
+	v2f old_pos;
+	
+	v2f size;
+	
+	b32 close;
+	b32 grab;
+	b32 hide;
+	b32 maximize;
+	
 	Str8 name;
-	
-	ED_Tab *inspector;
-	
-	f32 update_timer;
-	
-	UI_Widget *selected_slot;
-	Str8 selected_tile;
-	Rect selected_tile_rect;
-	
-	f32 cc;
-	f32 ft;
-	
-	v4f hsva;
 	
 	R_Handle target;
 	
@@ -107,6 +104,7 @@ struct ED_Window
 	b32 hide;
 	b32 close;
 	b32 grab;
+	b32 maximize;
 	
 	v2f old_pos;
 	
@@ -132,68 +130,6 @@ struct ED_State
 };
 
 global ED_State *ed_state;
-
-function void ed_drawSpritesheet(ED_Tab *tab, f32 x, f32 y, Str8 path)
-{
-	ED_Panel *panel = tab->parent;
-	ED_Window *window = panel->parent;
-	
-	ui_radius(window->cxt, 5)
-		ui_border_thickness(window->cxt, 5)
-		ui_border_color(window->cxt, (v4f{{0, 0, 0, 0.3}}))
-		ui_press_color(window->cxt, D_COLOR_RED)
-		ui_hover_color(window->cxt, D_COLOR_BLUE)
-		ui_col(window->cxt)
-	{
-		ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-			ui_pref_height(window->cxt, 15)
-		{
-			ui_spacer(window->cxt);
-		}
-		
-		ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-		{
-			ui_label(window->cxt, path);
-		}
-		
-		TEX_Handle key = a_keyFromPath(path, pixel_tiled_params);
-		R_Handle img = a_handleFromKey(key);
-		
-		f32 width = 1.f/x;
-		f32 height = 1.f/y;
-		
-		f32 advance_y = 1 - height;
-		
-		ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
-			ui_col(window->cxt)
-		{
-			for(u32 i = 0; i < y; i ++)
-			{
-				f32 advance_x = 0;
-				ui_row(window->cxt)
-				{
-					ui_size_kind(window->cxt, UI_SizeKind_Pixels)
-						ui_pref_size(window->cxt, 60)
-					{
-						for(u32 j = 0; j < x; j++)
-						{
-							Rect recty = rect(advance_x, advance_y, advance_x + width, advance_y + height);
-							
-							if(ui_imagef(window->cxt, img, recty, D_COLOR_WHITE, "%.*s%d%d", str8_varg(path), i, j).active)
-							{
-								tab->inspector->selected_tile = path;
-								tab->inspector->selected_tile_rect = recty;
-							}
-							advance_x += width;
-						}
-					}
-					
-				}
-				advance_y -= height;
-			}
-		}
-	}
-}
 
 function void ed_init()
 {
@@ -251,7 +187,7 @@ function ED_Panel *ed_openPanel(ED_Window *window, Axis2 axis, f32 pct_of_parent
 	return out;
 }
 
-function ED_Tab *ed_openTab(ED_Panel *panel, char *name, v2f size = {{960, 540}})
+function ED_Tab *ed_openTab(ED_Panel *panel, char *name)
 {
 	ED_Tab *out = push_struct(ed_state->arena, ED_Tab);
 	*out = {};
@@ -268,7 +204,7 @@ function ED_Tab *ed_openTab(ED_Panel *panel, char *name, v2f size = {{960, 540}}
 	
 	out->parent = panel;
 	
-	//v2f size = ed_size_of_panel(panel);
+	v2f size = ed_sizeOfPanel(panel);
 	out->target = r_allocFramebuffer(size.x, size.y);
 	
 	out->name = push_str8f(ed_state->arena, name);
@@ -278,7 +214,7 @@ function ED_Tab *ed_openTab(ED_Panel *panel, char *name, v2f size = {{960, 540}}
 	return out;
 }
 
-function ED_Tab *ed_openFloatingTab(ED_Panel *panel, char *name, v2f size = {{960, 540}})
+function ED_Tab *ed_openFloatingTab(ED_Panel *panel, char *name, v2f pos, v2f size)
 {
 	ED_Tab *out = push_struct(ed_state->arena, ED_Tab);
 	*out = {};
@@ -288,7 +224,8 @@ function ED_Tab *ed_openFloatingTab(ED_Panel *panel, char *name, v2f size = {{96
 	//v2f size = ed_size_of_panel(panel);
 	
 	out->name = push_str8f(ed_state->arena, name);
-	
+	out->pos = pos;
+	out->size = size;
 	return out;
 }
 
@@ -374,17 +311,8 @@ function void ed_drawChildren(ED_Panel *panel, UI_Widget *root)
 		bg->border_thickness = 4;
 	}
 	
-	ED_Tab *tab = panel->active_tab;
 	if(root->flags & UI_Flags_has_custom_draw)
 	{
-		if(tab->selected_slot == root)
-		{
-			Rect selected_slot_rect = tab->selected_slot->dst;
-			R_Rect *slot = d_rect(selected_slot_rect, D_COLOR_WHITE);
-			slot->src = rect(0, 0, 2, 2);
-			slot->tex = a_getAlphaBGTex();
-		}
-		
 		root->custom_draw(root, root->custom_draw_data);
 	}
 	
@@ -402,15 +330,7 @@ function void ed_drawPanel(ED_Window *window, UI_Widget *root)
 	}
 }
 
-struct ED_TitlebarSignal
-{
-	b32 close;
-	b32 hide;
-	b32 grab;
-	UI_Widget *bar;
-};
-
-function UI_Widget *ed_titlebar(Str8 title, s32 i, UI_Context *cxt, v2f size, b32 *close, b32 *hide, b32 *grab)
+function UI_Widget *ed_titlebar(Str8 title, s32 i, UI_Context *cxt, v2f size, b32 *close, b32 *maximize, b32 *hide, b32 *grab)
 {
 	UI_Widget *menu_bar = 0;
 	ui_named_rowf(cxt, "%d editor title bar", i)
@@ -477,10 +397,7 @@ function UI_Widget *ed_titlebar(Str8 title, s32 i, UI_Context *cxt, v2f size, b3
 				//window->flags ^= ED_WindowFlags_Minimized;
 			}
 			
-			if(ui_imagef(cxt, titlebar_img, rect(0.5, 0, 0.75, 1), ED_THEME_IMG, "maximize img %d", i).active)
-			{
-				//window->flags ^= ED_WindowFlags_Maximized;
-			}
+			*maximize = ui_imagef(cxt, titlebar_img, rect(0.5, 0, 0.75, 1), ED_THEME_IMG, "maximize img %d", i).active;
 			
 			if(ui_imagef(cxt, titlebar_img, rect(0.75, 0, 1, 1), ED_THEME_IMG, "close img %d", i).active)
 			{
@@ -492,11 +409,57 @@ function UI_Widget *ed_titlebar(Str8 title, s32 i, UI_Context *cxt, v2f size, b3
 	return menu_bar;
 }
 
+function void ed_floatingTab(f32 delta, Str8 name, ED_Tab *tab)
+{
+	u64 hash = ui_hash(name);
+	
+	ED_Window *window = tab->parent->parent;
+	
+	UI_Widget *floating = ui_makeWidget(window->cxt, str8_lit(""));
+	floating->flags = UI_Flags_is_floating | UI_Flags_has_bg | UI_Flags_draw_border | UI_Flags_rounded_corners;
+	floating->computed_rel_position[0] = tab->pos.x;
+	floating->computed_rel_position[1] = tab->pos.y;
+	floating->bg_color = ED_THEME_BG_FROSTED;
+	floating->border_color = ED_THEME_TITLEBAR;
+	floating->radius = 15 / 1.8f;
+	
+	ui_scale(window->cxt, FONT_SIZE * 0.8)
+		ui_parent(window->cxt, floating)
+		ui_size_kind(window->cxt, UI_SizeKind_ChildrenSum)
+		ui_col(window->cxt)
+	{
+		ed_titlebar(name, hash, window->cxt, tab->size, &tab->close, &tab->maximize, &tab->hide, &tab->grab);
+		
+		if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (tab->grab))
+		{
+			f32 x, y;
+			SDL_GetGlobalMouseState(&x, &y);
+			
+			tab->pos += v2f{{x, y}} - tab->old_pos;
+			//os_setWindowPos(window->win, window->pos);
+		}
+		else
+		{
+			tab->grab = 0;
+		}
+		
+		if(!tab->hide)
+		{
+			ui_padding_x(window->cxt, 5)
+				ui_col(window->cxt)
+			{
+				tab->custom_draw(window, tab, delta, tab->custom_drawData);
+			}
+		}
+		tab->old_pos = tab->pos;
+		SDL_GetGlobalMouseState(&tab->old_pos.x, &tab->old_pos.y);
+		
+	}
+}
+
 function void ed_drawWindow(ED_Window *window)
 {
 	UI_Widget *parent = window->root;
-	
-	
 	
 	//parent->pos.x = parent->computed_rel_position[0];
 	//parent->pos.y = parent->computed_rel_position[1];
@@ -545,7 +508,7 @@ function void ed_update(f32 delta)
 			//printf("%d\n", window->grabbed);
 			
 			// NOTE(mizu):  title bar, dragging and hiding
-			window->menu_bar = ed_titlebar(str8_lit("Mizu Mizu 1 Million"), i, window->cxt, window->size, &window->close, &window->hide, &window->grab);
+			window->menu_bar = ed_titlebar(str8_lit("Mizu Mizu 1 Million"), i, window->cxt, window->size, &window->close, &window->maximize, &window->hide, &window->grab);
 			
 			if(os_mouseHeld(window->win, SDL_BUTTON_LEFT) && (window->grab))
 			{
@@ -562,6 +525,11 @@ function void ed_update(f32 delta)
 			if(window->close)
 			{
 				window->win->close_requested = 1;
+			}
+			
+			if(window->maximize)
+			{
+				os_toggleFullscreen(window->win);
 			}
 			
 			if(!window->hide)
