@@ -764,6 +764,11 @@ enum DEBUG_CYCLE_COUNTER
 {
 	DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER,
 	DEBUG_CYCLE_COUNTER_PATHFINDING,
+	DEBUG_CYCLE_COUNTER_PF_GET_NEIGHBORS,
+	DEBUG_CYCLE_COUNTER_PF_CONTAINS_NODE,
+	DEBUG_CYCLE_COUNTER_PF_LOWEST_FCOST,
+	DEBUG_CYCLE_COUNTER_PF_PREPARE_PATH,
+	DEBUG_CYCLE_COUNTER_PF_REVERSE_PATH,
 	DEBUG_CYCLE_COUNTER_COUNT
 };
 
@@ -771,6 +776,11 @@ read_only char *debug_cycle_to_str[DEBUG_CYCLE_COUNTER_COUNT] =
 {
 	"update & render",
 	"pathfinding",
+	"pf get neighbours",
+	"pf contains node",
+	"lowest cost",
+	"prepare path",
+	"reverse path"
 };
 
 struct debug_cycle_counter

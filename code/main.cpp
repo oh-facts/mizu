@@ -343,31 +343,6 @@ function AS_Node *as_pushNode(Arena *arena, AS_NodeList *list, AS_Node node)
 	return out;
 }
 
-#if 0
-// NOTE(mizu): Asserts are disabled when shipping. If the assert fails, it means there is
-// a bug in the pathfinding code. There is no reason to pop a node from an empty linked list
-function void as_popNode(AS_NodeList *list)
-{
-	Assert(list->count > 0);
-	AS_Node *node = list->last;
-	
-	list->last = node->prev;
-	
-	if (list->last)
-	{
-		list->last->next = 0;
-	}
-	else
-	{
-		list->first = 0;
-	}
-	
-	list->count--;
-	
-	//free(node);
-}
-#endif
-
 function void as_removeNode(AS_NodeList *list, AS_Node *node)
 {
 	Assert(list->count > 0);
@@ -399,6 +374,7 @@ function void as_removeNode(AS_NodeList *list, AS_Node *node)
 
 function b32 as_containsNode(AS_NodeList *list, AS_Node *node)
 {
+	BEGIN_TIMED_BLOCK(PF_CONTAINS_NODE);
 	b32 out = 0;
 	for (AS_Node *iter = list->first; iter; iter = iter->next)
 	{
@@ -408,6 +384,7 @@ function b32 as_containsNode(AS_NodeList *list, AS_Node *node)
 			break;
 		}
 	}
+	END_TIMED_BLOCK(PF_CONTAINS_NODE);
 	return out;
 }
 
@@ -490,6 +467,7 @@ v2f normalize(v2f v)
 
 function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end)
 {
+	BEGIN_TIMED_BLOCK(PATHFINDING);
 	AS_NodeList open = {};
 	AS_NodeList close = {};
 	
@@ -501,6 +479,8 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 	while (open.count > 0)
 	{
 		// cur is node in open w/ the lowest f cost
+		
+		BEGIN_TIMED_BLOCK(PF_LOWEST_FCOST);
 		AS_Node *cur = open.first;
 		
 		for (AS_Node *iter = cur->next; iter; iter = iter->next)
@@ -513,6 +493,7 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 				cur = iter;
 			}
 		}
+		END_TIMED_BLOCK(PF_LOWEST_FCOST);
 		
 		as_removeNode(&open, cur);
 		cur = as_pushNode(arena, &close, *cur);
@@ -523,24 +504,29 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 			// yay
 			//printf("e");
 			
+			BEGIN_TIMED_BLOCK(PF_PREPARE_PATH);
 			while(!(cur->index == first_node->index))
 			{
 				//printf("[%d %d] \n", cur->index.x, cur->index.y);
 				cur = as_pushNode(arena, &rev, *cur);
 				cur = cur->parent;
 			}
+			END_TIMED_BLOCK(PF_PREPARE_PATH);
 			
+			BEGIN_TIMED_BLOCK(PF_REVERSE_PATH);
 			AS_NodeList out = {};
 			
 			for (AS_Node *iter = rev.last; iter; iter = iter->prev) 
 			{
 				as_pushNode(arena, &out, *iter);
 			}
-			
+			END_TIMED_BLOCK(PF_REVERSE_PATH);
+			END_TIMED_BLOCK(PATHFINDING);
 			return out;
 		}
 		
 		// get neighbours
+		BEGIN_TIMED_BLOCK(PF_GET_NEIGHBORS);
 		AS_NodeList neighbours = {};
 		
 		for (s32 i = -1; i <= 1; i++)
@@ -561,7 +547,7 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 				}
 			}
 		}
-		
+		END_TIMED_BLOCK(PF_GET_NEIGHBORS);
 		for (AS_Node *iter = neighbours.first; iter; iter = iter->next)
 		{
 			// NOTE(mizu): profile if hashset is better for contains node. Memory is always contiguous
@@ -573,13 +559,15 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 			
 			s32 new_cost = cur->g + as_nodeDistance(*cur, *iter);
 			
-			if (new_cost < iter->g || !as_containsNode(&open, iter))
+			b32 contains_node = as_containsNode(&open, iter);
+			
+			if (new_cost < iter->g || !contains_node)
 			{
 				iter->g = new_cost;
 				iter->h = as_nodeDistance(*iter, *end_node);
 				iter->parent = cur;
 				
-				if (!as_containsNode(&open, iter))
+				if (!contains_node)
 				{
 					as_pushNode(arena, &open, *iter);
 				}
@@ -587,6 +575,7 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 		}
 	}
 	
+	END_TIMED_BLOCK(PATHFINDING);
 	return {};
 }
 
@@ -778,17 +767,35 @@ struct Profiler
 {
 	f32 cc[DEBUG_CYCLE_COUNTER_COUNT];
 	f32 delta;
+	f32 last_delta;
 	f32 update_timer;
 };
+
+function ED_CUSTOM_TAB(console_panel)
+{
+	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	{
+		for(u32 i = 0; i < DEBUG_CYCLE_COUNTER_COUNT; i++)
+		{
+			ui_labelf(window->cxt, "%s : %.f #%d", debug_cycle_to_str[i], profiler->cc[i]);
+		}
+		
+		ui_labelf(window->cxt, "ft : %.fms", profiler->delta * 1000);
+		ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
+		ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
+		ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
+	}
+	
+}
+
+// TODO(mizu): Sort the times and do nesting. It's very hard to tell otherwise
 
 function ED_CUSTOM_TAB(profiler_panel)
 {
 	Profiler *profiler = (Profiler*)user_data;
 	profiler->update_timer += delta;
 	
-	d_push_target(tab->target);
-	
-	if(profiler->update_timer > 1.f)
+	if(profiler->update_timer > 0.2f)
 	{
 		for(u32 i = 0; i < DEBUG_CYCLE_COUNTER_COUNT; i++)
 		{
@@ -799,6 +806,13 @@ function ED_CUSTOM_TAB(profiler_panel)
 		
 		profiler->update_timer = 0;
 	}
+	
+	if(profiler->last_delta * 1000 > 25)
+	{
+		volatile int _____i = 0;
+	}
+	
+	profiler->last_delta = profiler->delta;
 	
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
@@ -821,7 +835,7 @@ function ED_CUSTOM_TAB(profiler_panel)
 	{
 		ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
 	}
-	d_pop_target();
+	
 }
 
 function ED_CUSTOM_TAB(game_update_and_render)
@@ -964,7 +978,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		// enemy
 #if 1
 		{
-			Entity *enemy = entity_alloc(store, EntityFlags_Dynamic);
+			Entity *enemy = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
 			enemy->pos = {{500, 150}};
 			enemy->size = {{64, 64}};
 			enemy->tint = D_COLOR_WHITE;
@@ -1230,8 +1244,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		}
 		
 		// pathfind
-		
-		BEGIN_TIMED_BLOCK(PATHFINDING);
 		for(s32 i = 0; i < store->num_entities; i++)
 		{
 			Entity *e = store->entities + i;
@@ -1298,7 +1310,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				}
 			}
 		}
-		END_TIMED_BLOCK(PATHFINDING);
 		
 		// update positions
 		for(s32 i = 0; i < store->num_entities; i++)
