@@ -167,7 +167,7 @@ function R_Handle a_getAlphaBGTex()
 }
 
 // NOTE(mizu): it is important i wait until the end of the frame
-void a_evict()
+function void a_evict()
 {
 	for(u32 i = 0; i < a_state->num_slots; i++)
 	{

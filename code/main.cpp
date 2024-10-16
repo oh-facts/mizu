@@ -308,6 +308,8 @@ struct AS_Node
 	v2s index;
 	
 	AS_Node *next;
+	AS_Node *hash_next;
+	
 	AS_Node *prev;
 	AS_Node *parent;
 };
@@ -372,6 +374,21 @@ function void as_removeNode(AS_NodeList *list, AS_Node *node)
 	//free(node);
 }
 
+// djb2
+function u64 as_hash(Str8 str)
+{
+	u64 hash = 5381;
+	int c;
+	
+	for(u32 i = 0; i < str.len; i++)
+	{
+		c = str.c[i];
+		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+	}
+	
+	return hash;
+}
+
 function b32 as_containsNode(AS_NodeList *list, AS_Node *node)
 {
 	BEGIN_TIMED_BLOCK(PF_CONTAINS_NODE);
@@ -399,6 +416,9 @@ struct AS_Grid
 	s32 col;
 	s32 row;
 	v2f size;
+	
+	// hash slots
+	AS_Node *slots;
 };
 
 // TODO(mizu): have a grid size instead of doing / 64 and * 64 like a psychopath.
@@ -458,12 +478,11 @@ function s32 as_nodeDistance(AS_Node a, AS_Node b)
 	return out;
 }
 
-v2f normalize(v2f v)
+function v2f normalize(v2f v)
 {
 	float length = sqrt(v.x * v.x + v.y * v.y);
 	return (length != 0) ? v / length : v2f{{0, 0}};
 }
-
 
 function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end)
 {
@@ -552,14 +571,20 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 		{
 			// NOTE(mizu): profile if hashset is better for contains node. Memory is always contiguous
 			// so i can't imagine its slow to be a problem, but something to consider.
-			if (iter->unwalkable || as_containsNode(&close, iter))
+			BEGIN_TIMED_BLOCK(PF_CLOSED_CONTAINS_NODE);
+			b32 cond = iter->unwalkable || as_containsNode(&close, iter);
+			END_TIMED_BLOCK(PF_CLOSED_CONTAINS_NODE);
+			
+			if (cond)
 			{
 				continue;
 			}
 			
 			s32 new_cost = cur->g + as_nodeDistance(*cur, *iter);
 			
+			BEGIN_TIMED_BLOCK(PF_OPEN_CONTAINS_NODE);
 			b32 contains_node = as_containsNode(&open, iter);
+			END_TIMED_BLOCK(PF_OPEN_CONTAINS_NODE);
 			
 			if (new_cost < iter->g || !contains_node)
 			{
@@ -585,8 +610,11 @@ struct Game
 	EntityStore e_store;
 	Camera cam;
 	b32 initialized;
+	
 	ED_Tab *lister_tab;
 	ED_Tab *profiler_tab;
+	ED_Tab *console_tab;
+	
 	s32 *tilemap;
 	s32 col;
 	s32 row;
@@ -763,6 +791,45 @@ function ED_CUSTOM_TAB(lister_panel)
 	}
 }
 
+struct DebugLogBuffer
+{
+	Arena *arena;
+	
+	char buf[1024];
+	u64 used;
+};
+
+global DebugLogBuffer debug_log_buffer;
+
+void pls_printfv(char *fmt, va_list args)
+{
+	va_list args_copy;
+	va_copy(args_copy, args);
+	
+	int bytes_req = stbsp_vsnprintf(0, 0, fmt, args) + 1;
+	
+	char *buf = debug_log_buffer.buf + debug_log_buffer.used;
+	
+	debug_log_buffer.used += stbsp_vsnprintf(buf, bytes_req, fmt, args_copy);
+	va_end(args_copy);
+}
+
+void pls_print(char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	pls_printfv(fmt, args);
+	va_end(args);
+}
+
+function ED_CUSTOM_TAB(console_panel)
+{
+	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
+	{
+		ui_labelf(window->cxt, "%s", debug_log_buffer.buf);
+	}
+}
+
 struct Profiler
 {
 	f32 cc[DEBUG_CYCLE_COUNTER_COUNT];
@@ -770,23 +837,6 @@ struct Profiler
 	f32 last_delta;
 	f32 update_timer;
 };
-
-function ED_CUSTOM_TAB(console_panel)
-{
-	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
-	{
-		for(u32 i = 0; i < DEBUG_CYCLE_COUNTER_COUNT; i++)
-		{
-			ui_labelf(window->cxt, "%s : %.f #%d", debug_cycle_to_str[i], profiler->cc[i]);
-		}
-		
-		ui_labelf(window->cxt, "ft : %.fms", profiler->delta * 1000);
-		ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
-		ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
-		ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
-	}
-	
-}
 
 // TODO(mizu): Sort the times and do nesting. It's very hard to tell otherwise
 
@@ -850,6 +900,13 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		game->initialized = 1;
 		game->arena = arenaAlloc();
 		
+		pls_print("hello");
+		pls_print("\n");
+		pls_print("hi");
+		pls_print("hello my friend");
+		pls_print("\n\n\n");
+		pls_print("hi");
+		
 		// profiler tab
 		{
 			game->profiler_tab = ed_openFloatingTab(window->first_panel, "Profiler", {{1513, 0}}, {{400, 600}});
@@ -866,6 +923,12 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			Lister *lister = push_struct(game->arena, Lister);
 			lister->game = game;
 			game->lister_tab->custom_drawData = lister;
+		}
+		
+		// lister tab
+		{
+			game->console_tab = ed_openFloatingTab(window->first_panel, "Console", {{1513, 800}}, {{400, 600}});
+			game->console_tab->custom_draw = console_panel;
 		}
 		
 		game->debug_zoom = 1;
@@ -1486,6 +1549,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	{
 		ed_floatingTab(delta, str8_lit("lister"), game->lister_tab);
 		ed_floatingTab(delta, str8_lit("profiler"), game->profiler_tab);
+		ed_floatingTab(delta, str8_lit("Console"), game->console_tab);
 	}
 	
 }

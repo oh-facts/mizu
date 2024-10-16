@@ -766,6 +766,8 @@ enum DEBUG_CYCLE_COUNTER
 	DEBUG_CYCLE_COUNTER_PATHFINDING,
 	DEBUG_CYCLE_COUNTER_PF_GET_NEIGHBORS,
 	DEBUG_CYCLE_COUNTER_PF_CONTAINS_NODE,
+	DEBUG_CYCLE_COUNTER_PF_OPEN_CONTAINS_NODE,
+	DEBUG_CYCLE_COUNTER_PF_CLOSED_CONTAINS_NODE,
 	DEBUG_CYCLE_COUNTER_PF_LOWEST_FCOST,
 	DEBUG_CYCLE_COUNTER_PF_PREPARE_PATH,
 	DEBUG_CYCLE_COUNTER_PF_REVERSE_PATH,
@@ -778,6 +780,8 @@ read_only char *debug_cycle_to_str[DEBUG_CYCLE_COUNTER_COUNT] =
 	"pathfinding",
 	"pf get neighbours",
 	"pf contains node",
+	"pf open contains node",
+	"pf closed contains node",
 	"lowest cost",
 	"prepare path",
 	"reverse path"
