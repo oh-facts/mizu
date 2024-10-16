@@ -307,155 +307,56 @@ struct AS_Node
 	
 	v2s index;
 	
-	AS_Node *next;
-	AS_Node *hash_next;
-	
-	AS_Node *prev;
 	AS_Node *parent;
 };
 
-struct AS_NodeList
+struct AS_NodeArray
 {
-	AS_Node *first;
-	AS_Node *last;
-	
+	AS_Node *v;
 	u64 count;
+	u64 size;
 };
 
-function AS_Node *as_pushNode(Arena *arena, AS_NodeList *list, AS_Node node)
+function s32 as_fcost(AS_Node *node)
 {
-	AS_Node *out = push_struct(arena, AS_Node);
-	*out = node;
-	out->next = 0;
-	out->prev = 0;
-	
-	if (!list->first)
-	{
-		list->first = list->last = out;
-	}
-	else
-	{
-		out->prev = list->last;
-		list->last->next = out;
-		list->last = out;
-	}
-	
-	list->count++;
-	
-	return out;
-}
-
-function void as_removeNode(AS_NodeList *list, AS_Node *node)
-{
-	Assert(list->count > 0);
-	
-	if (node->prev)
-	{
-		node->prev->next = node->next;
-	}
-	else
-	{
-		list->first = node->next;
-	}
-	
-	if (node->next)
-	{
-		node->next->prev = node->prev;
-	}
-	else
-	{
-		list->last = node->prev;
-	}
-	
-	list->count--;
-	
-	node->next = node->prev = 0;
-	
-	//free(node);
-}
-
-// djb2
-function u64 as_hash(Str8 str)
-{
-	u64 hash = 5381;
-	int c;
-	
-	for(u32 i = 0; i < str.len; i++)
-	{
-		c = str.c[i];
-		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-	}
-	
-	return hash;
-}
-
-function b32 as_containsNode(AS_NodeList *list, AS_Node *node)
-{
-	BEGIN_TIMED_BLOCK(PF_CONTAINS_NODE);
-	b32 out = 0;
-	for (AS_Node *iter = list->first; iter; iter = iter->next)
-	{
-		if (iter->index == node->index)
-		{
-			out = 1;
-			break;
-		}
-	}
-	END_TIMED_BLOCK(PF_CONTAINS_NODE);
-	return out;
-}
-
-function s32 as_fcost(AS_Node node)
-{
-	return node.g + node.h;
+	return node->g + node->h;
 }
 
 struct AS_Grid
 {
-	AS_Node *nodes;
+	b32 *cells;
 	s32 col;
 	s32 row;
 	v2f size;
-	
-	// hash slots
-	AS_Node *slots;
 };
 
-// TODO(mizu): have a grid size instead of doing / 64 and * 64 like a psychopath.
-// Same for the tilemap
-
-function v2s as_nodePosFromWorldPos(AS_Grid *grid, v2f pos)
+function AS_Node as_nodeFromGridIndex(AS_Grid *grid, v2s index)
 {
-	v2s out = {};
+	AS_Node out = {};
+	out.index.x = index.x;
+	out.index.y = index.y;
 	
-	out.x = pos.x / grid->size.x;
-	out.y = pos.y / grid->size.y;
+	out.unwalkable = grid->cells[out.index.y * grid->col + out.index.x];
 	
 	return out;
 }
 
-function v2f as_worldPosFromNodePos(AS_Grid *grid, v2s pos)
+function AS_Node as_nodeFromPos(AS_Grid *grid, v2f pos)
 {
-	v2f out = {{pos.x * grid->size.x, pos.y * grid->size.y}};
+	AS_Node out = {};
+	out.index.x = pos.x / grid->size.x;
+	out.index.y = pos.y / grid->size.y;
+	
+	out.unwalkable = grid->cells[out.index.y * grid->col + out.index.x];
 	
 	return out;
 }
 
-function AS_Node as_nodeFromWorldPos(AS_Grid *grid, v2f pos)
+function v2f as_worldPosFromIndex(AS_Grid *grid, v2s index)
 {
-	v2s out = {};
-	
-	out.x = pos.x / grid->size.x;
-	out.y = pos.y / grid->size.y;
-	
-	AS_Node node = grid->nodes[out.y * grid->col + out.x];
-	
-	return node;
-}
-
-function v2f as_worldPosFromNode(AS_Grid *grid, AS_Node node)
-{
-	v2f out = {{node.index.x * grid->size.x, node.index.y * grid->size.y}};
+	v2f out = {};
+	out.x = index.x * grid->size.x;
+	out.y = index.y * grid->size.y;
 	
 	return out;
 }
@@ -478,75 +379,150 @@ function s32 as_nodeDistance(AS_Node a, AS_Node b)
 	return out;
 }
 
+function AS_NodeArray as_nodeReserve(Arena *arena, u64 size)
+{
+	AS_NodeArray out = {};
+	out.count = 0;
+	out.size = size;
+	out.v = push_array(arena, AS_Node, size);
+	return out;
+}
+
 function v2f normalize(v2f v)
 {
 	float length = sqrt(v.x * v.x + v.y * v.y);
 	return (length != 0) ? v / length : v2f{{0, 0}};
 }
 
-function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end)
+function b32 as_containsNode(AS_NodeArray *list, AS_Node node)
+{
+	BEGIN_TIMED_BLOCK(PF_CONTAINS_NODE);
+	b32 out = 0;
+	
+#if 0
+	for(s32 i = 0; i < list->count; i++)
+	{
+		AS_Node *iter = list->v + i;
+		if(iter->index == node.index)
+		{
+			out = 1;
+			break;
+		}
+	}
+#else
+	
+#endif
+	END_TIMED_BLOCK(PF_CONTAINS_NODE);
+	return out;
+}
+
+function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2f end_pos)
 {
 	BEGIN_TIMED_BLOCK(PATHFINDING);
-	AS_NodeList open = {};
-	AS_NodeList close = {};
+	AS_NodeArray out = {};
 	
-	AS_Node *first_node = as_pushNode(arena, &open, as_nodeFromWorldPos(grid, start));
+	AS_Node start = as_nodeFromPos(grid, start_pos);
+	AS_Node end = as_nodeFromPos(grid, end_pos);
 	
-	AS_Node *end_node = push_struct(arena, AS_Node);
-	*end_node = as_nodeFromWorldPos(grid, end);
+	AS_NodeArray open = as_nodeReserve(arena, 1024);
+	AS_NodeArray closed = as_nodeReserve(arena, 1024);
 	
-	while (open.count > 0)
+	open.v[open.count++] = start;
+	
+	// lowest f cost
+	
+	while(open.count > 0)
 	{
-		// cur is node in open w/ the lowest f cost
-		
 		BEGIN_TIMED_BLOCK(PF_LOWEST_FCOST);
-		AS_Node *cur = open.first;
+		// current is our persistent pointer boy. pass him around. no need to move values
+		AS_Node *cur = open.v;
 		
-		for (AS_Node *iter = cur->next; iter; iter = iter->next)
+		for(s32 i = 1; i < open.count; i++)
 		{
-			b32 check = as_fcost(*iter) < as_fcost(*cur);
-			check = check || (as_fcost(*iter) == as_fcost(*cur) && (iter->h < cur->h));
+			AS_Node *iter = open.v + i;
+			b32 check = as_fcost(iter) < as_fcost(cur);
+			check = check || (as_fcost(iter) == as_fcost(cur) && (iter->h < cur->h));
 			
-			if (check)
+			if(check)
 			{
 				cur = iter;
 			}
 		}
 		END_TIMED_BLOCK(PF_LOWEST_FCOST);
 		
-		as_removeNode(&open, cur);
-		cur = as_pushNode(arena, &close, *cur);
 		
-		if (cur->index == end_node->index)
+		
 		{
-			AS_NodeList rev = {};
-			// yay
-			//printf("e");
+			AS_Node newnode = *cur;
+			
+			// remove from open
+			for(s32 i = 0; i < open.count; i++)
+			{
+				AS_Node *iter = open.v + i;
+				if(cur->index == iter->index)
+				{
+					open.v[i] = open.v[open.count - 1];
+					open.count--;
+					break;
+				}
+			}
+			
+			// add to closed
+			{
+				AS_Node *closed_node = closed.v + closed.count++;
+				*closed_node = newnode;
+				
+				cur = closed_node;
+			}
+		}
+		
+		if(cur->index == end.index)
+		{
+			//
+#if 0
+			printf("==\n");
+			for(AS_Node *node = cur; node; node = node->parent)
+			{
+				printf("%d %d\n", node->index.x, node->index.y);
+			}
+			printf("==\n");
+#endif
 			
 			BEGIN_TIMED_BLOCK(PF_PREPARE_PATH);
-			while(!(cur->index == first_node->index))
+			out = as_nodeReserve(arena, 1024);
+			
+			for (AS_Node *node = cur; node; node = node->parent)
 			{
-				//printf("[%d %d] \n", cur->index.x, cur->index.y);
-				cur = as_pushNode(arena, &rev, *cur);
-				cur = cur->parent;
+				out.v[out.count++] = *node;
 			}
+			
+			// remove self
+			out.count -= 1;
 			END_TIMED_BLOCK(PF_PREPARE_PATH);
 			
 			BEGIN_TIMED_BLOCK(PF_REVERSE_PATH);
-			AS_NodeList out = {};
-			
-			for (AS_Node *iter = rev.last; iter; iter = iter->prev) 
+			for (u64 i = 0; i < out.count / 2; ++i)
 			{
-				as_pushNode(arena, &out, *iter);
+				AS_Node temp = out.v[i];
+				out.v[i] = out.v[out.count - i - 1];
+				out.v[out.count - i - 1] = temp;
 			}
 			END_TIMED_BLOCK(PF_REVERSE_PATH);
+			
+#if 0
+			printf("==\n");
+			for(s32 i = 0; i < out.count; i++)
+			{
+				printf("%d %d\n", out.v[i].index.x, out.v[i].index.y);
+			}
+			printf("==\n");
+#endif
 			END_TIMED_BLOCK(PATHFINDING);
 			return out;
 		}
 		
-		// get neighbours
 		BEGIN_TIMED_BLOCK(PF_GET_NEIGHBORS);
-		AS_NodeList neighbours = {};
+		AS_NodeArray neighbours = as_nodeReserve(arena, 8);
 		
 		for (s32 i = -1; i <= 1; i++)
 		{
@@ -561,21 +537,22 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 				
 				if (neighbourIndex.x >= 0 && neighbourIndex.x < grid->col && neighbourIndex.y >= 0 && neighbourIndex.y < grid->row)
 				{
-					AS_Node node = grid->nodes[neighbourIndex.y * grid->col + neighbourIndex.x];
-					as_pushNode(arena, &neighbours, node);
+					AS_Node node = as_nodeFromGridIndex(grid, neighbourIndex);
+					neighbours.v[neighbours.count++] = node;
 				}
 			}
 		}
 		END_TIMED_BLOCK(PF_GET_NEIGHBORS);
-		for (AS_Node *iter = neighbours.first; iter; iter = iter->next)
+		
+		for (s32 i = 0; i < neighbours.count; i++)
 		{
-			// NOTE(mizu): profile if hashset is better for contains node. Memory is always contiguous
-			// so i can't imagine its slow to be a problem, but something to consider.
+			AS_Node *iter = neighbours.v + i;
+			
 			BEGIN_TIMED_BLOCK(PF_CLOSED_CONTAINS_NODE);
-			b32 cond = iter->unwalkable || as_containsNode(&close, iter);
+			b32 contains_close_node = as_containsNode(&closed, *iter);
 			END_TIMED_BLOCK(PF_CLOSED_CONTAINS_NODE);
 			
-			if (cond)
+			if (iter->unwalkable || contains_close_node)
 			{
 				continue;
 			}
@@ -583,25 +560,26 @@ function AS_NodeList as_findPath(Arena *arena, AS_Grid *grid, v2f start, v2f end
 			s32 new_cost = cur->g + as_nodeDistance(*cur, *iter);
 			
 			BEGIN_TIMED_BLOCK(PF_OPEN_CONTAINS_NODE);
-			b32 contains_node = as_containsNode(&open, iter);
+			b32 contains_node = as_containsNode(&open, *iter);
 			END_TIMED_BLOCK(PF_OPEN_CONTAINS_NODE);
 			
 			if (new_cost < iter->g || !contains_node)
 			{
 				iter->g = new_cost;
-				iter->h = as_nodeDistance(*iter, *end_node);
+				iter->h = as_nodeDistance(*iter, end);
 				iter->parent = cur;
 				
 				if (!contains_node)
 				{
-					as_pushNode(arena, &open, *iter);
+					open.v[open.count++] = *iter;
 				}
+				
 			}
 		}
 	}
 	
 	END_TIMED_BLOCK(PATHFINDING);
-	return {};
+	return out;
 }
 
 struct Game
@@ -1160,7 +1138,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		
 		game->as_grid.row = 9 * 4;
 		game->as_grid.col = 16 * 4;
-		game->as_grid.nodes = push_array(game->arena, AS_Node, game->as_grid.row * game->as_grid.col);
+		game->as_grid.cells = push_array(game->arena, b32, game->as_grid.row * game->as_grid.col);
 		game->as_grid.size = {{16, 16}};
 		
 		AS_Grid *grid = &game->as_grid;
@@ -1171,9 +1149,9 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			{
 				if(game->tilemap[(row / 4) * (grid->col / 4) + (col / 4)] == 1)
 				{
-					grid->nodes[row * grid->col + col].unwalkable = 1;
+					grid->cells[row * grid->col + col] = 1;
 				}
-				grid->nodes[row * grid->col + col].index = {{col, row}};
+				
 			}
 		}
 	}
@@ -1244,16 +1222,16 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				for(s32 col = 0; col < grid->col; col++)
 				{
 					v2s index = {{col, row}};
-					AS_Node node = grid->nodes[row * grid->col + col];
+					b32 cell = grid->cells[row * grid->col + col];
 					
 					v4f color = {};
 					
-					if(node.unwalkable == 1)
+					if(cell == 1)
 					{
 						color = D_COLOR_CYAN;
 					}
 					
-					v2f pos = as_worldPosFromNodePos(grid, index);
+					v2f pos = as_worldPosFromIndex(grid, index);
 					
 					R_Sprite *grid = d_sprite(rect(pos, {{game->as_grid.size.x, game->as_grid.size.x}}), color);
 					grid->border_color = D_COLOR_BLACK;
@@ -1324,11 +1302,11 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					
 					if (length2 > 50)
 					{
-						AS_NodeList list = as_findPath(game->arena, &game->as_grid, e->pos, target->pos);
+						AS_NodeArray list = as_findPath(game->arena, &game->as_grid, e->pos, target->pos);
 						
-						if(list.first)
+						if(list.count > 0)
 						{
-							v2f next_pos = as_worldPosFromNode(&game->as_grid, *list.first) + v2f{{8, 8}};
+							v2f next_pos = as_worldPosFromIndex(&game->as_grid, list.v[0].index) + v2f{{8, 8}};
 							
 							v2f dir = {{ next_pos.x - pos.x, next_pos.y - pos.y }};
 							float length = sqrt(dir.x * dir.x + dir.y * dir.y);
@@ -1349,12 +1327,13 @@ function ED_CUSTOM_TAB(game_update_and_render)
 							v2f pos = {{poss.x * game->as_grid.size.x * 1.f, poss.y * game->as_grid.size.x * 1.f}};
 							R_Sprite *sprite = d_sprite(rect(pos, {{game->as_grid.size.x, game->as_grid.size.x}}), D_COLOR_BLACK);
 							sprite->layer = 1;
-							for(AS_Node *iter = list.first; iter; iter = iter->next)
+							for(s32 i = 0; i < list.count; i++)
 							{
-								v2f pos = as_worldPosFromNode(&game->as_grid, *iter);
+								AS_Node *iter = list.v + i;
+								v2f pos = as_worldPosFromIndex(&game->as_grid, iter->index);
 								
 								v4f color = D_COLOR_RED;
-								if(iter == list.last)
+								if(iter->index == list.v[list.count - 1].index)
 								{
 									color = D_COLOR_YELLOW;
 								}
