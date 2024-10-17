@@ -41,6 +41,14 @@
 #define WIN32_LEAN_AND_MEAN
 #undef function
 #include <windows.h>
+
+#if 1
+extern "C" {
+	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001; //NVIDIA
+	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1; // AMD
+}
+#endif
+
 #define function static
 #else
 #include <string.h>
@@ -50,6 +58,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #endif
+
+
 
 #include <base.cpp>
 
@@ -652,6 +662,7 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 				
 				if (!contains_node)
 				{
+					Assert(open.count < open.size);
 					open.v[open.count++] = *iter;
 				}
 				else
@@ -669,6 +680,8 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 struct Game
 {
 	Arena *arena;
+	Arena *frame;
+	
 	EntityStore e_store;
 	Camera cam;
 	b32 initialized;
@@ -892,53 +905,180 @@ function ED_CUSTOM_TAB(console_panel)
 	}
 }
 
+struct ProfilerCycle
+{
+	ProfilerCycle *first;
+	ProfilerCycle *last;
+	
+	ProfilerCycle *next;
+	ProfilerCycle *prev;
+	
+	char *name;
+	u64 cc;
+	u64 hc;
+	DEBUG_CYCLE_COUNTER id;
+};
+
 struct Profiler
 {
-	f32 cc[DEBUG_CYCLE_COUNTER_COUNT];
+	Arena *arena;
+	
 	f32 delta;
 	f32 last_delta;
 	f32 update_timer;
+	
+	ProfilerCycle *root;
+	b32 initialized;
+	
+	struct
+	{
+		ProfilerCycle *top;
+		ProfilerCycle *next;
+	}parent_stack;
 };
 
+function void pushProfilerCycleParent(Profiler *profiler, ProfilerCycle *parent)
+{
+	profiler->parent_stack.next = profiler->parent_stack.top;
+	profiler->parent_stack.top = parent;
+}
+
+function void popProfilerCycleParent(Profiler *profiler)
+{
+	profiler->parent_stack.top = profiler->parent_stack.next;
+}
+
+#define DeferLoop(begin, end) for(int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
+
+#define profilerParent(profiler, parent) DeferLoop(pushProfilerCycleParent(profiler, parent), popProfilerCycleParent(profiler))
+
+function ProfilerCycle *allocProfilerCycle(Profiler *profiler, DEBUG_CYCLE_COUNTER id)
+{
+	ProfilerCycle *out = push_struct(profiler->arena, ProfilerCycle);
+	
+	out->name = debug_cycle_to_str[id];
+	out->id = id;
+	out->cc = tcxt->counters_last[id].cycle_count;
+	
+	ProfilerCycle *root = profiler->parent_stack.top;
+	
+	if(!root->last)
+	{
+		root->last = root->first = out;
+	}
+	else
+	{
+		out->prev = root->last;
+		root->last = root->last->next = out;
+	}
+	
+	return out;
+}
+
 // TODO(mizu): Sort the times and do nesting. It's very hard to tell otherwise
+
+function void profilerCycleChildren(UI_Context *cxt, ProfilerCycle *root, u64 level)
+{
+	for(s32 i = 0; i < level; i++)
+	{
+		//printf(" ");
+	}
+	//printf("%s\n", root->name);
+	
+	if(root->name)
+	{
+		ui_size_kind(cxt, UI_SizeKind_ChildrenSum)
+			ui_row(cxt)
+		{
+			ui_size_kind(cxt, UI_SizeKind_Pixels)
+				ui_pref_width(cxt, 40 * (level) - 40)
+			{
+				ui_spacer(cxt);
+			}
+			ui_size_kind(cxt, UI_SizeKind_TextContent)
+			{
+				ui_labelf(cxt, "%s %llu", root->name, root->cc);
+			}
+		}
+	}
+	
+	for(ProfilerCycle *cur = root->first; cur; cur = cur->next)
+	{
+		profilerCycleChildren(cxt, cur, level + 1);
+	}
+};
+
+function void profilerCycleChildrenUpdate(ProfilerCycle *root, f32 update_timer)
+{
+	if(update_timer > 0.4)
+	{
+		root->cc = tcxt->counters_last[root->id].cycle_count;
+	}
+	
+	for(ProfilerCycle *cur = root->first; cur; cur = cur->next)
+	{
+		profilerCycleChildrenUpdate(cur, update_timer);
+	}
+};
 
 function ED_CUSTOM_TAB(profiler_panel)
 {
 	Profiler *profiler = (Profiler*)user_data;
+	
+	if(!profiler->initialized)
+	{
+		profiler->initialized = 1;
+		profiler->arena = arenaAlloc();
+		
+		profiler->root = push_struct(profiler->arena, ProfilerCycle);
+		
+		profilerParent(profiler, profiler->root)
+		{
+			allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER);
+			ProfilerCycle *pf = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PATHFINDING);
+			
+			profilerParent(profiler, pf)
+			{
+				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_GET_NEIGHBORS);
+				ProfilerCycle *cn = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_CONTAINS_NODE);
+				
+				profilerParent(profiler, cn)
+				{
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_OPEN_CONTAINS_NODE);
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_CLOSED_CONTAINS_NODE);
+				}
+				
+				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_LOWEST_FCOST);
+				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_PREPARE_PATH);
+				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_REVERSE_PATH);
+			}
+		}
+	}
+	
 	profiler->update_timer += delta;
 	
-	if(profiler->update_timer > 0.2f)
+	if(profiler->update_timer > 0.4)
 	{
-		for(u32 i = 0; i < DEBUG_CYCLE_COUNTER_COUNT; i++)
-		{
-			profiler->cc[i] = tcxt->counters_last[i].cycle_count;
-		}
-		
 		profiler->delta = delta;
-		
+	}
+	
+	profilerCycleChildrenUpdate(profiler->root, profiler->update_timer);
+	
+	if(profiler->update_timer > 0.4)
+	{
 		profiler->update_timer = 0;
 	}
 	
-	if(profiler->last_delta * 1000 > 25)
-	{
-		volatile int _____i = 0;
-	}
-	
-	profiler->last_delta = profiler->delta;
-	
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
-		for(u32 i = 0; i < DEBUG_CYCLE_COUNTER_COUNT; i++)
-		{
-			ui_labelf(window->cxt, "%s : %.f #%d", debug_cycle_to_str[i], profiler->cc[i]);
-		}
+		profilerCycleChildren(window->cxt, profiler->root, 0);
 		
 		ui_labelf(window->cxt, "ft : %.fms", profiler->delta * 1000);
 		ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
 		ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
 		ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
 	}
-	
+	printf("\n\n");
 	TEX_Handle key = a_keyFromPath(str8_lit("debug/toppema.png"), font_params);
 	R_Handle face = a_handleFromKey(key);
 	
@@ -947,7 +1087,6 @@ function ED_CUSTOM_TAB(profiler_panel)
 	{
 		ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
 	}
-	
 }
 
 function ED_CUSTOM_TAB(game_update_and_render)
@@ -961,6 +1100,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	{
 		game->initialized = 1;
 		game->arena = arenaAlloc();
+		game->frame = arenaAlloc();
 		
 		pls_print("hello");
 		pls_print("\n");
@@ -975,6 +1115,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			game->profiler_tab->custom_draw = profiler_panel;
 			
 			Profiler *profiler = push_struct(game->arena, Profiler);
+			profiler->arena = game->frame;
 			game->profiler_tab->custom_drawData = profiler;
 		}
 		
@@ -1239,6 +1380,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			}
 		}
 	}
+	
+	ArenaTemp tempFrame = arenaTempBegin(game->frame);
 	
 	// update camera
 	{
@@ -1615,6 +1758,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		ed_floatingTab(delta, str8_lit("Console"), game->console_tab);
 	}
 	
+	arenaTempEnd(&tempFrame);
 }
 
 int main(int argc, char **argv)
@@ -1634,7 +1778,7 @@ int main(int argc, char **argv)
 	ed_init();
 	os_init();
 	
-	SDL_GL_SetSwapInterval(1);
+	SDL_GL_SetSwapInterval(0);
 	ED_Window *game_win = ed_openWindow(ED_WindowFlags_HasSurface | ED_WindowFlags_ChildrenSum, v2f{{251,50}}, v2f{{960, 540}});
 	
 	ED_Panel *main_panel = ed_openPanel(game_win, Axis2_X, 1);

@@ -774,14 +774,14 @@ enum DEBUG_CYCLE_COUNTER
 	DEBUG_CYCLE_COUNTER_COUNT
 };
 
-read_only char *debug_cycle_to_str[DEBUG_CYCLE_COUNTER_COUNT] = 
+char *debug_cycle_to_str[DEBUG_CYCLE_COUNTER_COUNT] = 
 {
 	"update & render",
 	"pathfinding",
-	"pf get neighbours",
-	"pf contains node",
-	"pf open contains node",
-	"pf closed contains node",
+	"get neighbours",
+	"contains node",
+	"open set",
+	"closed set",
 	"lowest cost",
 	"prepare path",
 	"reverse path"
