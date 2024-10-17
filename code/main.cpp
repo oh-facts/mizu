@@ -306,9 +306,16 @@ struct AS_Node
 	b32 unwalkable;
 	
 	v2s index;
-	
 	AS_Node *parent;
+	
+	AS_Node *next;
+	u64 key;
 };
+
+function s32 as_fcost(AS_Node *node)
+{
+	return node->g + node->h;
+}
 
 struct AS_NodeArray
 {
@@ -317,9 +324,89 @@ struct AS_NodeArray
 	u64 size;
 };
 
-function s32 as_fcost(AS_Node *node)
+struct AS_NodeSlots
 {
-	return node->g + node->h;
+	AS_Node *first;
+	AS_Node *last;
+};
+
+struct AS_HashMap
+{
+	AS_NodeSlots *slots;
+	u64 count;
+};
+
+function AS_HashMap as_createHashMap(Arena *arena, u64 count)
+{
+	AS_HashMap out = {};
+	out.count = count;
+	out.slots = push_array(arena, AS_NodeSlots, out.count);
+	return out;
+}
+
+// stupid fucking lousy hash function. Use something better later.
+// 2 signed 32 bits -> unsigned 64 bit key
+function u64 as_keyFromIndex(v2s index)
+{
+	u64 out = {};
+	out = index.x * index.y;
+	return out;
+}
+
+function AS_Node *as_nodeFromKey(Arena *arena, AS_HashMap *map, AS_Node other)
+{
+	u64 key = as_keyFromIndex(other.index);
+	u64 slot = key % map->count;
+	AS_Node *node = map->slots[slot].first;
+	
+	while(node)
+	{
+		if(key == node->key && other.index == node->index)
+		{
+			break;
+		}
+		
+		node = node->next;
+	}
+	
+	if(!node)
+	{
+		node = push_struct(arena, AS_Node);
+		*node = {};
+		
+		if(map->slots[slot].last)
+		{
+			map->slots[slot].last = map->slots[slot].last->next = node;
+		}
+		else
+		{
+			map->slots[slot].last = map->slots[slot].first = node;
+		}
+	}
+	
+	*node = other;
+	node->key = key;
+	
+	return node;
+}
+
+function b32 as_containsNodeinHash(AS_HashMap *map, v2s index)
+{
+	u64 key = as_keyFromIndex(index);
+	u64 slot = key % map->count;
+	AS_Node *node = map->slots[slot].first;
+	
+	while(node)
+	{
+		if((key == node->key) && (index == node->index))
+		{
+			break;
+		}
+		
+		node = node->next;
+	}
+	
+	return !!node;
 }
 
 struct AS_Grid
@@ -399,7 +486,6 @@ function b32 as_containsNode(AS_NodeArray *list, AS_Node node)
 	BEGIN_TIMED_BLOCK(PF_CONTAINS_NODE);
 	b32 out = 0;
 	
-#if 0
 	for(s32 i = 0; i < list->count; i++)
 	{
 		AS_Node *iter = list->v + i;
@@ -409,9 +495,7 @@ function b32 as_containsNode(AS_NodeArray *list, AS_Node node)
 			break;
 		}
 	}
-#else
 	
-#endif
 	END_TIMED_BLOCK(PF_CONTAINS_NODE);
 	return out;
 }
@@ -425,7 +509,7 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 	AS_Node end = as_nodeFromPos(grid, end_pos);
 	
 	AS_NodeArray open = as_nodeReserve(arena, 1024);
-	AS_NodeArray closed = as_nodeReserve(arena, 1024);
+	AS_HashMap closed = as_createHashMap(arena, 1024);
 	
 	open.v[open.count++] = start;
 	
@@ -450,8 +534,6 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 		}
 		END_TIMED_BLOCK(PF_LOWEST_FCOST);
 		
-		
-		
 		{
 			AS_Node newnode = *cur;
 			
@@ -469,11 +551,9 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 			
 			// add to closed
 			{
-				AS_Node *closed_node = closed.v + closed.count++;
-				*closed_node = newnode;
-				
-				cur = closed_node;
+				cur = as_nodeFromKey(arena, &closed, newnode);
 			}
+			
 		}
 		
 		if(cur->index == end.index)
@@ -549,7 +629,8 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 			AS_Node *iter = neighbours.v + i;
 			
 			BEGIN_TIMED_BLOCK(PF_CLOSED_CONTAINS_NODE);
-			b32 contains_close_node = as_containsNode(&closed, *iter);
+			
+			b32 contains_close_node = as_containsNodeinHash(&closed, iter->index);
 			END_TIMED_BLOCK(PF_CLOSED_CONTAINS_NODE);
 			
 			if (iter->unwalkable || contains_close_node)
@@ -573,7 +654,10 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 				{
 					open.v[open.count++] = *iter;
 				}
-				
+				else
+				{
+					volatile int ee = 0;
+				}
 			}
 		}
 	}
