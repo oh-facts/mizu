@@ -3,7 +3,7 @@
 read_only Str8 A_ASSET_DIRECTORY = str8_lit("../data/assets/");
 
 // djb2
-function u64 a_hash(Str8 str)
+function u64 tex_hash(Str8 str)
 {
 	u64 hash = 5381;
 	int c;
@@ -24,10 +24,10 @@ struct TEX_Handle
 	R_Texture_params params;
 };
 
-function TEX_Handle a_keyFromPath(Str8 path, R_Texture_params params)
+function TEX_Handle tex_keyFromPath(Str8 path, R_Texture_params params)
 {
 	TEX_Handle out = {};
-	out.v = a_hash(path);
+	out.v = tex_hash(path);
 	out.path = path;
 	out.params = params;
 	return out;
@@ -88,7 +88,7 @@ global A_State *a_state;
 // Should I only free as many as required, or as many as can be? Batch alloc / dealloc is better, no? I need to test this with massive textures to understand.
 // 3) Lastly, all alloc and eviction must happen on separate thread
 
-function void a_init()
+function void tex_init()
 {
 	Arena *arena = arenaAlloc(100, Megabytes(1));
 	a_state = push_struct(arena, A_State);
@@ -222,7 +222,7 @@ function void a_evict()
 	}
 }
 
-function R_Handle a_handleFromKey(TEX_Handle key)
+function R_Handle tex_handleFromKey(TEX_Handle key)
 {
 	u64 slot = key.v % a_state->num_slots;
 	

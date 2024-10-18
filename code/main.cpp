@@ -1,11 +1,4 @@
 #define _CRT_SECURE_NO_WARNINGS
-// TODO(mizu): arbitrary tile sizes
-// TODO(mizu): better visualization
-// TODO(mizu): astar anti fuckup
-// TODO(mizu): flexible astar
-// TODO(mizu): neglect ui like u neglects i. This is deeper than the economic
-// and financial state of the world
-// TODO(mizu): combat
 
 #define ED_THEME_BG v4f{{0.643, 0, 0.357, 1}}
 #define ED_THEME_BG_FROSTED v4f{{0.643, 0, 0.357, 0.83}}
@@ -42,6 +35,8 @@
 #undef function
 #include <windows.h>
 
+// NOTE(mizu):  doesn't work as expected. please help. meant to use discrete over
+// integreted gfx card
 #if 1
 extern "C" {
 	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001; //NVIDIA
@@ -59,8 +54,6 @@ extern "C" {
 #include <sys/mman.h>
 #endif
 
-
-
 #include <base.cpp>
 
 #if defined(OS_WIN32)
@@ -72,6 +65,8 @@ extern "C" {
 #include <os.cpp>
 #include <render.cpp>
 #include <texture.cpp>
+
+// TODO(mizu):  Unfuck this font "system"
 
 // must be a way to map these to px sizes so I don't have to do this
 // good for arial
@@ -281,7 +276,7 @@ struct Camera
 	EntityHandle follow;
 };
 
-function m4f_ortho_proj cam_get_proj_inv(Camera *cam)
+function m4f_ortho_proj camGetProj(Camera *cam)
 {
 	f32 z = cam->zoom;
 	f32 za = z * cam->aspect;
@@ -290,21 +285,12 @@ function m4f_ortho_proj cam_get_proj_inv(Camera *cam)
 	return out;
 }
 
-function m4f cam_get_proj(Camera *cam)
-{
-	f32 z = cam->zoom;
-	f32 za = z * cam->aspect;
-	
-	m4f out = m4f_ortho(-za, za, -z, z, 0.001, 1000).fwd;
-	return out;
-}
-
-function m4f cam_get_view(Camera *cam)
+function m4f camGetView(Camera *cam)
 {
 	return m4f_look_at(cam->pos, cam->pos + cam->target, cam->up);
 }
 
-function void cam_update(Camera *cam, f32 delta)
+function void camUpdate(Camera *cam, f32 delta)
 {
 	cam->pos += cam->mv * cam->speed * delta;
 }
@@ -667,7 +653,7 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 				}
 				else
 				{
-					volatile int ee = 0;
+					//volatile int ee = 0;
 				}
 			}
 		}
@@ -676,6 +662,13 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 	END_TIMED_BLOCK(PATHFINDING);
 	return out;
 }
+
+// TODO(mizu): arbitrary tile sizes
+// TODO(mizu): better visualization
+// TODO(mizu): Better theming convention
+// TODO(mizu): Also consider if box2d is overkill
+// TODO(mizu): Consider C for named paramaters. C++20 in their infinite wisdom added
+// what C had in 99 but still fucked it up.
 
 struct Game
 {
@@ -717,6 +710,7 @@ struct Lister
 
 function ED_CUSTOM_TAB(lister_panel)
 {
+	BEGIN_TIMED_BLOCK(ED_LISTER);
 	Lister *lister = (Lister*)(user_data); 
 	
 	Game *game = lister->game;
@@ -778,11 +772,11 @@ function ED_CUSTOM_TAB(lister_panel)
 						UI_Widget *row = window->cxt->parent_stack.top->v;
 						row->padding[0] = 15;
 						
-						ui_labelf(window->cxt, "position: [%.f, %.f] #%d", entity->pos.x, entity->pos.y, i);
-						ui_labelf(window->cxt, "layer: %d #%d", entity->layer, i);
-						ui_labelf(window->cxt, "speed: %.f #%d", entity->speed, i);
-						ui_labelf(window->cxt, "health: %.f #%d", entity->health, i);
-						ui_labelf(window->cxt, "art: %.*s #%d", str8_varg(art_paths[entity->art]), i);
+						ui_labelf(window->cxt, "position: [%.f, %.f]", entity->pos.x, entity->pos.y);
+						ui_labelf(window->cxt, "layer: %d", entity->layer);
+						ui_labelf(window->cxt, "speed: %.f", entity->speed);
+						ui_labelf(window->cxt, "health: %.f", entity->health);
+						ui_labelf(window->cxt, "art: %.*s", str8_varg(art_paths[entity->art]));
 						ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 							ui_pref_height(window->cxt, 16)
 						{
@@ -864,6 +858,7 @@ function ED_CUSTOM_TAB(lister_panel)
 			
 		}
 	}
+	END_TIMED_BLOCK(ED_LISTER);
 }
 
 struct DebugLogBuffer
@@ -899,11 +894,21 @@ void pls_print(char *fmt, ...)
 
 function ED_CUSTOM_TAB(console_panel)
 {
+	BEGIN_TIMED_BLOCK(ED_CONSOLE);
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
 		ui_labelf(window->cxt, "%s", debug_log_buffer.buf);
 	}
+	END_TIMED_BLOCK(ED_CONSOLE);
 }
+
+// TODO(mizu): Sort the times
+// This has been your best idea yet. Use this for the entity list too. Call it something
+// more generic. This system can remember stuff like open / closed links, link that should
+// start closed, etc. Also, for the entity list, when you click on a leaf, render either a
+// slider or a text edit or/and whatever makes it easy to modify that field.
+// for the profiler, consider rendering it like this .... [ ] [ ] such that they are all
+// aligned with varying number of .... to help with the alignment
 
 struct ProfilerCycle
 {
@@ -913,10 +918,20 @@ struct ProfilerCycle
 	ProfilerCycle *next;
 	ProfilerCycle *prev;
 	
+	ProfilerCycle *parent;
+	
+	b32 collapsed;
+	
 	char *name;
 	u64 cc;
 	u64 hc;
 	DEBUG_CYCLE_COUNTER id;
+};
+
+struct ProfilerCycleMeta
+{
+	ProfilerCycleMeta *next;
+	ProfilerCycle *v;
 };
 
 struct Profiler
@@ -932,20 +947,31 @@ struct Profiler
 	
 	struct
 	{
-		ProfilerCycle *top;
-		ProfilerCycle *next;
+		ProfilerCycleMeta *top;
+		ProfilerCycleMeta *next;
 	}parent_stack;
 };
 
 function void pushProfilerCycleParent(Profiler *profiler, ProfilerCycle *parent)
 {
-	profiler->parent_stack.next = profiler->parent_stack.top;
-	profiler->parent_stack.top = parent;
+	ProfilerCycleMeta *meta = push_struct(profiler->arena, ProfilerCycleMeta);
+	*meta = {};
+	meta->v = parent;
+	
+	if(!profiler->parent_stack.top)
+	{
+		profiler->parent_stack.top = meta;
+	}
+	else
+	{
+		meta->next = profiler->parent_stack.top;
+		profiler->parent_stack.top = meta;
+	}
 }
 
 function void popProfilerCycleParent(Profiler *profiler)
 {
-	profiler->parent_stack.top = profiler->parent_stack.next;
+	profiler->parent_stack.top = profiler->parent_stack.top->next;
 }
 
 #define DeferLoop(begin, end) for(int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
@@ -959,8 +985,9 @@ function ProfilerCycle *allocProfilerCycle(Profiler *profiler, DEBUG_CYCLE_COUNT
 	out->name = debug_cycle_to_str[id];
 	out->id = id;
 	out->cc = tcxt->counters_last[id].cycle_count;
+	out->hc = tcxt->counters_last[id].hit_count;
 	
-	ProfilerCycle *root = profiler->parent_stack.top;
+	ProfilerCycle *root = profiler->parent_stack.top->v;
 	
 	if(!root->last)
 	{
@@ -972,57 +999,151 @@ function ProfilerCycle *allocProfilerCycle(Profiler *profiler, DEBUG_CYCLE_COUNT
 		root->last = root->last->next = out;
 	}
 	
+	out->parent = root;
+	
 	return out;
 }
 
-// TODO(mizu): Sort the times and do nesting. It's very hard to tell otherwise
-
-function void profilerCycleChildren(UI_Context *cxt, ProfilerCycle *root, u64 level)
+// TODO(mizu): allow for arbitrary sizes, then add to base
+function void u64_fmt(char *buffer, size_t buffer_size, u64 number)
 {
-	for(s32 i = 0; i < level; i++)
+	char temp[64];
+	s32 len = stbsp_snprintf(temp, sizeof(temp), "%llu" ,number);
+	
+	s32 commas = (len - 1) / 3;
+	s32 new_len = len + commas;
+	
+	s32 j = new_len;
+	buffer[j--] = '\0';
+	
+	for (int i = len - 1, count = 0; i >= 0; i--, count++)
+	{
+		if (count > 0 && count % 3 == 0)
+		{
+			buffer[j--] = ',';
+		}
+		buffer[j--] = temp[i];
+	}
+}
+
+/*
+for(s32 i = 0; i < level; i++)
 	{
 		//printf(" ");
 	}
 	//printf("%s\n", root->name);
+ */
+
+function void renderProfilerCycles(UI_Context *cxt, ProfilerCycle *root, s32 level)
+{
+	read_only f32 size = 24;
 	
-	if(root->name)
+	TEX_Handle key = tex_keyFromPath(str8_lit("editor/profiler_tree.png"), font_params);
+	R_Handle img = tex_handleFromKey(key);
+	
+	ui_size_kind(cxt, UI_SizeKind_ChildrenSum)
+		ui_row(cxt)
 	{
-		ui_size_kind(cxt, UI_SizeKind_ChildrenSum)
-			ui_row(cxt)
+		ui_size_kind(cxt, UI_SizeKind_Pixels)
+			ui_pref_size(cxt, size)
 		{
-			ui_size_kind(cxt, UI_SizeKind_Pixels)
-				ui_pref_width(cxt, 40 * (level) - 40)
+			ProfilerCycle *parent = root->parent;
+			
+			b32 temp[8] = {};
+			
+			for (s32 i = 0; i < level; i++)
 			{
-				ui_spacer(cxt);
+				// TODO(mizu): cellotape
+				AssertAlways(i < 8);
+				
+				if (parent && parent->next)
+				{
+					temp[i] = 0;
+				}
+				else
+				{
+					temp[i] = 1;
+				}
+				if (parent) parent = parent->parent;
 			}
-			ui_size_kind(cxt, UI_SizeKind_TextContent)
+			
+			for (s32 i = level - 1; i >= 0; i--)
 			{
-				ui_labelf(cxt, "%s %llu", root->name, root->cc);
+				if(temp[i] == 0)
+				{
+					// `|`
+					Rect src = rect(0, 0, 0.333, 1);
+					ui_image(cxt, img, src, ED_THEME_TEXT, str8_lit(""));
+				}
+				else
+				{
+					ui_spacer(cxt);
+				}
+			}
+			
+			Rect src = {};
+			
+			// L symbol
+			if(!root->next)
+			{
+				src = rect(0.333, 0, 0.666, 1);
+			}
+			// |- symbol
+			else
+			{
+				src = rect(0.666, 0, 1, 1);
+			}
+			
+			ui_image(cxt, img, src, ED_THEME_TEXT, str8_lit(""));
+		}
+		
+		ui_size_kind(cxt, UI_SizeKind_TextContent)
+		{
+			if(ui_labelf(cxt, "%s : ", root->name).active)
+			{
+				root->collapsed = !root->collapsed;
+			}
+			ui_text_color(cxt, (v4f{{248 / 255.f, 229 / 255.f, 238 / 255.f, 1}}))
+			{
+				char temp[64];
+				u64_fmt(temp, 64, root->cc);
+				
+				ui_labelf(cxt, "[%s] ", temp);
+			}
+			ui_text_color(cxt, (v4f{{163 / 255.f, 196 / 255.f, 188 / 255.f, 1}}))
+			{
+				ui_labelf(cxt, "[%u]", root->hc);
 			}
 		}
 	}
 	
-	for(ProfilerCycle *cur = root->first; cur; cur = cur->next)
+	
+	if(!root->collapsed)
 	{
-		profilerCycleChildren(cxt, cur, level + 1);
+		for(ProfilerCycle *cur = root->first; cur; cur = cur->next)
+		{
+			renderProfilerCycles(cxt, cur, level + 1);
+		}
 	}
-};
+}
 
-function void profilerCycleChildrenUpdate(ProfilerCycle *root, f32 update_timer)
+function void updateProfilerCycles(ProfilerCycle *root, f32 update_timer)
 {
 	if(update_timer > 0.4)
 	{
 		root->cc = tcxt->counters_last[root->id].cycle_count;
+		root->hc = tcxt->counters_last[root->id].hit_count;
 	}
 	
 	for(ProfilerCycle *cur = root->first; cur; cur = cur->next)
 	{
-		profilerCycleChildrenUpdate(cur, update_timer);
+		updateProfilerCycles(cur, update_timer);
 	}
 };
 
 function ED_CUSTOM_TAB(profiler_panel)
 {
+	BEGIN_TIMED_BLOCK(ED_PROFILER);
 	Profiler *profiler = (Profiler*)user_data;
 	
 	if(!profiler->initialized)
@@ -1034,27 +1155,38 @@ function ED_CUSTOM_TAB(profiler_panel)
 		
 		profilerParent(profiler, profiler->root)
 		{
-			allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER);
-			ProfilerCycle *pf = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PATHFINDING);
+			ProfilerCycle *update_render = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_UPDATE_AND_RENDER);
 			
-			profilerParent(profiler, pf)
+			profilerParent(profiler, update_render)
 			{
-				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_GET_NEIGHBORS);
-				ProfilerCycle *cn = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_CONTAINS_NODE);
+				ProfilerCycle *pf = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PATHFINDING);
 				
-				profilerParent(profiler, cn)
+				profilerParent(profiler, pf)
 				{
-					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_OPEN_CONTAINS_NODE);
-					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_CLOSED_CONTAINS_NODE);
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_GET_NEIGHBORS);
+					ProfilerCycle *cn = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_CONTAINS_NODE);
+					
+					profilerParent(profiler, cn)
+					{
+						allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_OPEN_CONTAINS_NODE);
+						allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_CLOSED_CONTAINS_NODE);
+					}
+					
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_LOWEST_FCOST);
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_PREPARE_PATH);
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_REVERSE_PATH);
+				}
+				ProfilerCycle *ed = allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_EDITOR);
+				profilerParent(profiler, ed)
+				{
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_ED_LISTER);
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_ED_PROFILER);
+					allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_ED_CONSOLE);
 				}
 				
-				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_LOWEST_FCOST);
-				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_PREPARE_PATH);
-				allocProfilerCycle(profiler, DEBUG_CYCLE_COUNTER_PF_REVERSE_PATH);
 			}
 		}
 	}
-	
 	profiler->update_timer += delta;
 	
 	if(profiler->update_timer > 0.4)
@@ -1062,7 +1194,7 @@ function ED_CUSTOM_TAB(profiler_panel)
 		profiler->delta = delta;
 	}
 	
-	profilerCycleChildrenUpdate(profiler->root, profiler->update_timer);
+	updateProfilerCycles(profiler->root, profiler->update_timer);
 	
 	if(profiler->update_timer > 0.4)
 	{
@@ -1071,22 +1203,28 @@ function ED_CUSTOM_TAB(profiler_panel)
 	
 	ui_size_kind(window->cxt, UI_SizeKind_TextContent)
 	{
-		profilerCycleChildren(window->cxt, profiler->root, 0);
+		f32 ft = profiler->delta * 1000;
+		f32 fps = 1 / profiler->delta;
+		ui_labelf(window->cxt, "%.fms | %.ffps", ft, fps);
+		ui_labelf(window->cxt, "name [cycles] [hits]");
 		
-		ui_labelf(window->cxt, "ft : %.fms", profiler->delta * 1000);
+		renderProfilerCycles(window->cxt, profiler->root->first, 0);
+		
 		ui_labelf(window->cxt, "cmt: %.1f MB", total_cmt * 0.000001f);
 		ui_labelf(window->cxt, "res: %.1f GB", total_res * 0.000000001f);
 		ui_labelf(window->cxt, "textures: %.1f MB", a_state->tex_mem * 0.000001);
 	}
-	printf("\n\n");
-	TEX_Handle key = a_keyFromPath(str8_lit("debug/toppema.png"), font_params);
-	R_Handle face = a_handleFromKey(key);
+	
+	TEX_Handle key = tex_keyFromPath(str8_lit("debug/toppema.png"), font_params);
+	R_Handle face = tex_handleFromKey(key);
 	
 	ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		ui_pref_size(window->cxt, 100)
 	{
 		ui_image(window->cxt, face, rect(0,0,1,1), D_COLOR_WHITE, str8_lit("debug/toppema.png"));
 	}
+	
+	END_TIMED_BLOCK(ED_PROFILER);
 }
 
 function ED_CUSTOM_TAB(game_update_and_render)
@@ -1111,17 +1249,16 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		
 		// profiler tab
 		{
-			game->profiler_tab = ed_openFloatingTab(window->first_panel, "Profiler", {{1513, 0}}, {{400, 600}});
+			game->profiler_tab = ed_openFloatingTab(window->first_panel, "Profiler", {{1459, 0}}, {{450, 600}});
 			game->profiler_tab->custom_draw = profiler_panel;
 			
 			Profiler *profiler = push_struct(game->arena, Profiler);
-			profiler->arena = game->frame;
 			game->profiler_tab->custom_drawData = profiler;
 		}
 		
 		// lister tab
 		{
-			game->lister_tab = ed_openFloatingTab(window->first_panel, "Lister", {{1076, 0}}, {{400, 600}});
+			game->lister_tab = ed_openFloatingTab(window->first_panel, "Lister", {{1021, 0}}, {{400, 600}});
 			game->lister_tab->custom_draw = lister_panel;
 			Lister *lister = push_struct(game->arena, Lister);
 			lister->game = game;
@@ -1149,8 +1286,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			ui_pref_size(window->cxt, 60)
 			ui_size_kind(window->cxt, UI_SizeKind_Pixels)
 		{
-			TEX_Handle key = a_keyFromPath(str8_lit("editor/pause_play.png"), font_params);
-			R_Handle pause_play = a_handleFromKey(key);
+			TEX_Handle key = tex_keyFromPath(str8_lit("editor/pause_play.png"), font_params);
+			R_Handle pause_play = tex_handleFromKey(key);
 			restart = ui_imagef(window->cxt, pause_play, rect(0, 0, 0.33, 1), ED_THEME_TEXT, "restart").active;
 			
 			game->paused = ui_imagef(window->cxt, pause_play, rect(0.33, 0, 0.66, 1), ED_THEME_TEXT, "paused").toggle;
@@ -1163,6 +1300,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	{
 		game->start = 0;
 	}
+	
+	ArenaTemp tempFrame = arenaTempBegin(game->frame);
 	
 	if(game->paused)
 	{
@@ -1381,8 +1520,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		}
 	}
 	
-	ArenaTemp tempFrame = arenaTempBegin(game->frame);
-	
 	// update camera
 	{
 		cam->zoom = 135 * game->debug_zoom;
@@ -1397,11 +1534,11 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	d_push_target(tab->target);
 	
 	{
-		m4f_ortho_proj world_proj_inv = cam_get_proj_inv(cam);
+		m4f_ortho_proj world_proj_inv = camGetProj(cam);
 		
 		m4f world_proj = world_proj_inv.fwd;
 		
-		m4f world_view = cam_get_view(cam);
+		m4f world_view = camGetView(cam);
 		
 		m4f world_proj_view = world_proj * world_view * m4f_make_scale({{1, -1, 1}});
 		d_push_proj_view(world_proj_view);
@@ -1518,7 +1655,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			
 			if(e->flags & EntityFlags_Follow)
 			{
-				ArenaTemp temp = arenaTempBegin(game->arena);
 				Entity *target = entityFromHandle(e->target);
 				
 				if(target)
@@ -1529,7 +1665,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 					
 					if (length2 > 50)
 					{
-						AS_NodeArray list = as_findPath(game->arena, &game->as_grid, e->pos, target->pos);
+						AS_NodeArray list = as_findPath(game->frame, &game->as_grid, e->pos, target->pos);
 						
 						if(list.count > 0)
 						{
@@ -1569,8 +1705,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 								sprite->layer = 1;
 							}
 						}
-						
-						arenaTempEnd(&temp);
 					}
 					else
 					{
@@ -1643,8 +1777,8 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				}
 				else
 				{
-					TEX_Handle key = a_keyFromPath(art_paths[e->art], pixel_params);
-					sprite->tex = a_handleFromKey(key);
+					TEX_Handle key = tex_keyFromPath(art_paths[e->art], pixel_params);
+					sprite->tex = tex_handleFromKey(key);
 				}
 				sprite->basis.y = e->basis.y;
 				sprite->layer = e->layer;
@@ -1752,11 +1886,13 @@ function ED_CUSTOM_TAB(game_update_and_render)
 	}
 	
 	// render tabs
+	BEGIN_TIMED_BLOCK(EDITOR);
 	{
 		ed_floatingTab(delta, str8_lit("lister"), game->lister_tab);
 		ed_floatingTab(delta, str8_lit("profiler"), game->profiler_tab);
 		ed_floatingTab(delta, str8_lit("Console"), game->console_tab);
 	}
+	END_TIMED_BLOCK(EDITOR);
 	
 	arenaTempEnd(&tempFrame);
 }
@@ -1790,7 +1926,7 @@ int main(int argc, char **argv)
 	r_opengl_init();
 	
 	d_init();
-	a_init();
+	tex_init();
 	
 	char codepoints[] =
 	{

@@ -339,8 +339,8 @@ function UI_Widget *ed_titlebar(Str8 title, s32 i, UI_Context *cxt, v2f size, b3
 		menu_bar->flags |= UI_Flags_has_bg | UI_Flags_rounded_corners;;
 		menu_bar->bg_color = ED_THEME_TITLEBAR;
 		menu_bar->radius = 15 / 1.8f;
-		TEX_Handle key = a_keyFromPath(str8_lit("editor/xp_titlebar.png"), font_params);
-		R_Handle titlebar_img = a_handleFromKey(key);
+		TEX_Handle key = tex_keyFromPath(str8_lit("editor/xp_titlebar.png"), font_params);
+		R_Handle titlebar_img = tex_handleFromKey(key);
 		
 		// hide button
 		ui_hover_color(cxt, (v4f{{0.4, 0.4, 0.4, 1}}))

@@ -771,6 +771,10 @@ enum DEBUG_CYCLE_COUNTER
 	DEBUG_CYCLE_COUNTER_PF_LOWEST_FCOST,
 	DEBUG_CYCLE_COUNTER_PF_PREPARE_PATH,
 	DEBUG_CYCLE_COUNTER_PF_REVERSE_PATH,
+	DEBUG_CYCLE_COUNTER_EDITOR,
+	DEBUG_CYCLE_COUNTER_ED_LISTER,
+	DEBUG_CYCLE_COUNTER_ED_PROFILER,
+	DEBUG_CYCLE_COUNTER_ED_CONSOLE,
 	DEBUG_CYCLE_COUNTER_COUNT
 };
 
@@ -784,7 +788,11 @@ char *debug_cycle_to_str[DEBUG_CYCLE_COUNTER_COUNT] =
 	"closed set",
 	"lowest cost",
 	"prepare path",
-	"reverse path"
+	"reverse path",
+	"editor",
+	"lister",
+	"profiler",
+	"console",
 };
 
 struct debug_cycle_counter

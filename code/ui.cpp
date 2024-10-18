@@ -254,6 +254,13 @@ function UI_Widget *ui_makeWidget(UI_Context *cxt, Str8 text)
 	{
 		widget = ui_widgetFromHash(cxt, hash);
 		
+		// duplicate
+		if(widget && (widget->last_frame_touched_index == cxt->frames))
+		{
+			widget = push_struct(cxt->frame_arena, UI_Widget);
+			*widget = {};
+		}
+		
 		// TODO(mizu): stop hardcoding time duration. use timer_max. Do something more descriptive
 		// later to handle other kinds of transitions. (cold->hot , hot->active, active->hot
 		// hot->cold, active->cold, etc.
