@@ -1,5 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#define DeferLoop(begin, end) for(int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
+
 #define ED_THEME_BG v4f{{0.643, 0, 0.357, 1}}
 #define ED_THEME_BG_FROSTED v4f{{0.643, 0, 0.357, 0.83}}
 #define ED_THEME_BG_DARKER v4f{{0, 0, 0, 0.2}}
@@ -189,8 +191,7 @@ struct Entity
 	v2f basis;
 	
 	b2BodyId body;
-	b2Polygon box;
-	b2Capsule caps;
+	b2ShapeId shape;
 	
 	EntityHandle target;
 	Entity *next;
@@ -668,7 +669,8 @@ function AS_NodeArray as_findPath(Arena *arena, AS_Grid *grid, v2f start_pos, v2
 // TODO(mizu): Better theming convention
 // TODO(mizu): Also consider if box2d is overkill
 // TODO(mizu): Consider C for named paramaters. C++20 in their infinite wisdom added
-// what C had in 99 but still fucked it up.
+// what C had in '99 but still fucked it up.
+// TODO(mizu): Fix collider visualization so you can work on combat
 
 struct Game
 {
@@ -791,7 +793,6 @@ function ED_CUSTOM_TAB(lister_panel)
 			{
 				ui_spacer(window->cxt);
 			}
-			
 		}
 	}
 	
@@ -973,8 +974,6 @@ function void popProfilerCycleParent(Profiler *profiler)
 {
 	profiler->parent_stack.top = profiler->parent_stack.top->next;
 }
-
-#define DeferLoop(begin, end) for(int _i_ = ((begin), 0); !_i_; _i_ += 1, (end))
 
 #define profilerParent(profiler, parent) DeferLoop(pushProfilerCycleParent(profiler, parent), popProfilerCycleParent(profiler))
 
@@ -1319,34 +1318,34 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		
 		game->start = 1;
 		
-		Entity *py = entity_alloc(store, EntityFlags_Control | EntityFlags_Dynamic);
-		py->pos = {{614, 408}};
-		py->size = {{64, 64}};
-		py->tint = D_COLOR_WHITE;
-		py->art = ArtKind_Impolo;
-		py->basis.y = 48;
-		py->layer = 1;
-		py->n = 2;
-		py->x = 3;
-		py->y = 3;
-		py->speed = 250;
-		py->health = 300;
-		py->name = str8_lit("impolo");
+		Entity *py = 0;
 		{
+			py = entity_alloc(store, EntityFlags_Control | EntityFlags_Dynamic);
+			py->pos = {{614, 408}};
+			py->size = {{64, 64}};
+			py->tint = D_COLOR_WHITE;
+			py->art = ArtKind_Impolo;
+			py->basis.y = 15;
+			py->layer = 1;
+			py->n = 2;
+			py->x = 3;
+			py->y = 3;
+			py->speed = 250;
+			py->health = 300;
+			py->name = str8_lit("impolo");
+			
 			b2BodyDef bodyDef = b2DefaultBodyDef();
 			bodyDef.type = b2_dynamicBody;
-			bodyDef.position = (b2Vec2){py->pos.x, py->pos.y};
+			bodyDef.position = (b2Vec2){py->pos.x + 10, py->pos.y};
+			
 			py->body = b2CreateBody(game->world, &bodyDef);
+			b2Body_SetFixedRotation(py->body, 1);
 			
-			// TODO(mizu): Temp! added small padding for now so i can slip through nooks. 
-			py->box = b2MakeBox(py->size.x / 4, py->size.y / 4);
-			
+			b2Capsule caps = b2Capsule{{-3, 15}, {3, 15}, 3};
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
-			shapeDef.density = 0.3f;
-			//shapeDef.friction = 0.3f;
-			
-			b2CreatePolygonShape(py->body, &shapeDef, &py->box);
+			py->shape = b2CreateCapsuleShape(py->body, &shapeDef, &caps);
 		}
+		
 		Entity *fox = 0;
 		{
 			fox = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
@@ -1354,7 +1353,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			fox->size = {{12, 26}};
 			fox->tint = D_COLOR_WHITE;
 			fox->art = ArtKind_Fox;
-			fox->basis.y = 65;
+			fox->basis.y = 12;
 			fox->layer = 1;
 			fox->n = 0;
 			fox->x = 1;
@@ -1369,19 +1368,15 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			bodyDef.type = b2_kinematicBody;
 			bodyDef.position = (b2Vec2){fox->pos.x, fox->pos.y};
 			fox->body = b2CreateBody(game->world, &bodyDef);
-			b2MassData mass = {};
-			mass.mass = 1000;
-			b2Body_SetMassData(fox->body, mass);
-			fox->caps = b2Capsule{{-10, 10}, {10}};
+			b2Body_SetFixedRotation(fox->body, 1);
+			
+			b2Capsule caps = b2Capsule{{-3, 12}, {3, 12}, 3};
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
-			shapeDef.density = 1.f;
-			//shapeDef.friction = 0.3f;
-			b2CreateCapsuleShape(fox->body,&shapeDef, &fox->caps);
-			//b2CreatePolygonShape(fox->body, &shapeDef, &fox->box);
+			fox->shape = b2CreateCapsuleShape(fox->body, &shapeDef, &caps);
 		}
 		
 		// enemy
-#if 1
+#if 0
 		{
 			Entity *enemy = entity_alloc(store, EntityFlags_Dynamic | EntityFlags_Follow);
 			enemy->pos = {{500, 150}};
@@ -1408,7 +1403,7 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			b2Body_SetMassData(enemy->body, mass);
 			enemy->caps = b2Capsule{{-10, 10}, {10}};
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
-			shapeDef.density = 1.f;
+			//shapeDef.density = 1.f;
 			//shapeDef.friction = 0.3f;
 			b2CreateCapsuleShape(enemy->body,&shapeDef, &enemy->caps);
 			//b2CreatePolygonShape(enemy->body, &shapeDef, &enemy->box);
@@ -1490,14 +1485,15 @@ function ED_CUSTOM_TAB(game_update_and_render)
 						
 						groundBodyDef.position = (b2Vec2){pos.x + 32, pos.y + 32};
 						b2BodyId body = b2CreateBody(game->world, &groundBodyDef);
+						b2Body_SetFixedRotation(body, 1);
 						
 						b2Polygon box = b2MakeBox(32.f, 32.f);
 						
 						b2CreatePolygonShape(body, &groundShapeDef, &box);
+						
 					}
 				}
 			}
-			
 		}
 		
 		game->as_grid.row = 9 * 4;
@@ -1615,6 +1611,13 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			}
 		}
 		
+		// update positions
+		for(s32 i = 0; i < store->num_entities; i++)
+		{
+			Entity *e = store->entities + i;
+			e->old_pos = e->pos;
+		}
+		
 		// player control
 		for(s32 i = 0; i < store->num_entities; i++)
 		{
@@ -1659,17 +1662,19 @@ function ED_CUSTOM_TAB(game_update_and_render)
 				
 				if(target)
 				{
-					v2f pos = e->pos;
-					v2f dir2 = {{pos.x - target->pos.x, pos.y - target->pos.y}};
+					v2f pos = e->pos + e->basis;
+					v2f target_pos = target->pos + target->basis;
+					
+					v2f dir2 = pos - target_pos;
 					float length2 = sqrt(dir2.x * dir2.x + dir2.y * dir2.y);
 					
 					if (length2 > 50)
 					{
-						AS_NodeArray list = as_findPath(game->frame, &game->as_grid, e->pos, target->pos);
+						AS_NodeArray list = as_findPath(game->frame, &game->as_grid, pos, target_pos);
 						
 						if(list.count > 0)
 						{
-							v2f next_pos = as_worldPosFromIndex(&game->as_grid, list.v[0].index) + v2f{{8, 8}};
+							v2f next_pos = as_worldPosFromIndex(&game->as_grid, list.v[0].index) + game->as_grid.size / 2;
 							
 							v2f dir = {{ next_pos.x - pos.x, next_pos.y - pos.y }};
 							float length = sqrt(dir.x * dir.x + dir.y * dir.y);
@@ -1714,15 +1719,6 @@ function ED_CUSTOM_TAB(game_update_and_render)
 			}
 		}
 		
-		// update positions
-		for(s32 i = 0; i < store->num_entities; i++)
-		{
-			Entity *e = store->entities + i;
-			
-			e->old_pos = e->pos;
-			//e->pos += e->mv * delta * e->speed;
-		}
-		
 		// physics
 		float timeStep = 1.0f / 60.0f;
 		int subStepCount = 4;
@@ -1747,22 +1743,49 @@ function ED_CUSTOM_TAB(game_update_and_render)
 		}
 		
 		// draw visualizers
+		
 		for(s32 i = 0; i < store->num_entities; i++)
 		{
 			Entity *e = store->entities + i;
 			
-			// collider
+			// basis
+			{
+				R_Sprite *sprite = d_spriteCenter(e->pos + e->basis, {{4, 4}}, D_COLOR_YELLOW);
+				sprite->layer = 2;
+				sprite->radius = 2;
+			}
 			
-			if(game->draw_collision)
+			// collider
+			//if(game->draw_collision)
 			{
 				if(e->flags & EntityFlags_Physics)
 				{
 					b2Vec2 pos = b2Body_GetPosition(e->body);
-					v2f posf = {{pos.x, pos.y}};
+					b2ShapeType shape_type = b2Shape_GetType(e->shape);
 					
-					f32 rad = 10 + 10 + 10;
-					R_Sprite *sprite = d_spriteCenter(posf, {{rad, 10}}, {{1, 0, 0, 1}});
-					sprite->layer = 1;
+					if(shape_type == b2_capsuleShape)
+					{
+						b2Capsule caps = b2Shape_GetCapsule(e->shape);
+						v2f size = {};
+						size.x = caps.center2.x - caps.center1.x + caps.radius * 2;
+						size.y = caps.radius * 2;
+						pos.y += caps.center1.y;
+						
+						v2f posf = {{pos.x, pos.y}};
+						
+						R_Sprite *sprite = d_spriteCenter(posf, size, {{1, 0, 0, 0.3}});
+						sprite->layer = 1;
+						sprite->radius = caps.radius;
+						sprite->border_thickness = 2;
+						sprite->border_color = {{1, 0, 0, 1}};
+					}
+					else if(shape_type == b2_polygonShape)
+					{
+					}
+					else
+					{
+						INVALID_CODE_PATH();
+					}
 					
 				}
 			}

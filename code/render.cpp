@@ -133,8 +133,11 @@ int r_spriteSort(const void* a, const void* b)
 		return (first->layer > sec->layer) - (first->layer < sec->layer);
 	}
 	
-	f32 pos_1 = first->dst.tl.y - first->basis.y;
-	f32 pos_2 = sec->dst.tl.y - sec->basis.y;
+	f32 cen_pos1 = center_from_rect(first->dst).y;
+	f32 cen_pos2 = center_from_rect(sec->dst).y;
+	
+	f32 pos_1 = cen_pos1 + first->basis.y;
+	f32 pos_2 = cen_pos2 + sec->basis.y;
 	
 	return (pos_1 > pos_2) - (pos_1 < pos_2);
 }
